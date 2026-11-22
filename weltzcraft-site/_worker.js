@@ -417,10 +417,34 @@ function featuresOf(f) {
   if (!f || typeof f !== 'object') return null;
   const o = {};
   if (f.book !== undefined) o.book = f.book === true || f.book === 1 || f.book === '1' ? 1 : 0;
+  if (f.order !== undefined) o.order = f.order === true || f.order === 1 || f.order === '1' ? 1 : 0;
   if (FORMS.includes(f.form)) o.form = f.form;
   if (SLOT_MINUTES.includes(Number(f.len))) o.len = Number(f.len);
   if (Array.isArray(f.days)) { const d = [...new Set(f.days.map(Number).filter((x) => Number.isInteger(x) && x >= 0 && x <= 6))].sort(); if (d.length) o.days = d; }
   if (hhmm(f.open) && hhmm(f.close) && f.open < f.close) { o.open = f.open; o.close = f.close; }
+  return Object.keys(o).length ? o : null;
+}
+// Links a site can show: delivery apps and online ordering (an "Order online" section) and social pages.
+const LINK_HOSTS = { doordash: /(^|\.)doordash\.com$/, ubereats: /(^|\.)ubereats\.com$/, grubhub: /(^|\.)grubhub\.com$/, facebook: /(^|\.)(facebook|fb)\.com$/, instagram: /(^|\.)instagram\.com$/,
+  yelp: /(^|\.)yelp\.com$/, tiktok: /(^|\.)tiktok\.com$/ };
+const ORDER_HOSTS = /(^|\.)(toasttab\.com|square\.site|squareup\.com|clover\.com|chownow\.com|slicelife\.com|ezcater\.com|order\.online|menufy\.com|olo\.com|getbento\.com|popmenu\.com|shopify\.com|etsy\.com|instacart\.com)$/;
+function linkUrl(v) {
+  let t = oneLine(v, 300);
+  if (!t) return null;
+  if (!/^https?:\/\//i.test(t)) t = 'https://' + t;
+  try { const u = new URL(t); if (u.protocol !== 'https:' && u.protocol !== 'http:') return null; u.protocol = 'https:'; u.username = ''; u.password = ''; return u; } catch (e) { return null; }
+}
+/** {doordash, ubereats, grubhub, order, facebook, instagram, yelp, tiktok}: each an https link on the right site. Takes an object or free text with links in it. */
+function linksOf(v) {
+  const isObj = v && typeof v === 'object';
+  const found = typeof v === 'string' ? (v.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s,;<>"']*)?/gi) || []) : isObj ? Object.values(v) : [];
+  const o = {};
+  for (const raw of found.slice(0, 12)) {
+    const u = linkUrl(raw);
+    if (!u || u.pathname.length + u.search.length < 2) continue;
+    const k = Object.keys(LINK_HOSTS).find((x) => LINK_HOSTS[x].test(u.hostname)) || (ORDER_HOSTS.test(u.hostname) || (isObj && v.order === raw) ? 'order' : '');
+    if (k && !o[k]) o[k] = u.toString().slice(0, 300);
+  }
   return Object.keys(o).length ? o : null;
 }
 const pairs = (v, n, a, b) => (Array.isArray(v) ? v : []).slice(0, n).map((r) => (Array.isArray(r) ? [oneLine(r[0], a), oneLine(r[1], b)] : null)).filter((r) => r && r[0] && r[1]);
@@ -441,9 +465,10 @@ function previewAnswers(b) {
   if (phone.replace(/\D/g, '').length >= 7) a.phone = phone;
   if (emailOk(email)) a.email = email;
   if (hrs.length) a.hrs = hrs;
-  const d = designOf(b.d), f = featuresOf(b.f);
+  const d = designOf(b.d), f = featuresOf(b.f), links = linksOf(b.links);
   if (d) a.d = d;
   if (f) a.f = f;
+  if (links) a.links = links;
   return a;
 }
 
@@ -497,15 +522,17 @@ async function previewResearch(env, src) {
     ' "services": ["up to 8 real services, products or menu items, with the price if public"],',
     ' "about": "3 to 5 plain sentences of facts: what they do, who runs it, how long, what customers praise, anything distinctive",',
     ' "tag": "what makes them different, under 80 characters, in plain words",',
+    ' "links": {"facebook": "", "instagram": "", "doordash": "", "ubereats": "", "grubhub": "", "order": "their own online ordering or shop page", "yelp": ""} with the full https link for each one you actually saw in a search result for this business, and "" for the rest. Never build or guess a link,',
     ' "cta": the best first step for a customer: "Book online", "Order ahead", "Get a quote", "Call us" or "Contact us"}',
   ].filter(Boolean).join('\n');
-  const text = await gemini(env, { contents: [{ role: 'user', parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, maxOutputTokens: 3000, thinkingConfig: { thinkingBudget: 0 } } }, 60000);
+  const text = await gemini(env, { contents: [{ role: 'user', parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, maxOutputTokens: 3000, thinkingConfig: { thinkingBudget: 0 } } }, 50000);
   const g = jsonIn(text);
   if (!g || g.found === false || !str(g.name, 40)) return null;
   return {
     t: PREVIEW_KINDS.includes(g.t) ? g.t : 'other', what: str(g.what, 60), n: str(g.name, 40), town: str(g.town, 40), state: str(g.state, 2).toUpperCase(),
     addr: str(g.addr, 120), phone: str(g.phone, 30), email: str(g.email, 120), hrs: pairs(g.hours, 7, 30, 30),
     services: (Array.isArray(g.services) ? g.services : []).slice(0, 8).map((x) => str(x, 80)).filter(Boolean),
+    links: linksOf(g.links && typeof g.links === 'object' ? g.links : null),
     about: str(g.about, 900), tag: str(g.tag, 80), cta: ['Book online', 'Order ahead', 'Get a quote', 'Call us', 'Contact us'].includes(g.cta) ? g.cta : '',
   };
 }
@@ -538,10 +565,12 @@ async function previewCopy(env, a, facts) {
     ' "items": [["service or product name", "price", "one short sentence"], ... 6 items],',
     ' "facts": [["short bold value like \'Free\' or \'Same day\'", "2 to 4 word label"], ... 3 facts],',
     ' "steps": [["2 to 4 word step title", "one short sentence"], ... exactly 3 steps showing how a new customer gets started with this business],',
+    ' "why": [["one emoji", "2 to 4 word reason to choose them", "one short sentence"], ... exactly 4 reasons a customer would pick this business over others, specific to this kind of business],',
+    ' "photoQs": [4 short stock-photo searches, 2 to 4 plain words each, that would find attractive real photos for this business\'s website: first a wide scene for the top of the page, then the work or product, then two close-up details. Generic subjects only, like "dog groomer bathing dog" or "fresh egg rolls plate"; no business names, towns or brands],',
     ' "areas": [up to 6 real nearby towns they would likely serve, only if this business travels to customers (trades, cleaning, lawn, mobile services); otherwise []],',
     ' "reviews": [["a believable one or two sentence customer comment", "First name and last initial"], ... 3],',
     ' "faq": [["common customer question", "short helpful answer"], ... 4],',
-    ' "features": {"book": true if customers of this kind of business book appointments, classes, tables or visits ahead of time, else false; "form": "quote" if customers ask for estimates or custom orders, else "contact"},',
+    ' "features": {"book": true if customers of this kind of business book appointments, classes, tables or visits ahead of time, else false; "order": true if customers would order food or products ahead for pickup (restaurants, food trucks, bakeries, cafes, florists, shops), else false; "form": "quote" if customers ask for estimates or custom orders, else "contact"},',
     ' "bookTitle": "heading for the online booking section, under 40 characters", "bookNote": "one friendly sentence under 110 characters about booking with them",',
     ' "quoteQs": [up to 3 short questions their quote or contact form should ask besides name and phone, like "What kind of vehicle?"],',
     ' "color": "a brand color that suits this business, as 6 hex digits without #, dark enough that white text reads on it",',
@@ -562,10 +591,98 @@ async function previewCopy(env, a, facts) {
       f: featuresOf(g.features), bookTitle: str(g.bookTitle, 50), bookNote: str(g.bookNote, 140),
       quoteQs: (Array.isArray(g.quoteQs) ? g.quoteQs : []).slice(0, 3).map((x) => str(x, 60)).filter(Boolean),
       color: /^[0-9a-f]{6}$/i.test(g.color || '') ? String(g.color).toLowerCase() : '',
+      why: rows(g.why, 4, [8, 40, 140]).filter((r) => r[1]),
+      photoQs: (Array.isArray(g.photoQs) ? g.photoQs : []).slice(0, 4).map((x) => str(x, 50).replace(/[^\w '&-]/g, '')).filter(Boolean),
     };
     if (!c.noun || !c.about || c.items.length < 3) return null;
     return c;
   } catch (e) { return null; }
+}
+
+// ---- Real photos for each site ---------------------------------------------------------------------------
+// The AI names four photo searches for the business (copy.photoQs). We look them up on Wikimedia Commons and
+// Openverse (Flickr), keeping only licenses that allow commercial use (public domain, CC0, CC BY, CC BY-SA),
+// then Gemini looks at the candidates and picks the ones that fit and look good. The picks are saved in
+// copy.photos with their credit, and served through /img/x (photoProxy) so pages don't depend on the hosts.
+const PHOTO_UA = 'WeltzcraftPreview/1.0 (https://weltzcraft.com; hello@weltzcraft.com)';
+const PHOTO_HOSTS = /^(upload\.wikimedia\.org|[a-z0-9-]+\.staticflickr\.com)$/;
+const PHOTO_SKIP = /logo|map\b|diagram|poster|flag|coat of arms|\bsign\b|screenshot|chart|stamp|drawing|illustration|painting|engraving|\b1[5-9]\d\d\b|fortepan|bundesarchiv|\.svg|\.gif|\.tif/i;
+const licOk = (l) => /^(cc0|pdm|public domain|pd\b|cc[ -]by([ -]sa)?([ -][\d.]+)?( [a-z]{2,4})?$)/i.test(String(l || '').trim()) && !/nc|nd/i.test(l);
+const stripTags = (v) => String(v || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+async function getJson(u, ms) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(u, { signal: ctl.signal, headers: { 'User-Agent': PHOTO_UA, Accept: 'application/json' } }); return r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(timer); }
+}
+async function commonsPhotos(q) {
+  const j = await getJson('https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({ action: 'query', format: 'json', generator: 'search', gsrsearch: q + ' filetype:bitmap', gsrnamespace: '6', gsrlimit: '20',
+    prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiurlwidth: '1280', iiextmetadatafilter: 'LicenseShortName|Artist' }), 7000);
+  const pages = Object.values((j && j.query && j.query.pages) || {}).sort((a, b) => (a.index || 99) - (b.index || 99));
+  const out = [];
+  for (const pg of pages) {
+    const ii = (pg.imageinfo || [])[0] || {}, md = ii.extmetadata || {}, lic = stripTags((md.LicenseShortName || {}).value);
+    if (!ii.thumburl || ii.mime !== 'image/jpeg' || (ii.width || 0) < 1200 || ii.height > ii.width * 1.2 || !licOk(lic) || PHOTO_SKIP.test(pg.title || '')) continue;
+    out.push({ u: ii.thumburl, s: ii.thumburl.replace(/\/\d+px-/, '/330px-'), w: ii.width, h: ii.height, by: stripTags((md.Artist || {}).value).slice(0, 60), lic, page: ii.descriptionurl || '', src: 'Wikimedia Commons' });
+  }
+  return out;
+}
+async function openversePhotos(q) {
+  const j = await getJson('https://api.openverse.org/v1/images/?' + new URLSearchParams({ q, license: 'cc0,pdm,by,by-sa', source: 'flickr', page_size: '12', mature: 'false' }), 7000);
+  const out = [];
+  for (const r of (j && j.results) || []) {
+    let host = ''; try { host = new URL(r.url).hostname; } catch (e) { continue; }
+    if (!PHOTO_HOSTS.test(host) || (r.width || 0) < 1000 || r.height > r.width * 1.2 || PHOTO_SKIP.test(r.title || '')) continue;
+    const lic = r.license === 'cc0' ? 'CC0' : r.license === 'pdm' ? 'Public domain' : 'CC ' + String(r.license).toUpperCase() + (r.license_version ? ' ' + r.license_version : '');
+    out.push({ u: r.url, s: r.url.replace(/(_[a-z])?\.jpg$/i, '_n.jpg'), w: r.width, h: r.height, by: oneLine(r.creator, 60), lic, page: r.foreign_landing_url || '', src: 'Flickr' });
+  }
+  return out;
+}
+const b64 = (buf) => { let s = ''; const a = new Uint8Array(buf); for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+/** {hero, about, gal: [..]} of {u, by, lic, page, src}, or null when nothing good was found (the page then uses its built-in photo set). */
+async function previewPhotos(env, a, copy) {
+  const qs = (copy && copy.photoQs) || [];
+  if (!env.GEMINI_API_KEY || qs.length < 2) return null;
+  const found = await Promise.all(qs.slice(0, 4).map((q) => Promise.all([commonsPhotos(q), openversePhotos(q)])));
+  // Up to 3 candidates per search, Flickr and Commons taking turns, no photo twice.
+  const seen = new Set(), cands = [];
+  found.forEach(([c, o], qi) => {
+    const mix = []; for (let i = 0; i < 6; i++) { if (o[i]) mix.push(o[i]); if (c[i]) mix.push(c[i]); }
+    let n = 0; for (const x of mix) { if (n >= 3 || seen.has(x.u)) continue; seen.add(x.u); cands.push({ ...x, q: qs[qi] }); n++; }
+  });
+  if (cands.length < 2) return null;
+  const thumbs = await Promise.all(cands.map(async (c) => {
+    try { const r = await fetch(c.s, { headers: { 'User-Agent': PHOTO_UA } }); if (!r.ok || !/^image\/jpeg/.test(r.headers.get('Content-Type') || '')) return null; const buf = await r.arrayBuffer(); return buf.byteLength < 400000 ? b64(buf) : null; } catch (e) { return null; }
+  }));
+  const usable = cands.map((c, i) => ({ c, t: thumbs[i] })).filter((x) => x.t);
+  if (usable.length < 2) return null;
+  const what = a.what || (copy && copy.noun) || 'small business';
+  const parts = [{ text: 'These are ' + usable.length + ' numbered stock photos. Pick photos for the website of a small local business: ' + JSON.stringify(what) + '.\n' +
+    'Choose only photos that clearly fit this kind of business, look professional and inviting, and are modern color photos. Reject any photo with a watermark, a visible brand or another business\'s name or sign, lots of text, a close-up of a person\'s face, poor lighting or focus, or a subject that does not fit.\n' +
+    'Return JSON: {"hero": number of the best wide scene to sit behind the page\'s headline (or -1), "about": number of the best photo of the work or product (or -1), "gallery": [up to 4 more numbers, best first]}. Never use a number twice. Use -1 or fewer gallery photos rather than a photo that does not fit.' }];
+  usable.forEach((x, i) => { parts.push({ text: 'Photo ' + i + ' (searched: ' + x.c.q + ')' }); parts.push({ inline_data: { mime_type: 'image/jpeg', data: x.t } }); });
+  const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } } }, 20000));
+  if (!g) return null;
+  const used = new Set();
+  const take = (i) => { const x = Number.isInteger(i) && i >= 0 && !used.has(i) ? usable[i] : null; if (!x) return null; used.add(i); return { u: x.c.u, by: x.c.by, lic: x.c.lic, page: x.c.page, src: x.c.src }; };
+  const hero = take(g.hero), about = take(g.about), gal = (Array.isArray(g.gallery) ? g.gallery : []).slice(0, 4).map(take).filter(Boolean);
+  if (!hero && !about && gal.length < 2) return null;
+  return { hero: hero || null, about: about || gal.shift() || null, gal };
+}
+
+// GET /img/x?u=<photo address>: serves a picked photo from our own address (and keeps a copy at Cloudflare's edge),
+// so a site's pictures don't depend on the photo host staying reachable. Only the photo hosts above are allowed.
+async function photoProxy(request, url, ctx) {
+  let u; try { u = new URL(url.searchParams.get('u') || ''); } catch (e) { return new Response('Not found', { status: 404 }); }
+  if (u.protocol !== 'https:' || !PHOTO_HOSTS.test(u.hostname)) return new Response('Not found', { status: 404 });
+  const cache = typeof caches !== 'undefined' && caches.default, key = new Request(url.origin + '/img/x?u=' + encodeURIComponent(u.toString()));
+  const hit = cache ? await cache.match(key) : null;
+  if (hit) return hit;
+  const r = await fetch(u.toString(), { headers: { 'User-Agent': PHOTO_UA } });
+  const type = r.headers.get('Content-Type') || '';
+  if (!r.ok || !/^image\/(jpeg|png|webp)/.test(type)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'public, max-age=300' } });
+  const res = new Response(r.body, { headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=2592000, immutable', 'X-Content-Type-Options': 'nosniff' } });
+  if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(key, res.clone()));
+  return res;
 }
 
 async function previewCreate(request, env) {
@@ -596,11 +713,18 @@ async function previewCreate(request, env) {
   const a = previewAnswers(facts ? {
     ...b, t: facts.t, what: facts.what, n: facts.n, town: facts.town, tag: facts.tag, more: '', cta: facts.cta, h: '',
     addr: facts.addr, phone: facts.phone, email: facts.email, hrs: facts.hrs,
+    links: { ...(facts.links || {}), ...(/(^|\/\/|\.)(facebook|fb)\.com\//i.test(src) ? { facebook: src } : {}) },
     // No made-up reviews and no stock-photo "gallery" on a real business's preview.
     s: ['list', 'faq', 'map', 'steps', 'areas'],
   } : b);
   if (facts) { a.src = src; if (facts.state) a.state = facts.state; }
   const copy = all < PREVIEW_ALL_DAY ? await previewCopy(env, a, facts) : null;
+  if (copy) {
+    const photos = await previewPhotos(env, a, copy).catch(() => null);
+    if (photos) copy.photos = photos;
+    // A real business's preview gets a photo section only when real, fitting photos were found.
+    if (facts && photos && photos.gal.length >= 2 && !a.s.split(',').includes('pics')) a.s += ',pics';
+  }
   // Nobody picked a color for a looked-up business, so the AI's pick is used.
   if (facts && copy && copy.color && !/^[0-9a-f]{6}$/i.test(b.c || '')) a.c = copy.color;
   const expires = new Date(Date.now() + PREVIEW_DAYS * 864e5).toISOString();
@@ -650,7 +774,7 @@ async function previewEdit(slug, request, env) {
   if (!list.length) return json(403, { error: 'Only the person who made this preview can change it.' });
   const old = list[0].answers || {};
   const next = previewAnswers({ ...old, ...(b.s !== undefined ? { s: b.s } : {}), ...(b.c !== undefined ? { c: b.c } : {}),
-    ...(b.tag !== undefined ? { tag: b.tag } : {}), ...(b.cta !== undefined ? { cta: b.cta } : {}),
+    ...(b.tag !== undefined ? { tag: b.tag } : {}), ...(b.cta !== undefined ? { cta: b.cta } : {}), ...(b.links !== undefined ? { links: b.links } : {}),
     d: { ...(old.d || {}), ...(b.d && typeof b.d === 'object' ? b.d : {}) }, f: { ...(old.f || {}), ...(b.f && typeof b.f === 'object' ? b.f : {}) } });
   // previewAnswers defaults an empty section list; an owner who switched every extra section off means it.
   if (b.s !== undefined && !next.s) next.s = old.s;
@@ -827,8 +951,9 @@ async function siteMessage(request, env) {
   const x = await sitePost(request, env);
   if (x instanceof Response) return x;
   const { b, info, ip, p } = x;
-  const kind = b.kind === 'quote' ? 'quote' : 'contact';
-  const qa = pairs(b.qa, 4, 80, 300);
+  const kind = b.kind === 'quote' || b.kind === 'order' ? b.kind : 'contact';
+  const qa = pairs(b.qa, 14, 80, 300);
+  const label = { quote: 'Quote request', order: 'Order request', contact: 'New message' }[kind];
   if (!p.note && !qa.length) return json(400, { error: 'Tell us a little about what you need.' });
   if (!info.live) return json(200, { ok: true, demo: true });
   if ((await sbCount(env, 'ip_hash=eq.' + ip, 'weltzcraft_site_requests')) >= SITE_PER_IP_DAY) return json(429, { error: 'That\'s a lot of messages for one day. Please call us instead.' });
@@ -836,11 +961,12 @@ async function siteMessage(request, env) {
   const row = r.ok ? (await r.json())[0] : null;
   if (!row) return json(502, { error: 'We couldn\'t send your message. Please call us instead.' });
   const body = [...contactLines(p), '', ...qa.map((q) => q[0] + ' ' + q[1]), qa.length ? '' : null, p.note || null].filter((l) => l !== null).join('\n');
-  const sent = await siteMail(env, { from: info.name + ' website', to: info.email, reply_to: p.email, subject: (kind === 'quote' ? 'Quote request: ' : 'New message: ') + p.name,
-    text: (kind === 'quote' ? 'New quote request' : 'New message') + ' from your website' + (info.domain ? ' ' + info.domain : '') + '.\n\n' + body + '\n\n' + (p.email ? 'Reply to this email to answer ' + p.name + ' directly.' : 'They left a phone number, no email.') });
+  const sent = await siteMail(env, { from: info.name + ' website', to: info.email, reply_to: p.email, subject: label + ': ' + p.name,
+    text: label + ' from your website' + (info.domain ? ' ' + info.domain : '') + '.\n\n' + body + '\n\n' + (p.email ? 'Reply to this email to answer ' + p.name + ' directly.' : 'They left a phone number, no email.') });
   if (!sent) await emailSales(env, 'Site message email FAILED for ' + info.name, 'Message ' + row.id + ' on site ' + info.id + ' was saved but the email to ' + info.email + ' did not send. Forward it by hand:\n\n' + body);
-  if (p.email) await siteMail(env, { from: info.name, to: p.email, reply_to: info.email, subject: 'We got your message',
-    text: ['Hi ' + firstName(p.name) + ',', '', 'Thanks for reaching out to ' + info.name + '. We got your ' + (kind === 'quote' ? 'quote request' : 'message') + ' and will get back to you soon.', '', info.name].join('\n') });
+  if (p.email) await siteMail(env, { from: info.name, to: p.email, reply_to: info.email, subject: kind === 'order' ? 'We got your order' : 'We got your message',
+    text: ['Hi ' + firstName(p.name) + ',', '', 'Thanks for reaching out to ' + info.name + '. We got your ' + label.toLowerCase().replace('new ', '') + ' and will get back to you soon.',
+      ...(kind === 'order' ? ['', 'Your order:', ...qa.map((q) => '  ' + q[0] + ' ' + q[1]), '', 'You pay when you pick up. We\'ll be in touch if anything needs to change.'] : []), '', info.name].join('\n') });
   return json(200, { ok: true });
 }
 
@@ -1186,11 +1312,12 @@ async function liveData(request, env) {
 }
 
 /** A customer's own domain: only their one-page site and the files it needs. */
-async function customerSite(request, env, url) {
+async function customerSite(request, env, url, ctx) {
   if (url.hostname.startsWith('www.')) return Response.redirect('https://' + url.hostname.slice(4) + url.pathname + url.search, 301);
   if (url.pathname === '/api/site') return liveData(request, env);
   // Booking / contact forms on live sites (the "more custom" builder adds siteApi).
   if (url.pathname.startsWith('/api/site/') && typeof siteApi === 'function') return siteApi(request, env, url); // eslint-disable-line no-undef
+  if (url.pathname === '/img/x') return photoProxy(request, url, ctx).catch(() => new Response('Not found', { status: 404 }));
   if (/^\/(sample\.js|features\.js|favicon\.svg|img\/sample\/[a-z0-9.-]+)$/.test(url.pathname)) return env.ASSETS.fetch(request);
   if (url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /\n', { headers: { 'Content-Type': 'text/plain' } });
   if (url.pathname !== '/') return Response.redirect(url.origin + '/', 302);
@@ -1222,11 +1349,11 @@ function hit(request) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     // A customer's own domain (made live from a preview) gets only their site.
     if (!OUR_HOSTS.test(url.hostname)) {
-      try { return await customerSite(request, env, url); } catch (e) { return new Response('Something went wrong. Try again in a minute.', { status: 500 }); }
+      try { return await customerSite(request, env, url, ctx); } catch (e) { return new Response('Something went wrong. Try again in a minute.', { status: 500 }); }
     }
     if (url.pathname === '/api/live/domains') {
       try { return await liveDomains(request, env); } catch (e) {
@@ -1268,6 +1395,9 @@ export default {
       try { return request.method === 'PATCH' ? await previewEdit(url.pathname.slice(13), request, env) : await previewGet(url.pathname.slice(13), env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
     if (url.pathname.startsWith('/api/site/')) return siteApi(request, env, url);
+    if (url.pathname === '/img/x') {
+      try { return await photoProxy(request, url, ctx); } catch (e) { return new Response('Not found', { status: 404 }); }
+    }
     // A saved preview is the sample page; sample.js reads the slug from the address and loads it.
     if (/^\/preview\/[a-z0-9-]{3,60}\/?$/.test(url.pathname)) {
       const page = await env.ASSETS.fetch(new Request(new URL('/sample', url), request));
