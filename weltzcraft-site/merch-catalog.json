@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-22T18:12:08.648Z",
+ "updated": "2026-11-22T20:53:16.914Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -2619,108 +2619,108 @@
    "angles": 4
   },
   "woods-white-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658039917,
+     "id": 5659733966,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-stone-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658039948,
+     "id": 5659734030,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-khaki-h3": {
-   "hash": "dab7a67998d4",
+   "hash": "f1d53fc0b99b",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5659446787,
+     "id": 5659734236,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-lightblue-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658040182,
+     "id": 5659734285,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-navy-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658040261,
+     "id": 5659734321,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-black-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041016,
+     "id": 5659734376,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-cranberry-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041064,
+     "id": 5659734424,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-darkgrey-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041067,
+     "id": 5659734484,
      "price": 28
     }
    ],
    "angles": 4
   },
   "woods-spruce-h3": {
-   "hash": "0b7cba896107",
+   "hash": "7c7a619a772b",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5659446839,
+     "id": 5659734526,
      "price": 28
     }
    ],
@@ -3097,120 +3097,120 @@
    "angles": 4
   },
   "woodscord-brown-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041206,
+     "id": 5659734540,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodscord-olive-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041250,
+     "id": 5659737065,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodscord-navy-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041265,
+     "id": 5659737132,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodscord-burgundy-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041291,
+     "id": 5659737245,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodscord-black-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041321,
+     "id": 5659737314,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodstwo-greenkhaki-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041329,
+     "id": 5659737426,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodstwo-navykhaki-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658042083,
+     "id": 5659737514,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodstwo-dustyrose-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658042113,
+     "id": 5659737625,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodstwo-gray-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658042230,
+     "id": 5659737686,
      "price": 30
     }
    ],
    "angles": 4
   },
   "woodstwo-maroon-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "3a5f11b2af72",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5658042233,
+     "id": 5659737758,
      "price": 30
     }
    ],
