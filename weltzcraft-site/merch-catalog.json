@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-22T04:14:01.274Z",
+ "updated": "2026-11-22T05:11:27.345Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -69,6 +69,24 @@
   },
   "v9": {
    "name": "Vintage sunrise"
+  },
+  "a1": {
+   "name": "Buck W"
+  },
+  "a2": {
+   "name": "Buck Mountain W"
+  },
+  "a3": {
+   "name": "Bear Lake W"
+  },
+  "a4": {
+   "name": "Bear Night W"
+  },
+  "a5": {
+   "name": "Snow Tiger W"
+  },
+  "a6": {
+   "name": "Jungle Tiger W"
   }
  },
  "products": [
@@ -807,6 +825,43 @@
     {
      "key": "spruce",
      "name": "Spruce"
+    }
+   ]
+  },
+  {
+   "key": "wild",
+   "name": "Wild W Dad Hat",
+   "type": "hat",
+   "price": 32,
+   "sizes": null,
+   "logos": [
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6"
+   ],
+   "colors": [
+    {
+     "key": "stone",
+     "name": "Stone"
+    },
+    {
+     "key": "khaki",
+     "name": "Khaki"
+    },
+    {
+     "key": "white",
+     "name": "White"
+    },
+    {
+     "key": "spruce",
+     "name": "Spruce"
+    },
+    {
+     "key": "black",
+     "name": "Black"
     }
    ]
   },
@@ -3936,6 +3991,366 @@
      "size": "One size",
      "id": 5658041161,
      "price": 28
+    }
+   ],
+   "angles": 4
+  },
+  "wild-stone-a1": {
+   "hash": "983cd7968691",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658342762,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-stone-a2": {
+   "hash": "934931fdfb4e",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658342830,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-stone-a3": {
+   "hash": "fd5a79612731",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658342939,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-stone-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658342998,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-stone-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658343001,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-stone-a6": {
+   "hash": "f732a61fb25b",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658343002,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-khaki-a1": {
+   "hash": "983cd7968691",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658343011,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-khaki-a2": {
+   "hash": "934931fdfb4e",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658343132,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-khaki-a3": {
+   "hash": "fd5a79612731",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658343140,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-khaki-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658343141,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-khaki-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344217,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-khaki-a6": {
+   "hash": "f732a61fb25b",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344224,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-white-a1": {
+   "hash": "983cd7968691",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344226,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-white-a2": {
+   "hash": "934931fdfb4e",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344339,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-white-a3": {
+   "hash": "fd5a79612731",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344351,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-white-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344444,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-white-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344492,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-white-a6": {
+   "hash": "f732a61fb25b",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344543,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-spruce-a1": {
+   "hash": "983cd7968691",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344636,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-spruce-a2": {
+   "hash": "934931fdfb4e",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658344640,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-spruce-a3": {
+   "hash": "fd5a79612731",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658345986,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-spruce-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658345992,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-spruce-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346004,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-spruce-a6": {
+   "hash": "f732a61fb25b",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346116,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-black-a1": {
+   "hash": "983cd7968691",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346162,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-black-a2": {
+   "hash": "934931fdfb4e",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346163,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-black-a3": {
+   "hash": "fd5a79612731",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346164,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-black-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346165,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-black-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346234,
+     "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wild-black-a6": {
+   "hash": "f732a61fb25b",
+   "price": 32,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658346236,
+     "price": 32
     }
    ],
    "angles": 4
