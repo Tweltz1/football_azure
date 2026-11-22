@@ -89,9 +89,13 @@ jobs:
           have=$(curl --silent -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/pages/projects/$PROJECT" \
             | jq -r '.result.deployment_configs.production.env_vars // {} | has("STRIPE_MERCH_WEBHOOK_SECRET")')
           ids=$(st "https://api.stripe.com/v1/webhook_endpoints?limit=100" | jq -r --arg u "$HOOK" '[.data[]? | select(.url == $u) | .id] | join(" ")')
-          if [ -n "$ids" ] && [ "$have" = "true" ]; then echo "merch webhook ok"; exit 0; fi
+          if [ -n "$ids" ] && [ "$have" = "true" ]; then
+            # Keep the endpoint (and its secret) and make sure it hears about ended subscriptions too.
+            for id in $ids; do st "https://api.stripe.com/v1/webhook_endpoints/$id" -d "enabled_events[]=checkout.session.completed" -d "enabled_events[]=customer.subscription.deleted" | jq -c '{events: .enabled_events, error: .error.message}' || true; done
+            echo "merch webhook ok"; exit 0
+          fi
           for id in $ids; do st -X DELETE "https://api.stripe.com/v1/webhook_endpoints/$id" | jq -c '{deleted}'; done
-          r=$(st https://api.stripe.com/v1/webhook_endpoints -d url="$HOOK" -d "enabled_events[]=checkout.session.completed" -d description="weltzcraft.com merch orders to Printful")
+          r=$(st https://api.stripe.com/v1/webhook_endpoints -d url="$HOOK" -d "enabled_events[]=checkout.session.completed" -d "enabled_events[]=customer.subscription.deleted" -d description="weltzcraft.com merch orders to Printful")
           sec=$(echo "$r" | jq -r '.secret // empty')
           if [ -z "$sec" ]; then echo "::error::Could not create the Stripe webhook: $(echo "$r" | jq -r '.error.message // "unknown"')"; exit 1; fi
           echo "::add-mask::$sec"

@@ -112,7 +112,7 @@ button:disabled{opacity:.55;cursor:default}
         '<label>' + esc(c.list || 'Services') + ' and prices</label><div class="items" id="items"></div><button type="button" class="add" id="addi">+ Add another</button></section>' +
       '<section class="card"><h2><span class="num">4</span>Keep it running</h2>' +
         '<label class="care on" id="carel"><input type="checkbox" id="care" checked><div><b>Care plan, $49 a month</b><p>Hosting, your domain renewal each year, small changes and fixes whenever you ask. Cancel any time.</p></div></label>' +
-        '<p class="fine">Without it, we hand everything over at launch and you take care of hosting and renewing the domain yourself.</p></section>' +
+        '<p class="fine" id="nocare">Without it, your web address renews by itself once a year at the price shown above, on the same card. You can cancel that any time.</p></section>' +
       '<section class="card"><h2>Your total</h2><ul class="sum" id="sum"></ul>' +
         '<button class="go" id="pay">Continue to payment →</button><div id="perr"></div>' +
         '<p class="fine">You pay half of the $500 Starter site now and half when it launches. Nothing goes live and no domain is bought until we\'ve checked your site. Rather talk first? <a href="/?site=' + esc(a.t) + '&sn=' + encodeURIComponent(a.n) + '&st=' + encodeURIComponent(a.town || '') + '&sp=' + esc(slug) + '#contact">Send us a message</a>.</p></section>';
@@ -140,12 +140,13 @@ button:disabled{opacity:.55;cursor:default}
   }
   function total() {
     var l = [['Starter website, first half', 25000]];
-    if (state.domain) l.push([state.domain + ' (1 year)', state.price]); else l.push(['Web address', null]);
+    if (state.domain) l.push([state.domain + (state.care ? ' (first year; later years are in your care plan)' : ' (first year)'), state.price]); else l.push(['Web address', null]);
     var now = l.reduce(function (s, x) { return s + (x[1] || 0); }, 0);
     $('sum').innerHTML = l.map(function (x) { return '<li><span>' + esc(x[0]) + '</span><span>' + (x[1] == null ? 'pick one above' : money(x[1])) + '</span></li>'; }).join('') +
       (state.care ? '<li><span>Care plan</span><span>$49/month</span></li>' : '') +
       '<li class="t"><span>Due today</span><span>' + money(now + (state.care ? 4900 : 0)) + '</span></li>' +
-      '<li><span>Due at launch</span><span>$250</span></li>';
+      '<li><span>Due at launch</span><span>$250</span></li>' +
+      (state.domain && !state.care ? '<li><span>Web address, each year after</span><span>' + money(state.price) + '/year</span></li>' : '');
   }
   function search(q) {
     q = String(q || '').trim(); if (!q) return;
