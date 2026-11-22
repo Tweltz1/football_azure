@@ -567,7 +567,7 @@ async function previewCopy(env, a, facts) {
     ' "facts": [["short bold value like \'Free\' or \'Same day\'", "2 to 4 word label"], ... 3 facts],',
     ' "steps": [["2 to 4 word step title", "one short sentence"], ... exactly 3 steps showing how a new customer gets started with this business],',
     ' "why": [["one emoji", "2 to 4 word reason to choose them", "one short sentence"], ... exactly 4 reasons a customer would pick this business over others, specific to this kind of business],',
-    ' "photoQs": [4 short stock-photo searches, 2 to 4 plain words each, that would find attractive real photos for this business\'s website: first a wide scene for the top of the page, then the work or product, then two close-up details. Generic subjects only, like "dog groomer bathing dog" or "fresh egg rolls plate"; no business names, towns or brands],',
+    ' "photoQs": [5 photo searches for a photo library that is searched by subject name, 1 to 3 plain words each, naming things worth showing on this business\'s website: first a wide scene for the top of the page, then the main work or product, then three more products, tools or details. Use the plain common name of the subject, like "food truck", "beef brisket", "dog grooming", "hair salon", "lawn mower"; no adjectives, no business names, towns or brands],',
     ' "areas": [up to 6 real nearby towns they would likely serve, only if this business travels to customers (trades, cleaning, lawn, mobile services); otherwise []],',
     ' "reviews": [["a believable one or two sentence customer comment", "First name and last initial"], ... 3],',
     ' "faq": [["common customer question", "short helpful answer"], ... 4],',
@@ -593,7 +593,7 @@ async function previewCopy(env, a, facts) {
       quoteQs: (Array.isArray(g.quoteQs) ? g.quoteQs : []).slice(0, 3).map((x) => str(x, 60)).filter(Boolean),
       color: /^[0-9a-f]{6}$/i.test(g.color || '') ? String(g.color).toLowerCase() : '',
       why: rows(g.why, 4, [8, 40, 140]).filter((r) => r[1]),
-      photoQs: (Array.isArray(g.photoQs) ? g.photoQs : []).slice(0, 4).map((x) => str(x, 50).replace(/[^\w '&-]/g, '')).filter(Boolean),
+      photoQs: (Array.isArray(g.photoQs) ? g.photoQs : []).slice(0, 5).map((x) => str(x, 50).replace(/[^\w '&-]/g, '')).filter(Boolean),
     };
     if (!c.noun || !c.about || c.items.length < 3) return null;
     return c;
@@ -618,13 +618,13 @@ async function getJson(u, ms, log) {
   try { const r = await fetch(u, { signal: ctl.signal, headers: { 'User-Agent': PHOTO_UA, Accept: 'application/json' } }); if (log) log.push(new URL(u).hostname + ' ' + r.status); return r.ok ? await r.json() : null; } catch (e) { if (log) log.push(new URL(u).hostname + ' ' + e.name); return null; } finally { clearTimeout(timer); }
 }
 async function commonsPhotos(q, log) {
-  const j = await getJson('https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({ action: 'query', format: 'json', generator: 'search', gsrsearch: q + ' filetype:bitmap', gsrnamespace: '6', gsrlimit: '20',
+  const j = await getJson('https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({ action: 'query', format: 'json', generator: 'search', gsrsearch: q + ' filetype:bitmap', gsrnamespace: '6', gsrlimit: '40',
     prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiurlwidth: '1280', iiextmetadatafilter: 'LicenseShortName|Artist' }), 7000, log);
   const pages = Object.values((j && j.query && j.query.pages) || {}).sort((a, b) => (a.index || 99) - (b.index || 99));
   const out = [];
   for (const pg of pages) {
     const ii = (pg.imageinfo || [])[0] || {}, md = ii.extmetadata || {}, lic = stripTags((md.LicenseShortName || {}).value);
-    if (!ii.thumburl || ii.mime !== 'image/jpeg' || (ii.width || 0) < 1200 || ii.height > ii.width * 1.2 || !licOk(lic) || PHOTO_SKIP.test(pg.title || '')) continue;
+    if (!ii.thumburl || ii.mime !== 'image/jpeg' || (ii.width || 0) < 1000 || ii.height > ii.width * 1.2 || !licOk(lic) || PHOTO_SKIP.test(pg.title || '')) continue;
     out.push({ u: ii.thumburl, s: ii.thumburl.replace(/\/\d+px-/, '/330px-'), w: ii.width, h: ii.height, by: stripTags((md.Artist || {}).value).slice(0, 60), lic, page: ii.descriptionurl || '', src: 'Wikimedia Commons' });
   }
   return out;
@@ -645,12 +645,20 @@ const b64 = (buf) => { let s = ''; const a = new Uint8Array(buf); for (let i = 0
 async function previewPhotos(env, a, copy, log) {
   const qs = (copy && copy.photoQs) || [];
   if (!env.GEMINI_API_KEY || qs.length < 2) return null;
-  const found = await Promise.all(qs.slice(0, 4).map((q) => Promise.all([commonsPhotos(q, log), PHOTO_OPENVERSE ? openversePhotos(q, log) : []])));
-  // Up to 4 candidates per search, Flickr and Commons taking turns, no photo twice.
+  // A long search that finds little is tried again with just its last two words ("sliced smoked beef brisket" -> "beef brisket").
+  const commons = async (q) => {
+    let r = await commonsPhotos(q, log);
+    const w = q.split(/\s+/);
+    if (r.length < 3 && w.length > 2) r = r.concat(await commonsPhotos(w.slice(-2).join(' '), log));
+    if (log) log.push(q + ': ' + r.length);
+    return r;
+  };
+  const found = await Promise.all(qs.slice(0, 5).map((q) => Promise.all([commons(q), PHOTO_OPENVERSE ? openversePhotos(q, log) : []])));
+  // Up to 5 candidates per search, Flickr and Commons taking turns, no photo twice.
   const seen = new Set(), cands = [];
   found.forEach(([c, o], qi) => {
-    const mix = []; for (let i = 0; i < 6; i++) { if (o[i]) mix.push(o[i]); if (c[i]) mix.push(c[i]); }
-    let n = 0; for (const x of mix) { if (n >= 4 || seen.has(x.u)) continue; seen.add(x.u); cands.push({ ...x, q: qs[qi] }); n++; }
+    const mix = []; for (let i = 0; i < 8; i++) { if (o[i]) mix.push(o[i]); if (c[i]) mix.push(c[i]); }
+    let n = 0; for (const x of mix) { if (n >= 5 || seen.has(x.u)) continue; seen.add(x.u); cands.push({ ...x, q: qs[qi] }); n++; }
   });
   if (log) log.push('candidates ' + cands.length);
   if (cands.length < 2) return null;
@@ -663,9 +671,9 @@ async function previewPhotos(env, a, copy, log) {
   const what = a.what || (copy && copy.noun) || 'small business';
   const parts = [{ text: 'These are ' + usable.length + ' numbered stock photos. Pick photos for the website of a small local business: ' + JSON.stringify(what) + '.\n' +
     'Choose only photos that clearly fit this kind of business, look professional and inviting, and are modern color photos. Reject any photo with a watermark, a visible brand or another business\'s name or sign, lots of text, a close-up of a person\'s face, poor lighting or focus, or a subject that does not fit.\n' +
-    'Return JSON: {"hero": number of the best wide scene to sit behind the page\'s headline (or -1), "about": number of the best photo of the work or product (or -1), "gallery": [up to 4 more numbers, best first]}. Never use a number twice. Use -1 or fewer gallery photos rather than a photo that does not fit.' }];
+    'Return JSON: {"hero": number of the best wide scene to sit behind the page\'s headline (or -1), "about": number of the best photo of the work or product (or -1), "gallery": [up to 4 more numbers, best first]}. Never use a number twice. Prefer filling hero and about when any photo is a reasonable fit; use -1 only when nothing suits.' }];
   usable.forEach((x, i) => { parts.push({ text: 'Photo ' + i + ' (searched: ' + x.c.q + ')' }); parts.push({ inline_data: { mime_type: 'image/jpeg', data: x.t } }); });
-  const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } } }, 25000, log));
+  const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } } }, 30000, log));
   if (log) log.push('picked ' + JSON.stringify(g));
   if (!g) return null;
   const used = new Set();
