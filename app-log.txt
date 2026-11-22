@@ -1,0 +1,482 @@
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-11-22 18:28:33.776 Df ShopStride[76590:30bdd] [com.apple.xpc:connection] [0x102135af0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-22 18:28:33.781 Df ShopStride[76590:30bae] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-22 18:28:33.785 Df ShopStride[76590:30be0] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-11-22 18:28:33.786 Df ShopStride[76590:30be0] [com.apple.xpc:connection] [0x1021370e0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-22 18:28:33.799 A  ShopStride[76590:30bde] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-11-22 18:28:33.801 Df ShopStride[76590:30bdd] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-11-22 18:28:33.812 Df ShopStride[76590:30bdd] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-11-22 18:28:33.812 Df ShopStride[76590:30bdd] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x102139800>
+2026-11-22 18:28:33.813 Df ShopStride[76590:30bdd] [com.apple.runningboard:connection] Initializing connection
+2026-11-22 18:28:33.813 Df ShopStride[76590:30bdd] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-22 18:28:33.813 Df ShopStride[76590:30bdd] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-22 18:28:33.814 Df ShopStride[76590:30bdd] [com.apple.xpc:connection] [0x1045b8280] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-22 18:28:33.814 Df ShopStride[76590:30be2] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-22 18:28:33.822 Df ShopStride[76590:30be2] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-22 18:28:33.823 Df ShopStride[76590:30be2] [com.apple.runningboard:connection] Identity resolved as app<com.tweltz1.groceryrunner((null))>
+2026-11-22 18:28:33.824 Df ShopStride[76590:30bdd] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x102139800>
+2026-11-22 18:28:33.825 Df ShopStride[76590:30bdd] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x1044ec940>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 2563 (elapsed = 0).
+2026-11-22 18:28:33.826 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-22 18:28:33.828 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-11-22 18:28:33.830 Df ShopStride[76590:30bae] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-11-22 18:28:33.834 Df ShopStride[76590:30bae] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-11-22 18:28:33.837 A  ShopStride[76590:30be3] (RunningBoardServices) didChangeInheritances
+2026-11-22 18:28:33.837 Df ShopStride[76590:30bae] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-11-22 18:28:33.838 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneOcclusionSettings> on FBSSceneSettings
+2026-11-22 18:28:33.840 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneInterfaceProtectionSettings> on FBSSceneSettings
+2026-11-22 18:28:33.841 Df ShopStride[76590:30bae] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x104588b00; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-11-22 18:28:33.841 Df ShopStride[76590:30bae] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x104554000 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-22 18:28:33.841 Df ShopStride[76590:30bae] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x104554000 com.apple.frontboard.systemappservices> sent handshake
+2026-11-22 18:28:33.842 Df ShopStride[76590:30bae] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x104588f00>
+2026-11-22 18:28:33.843 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-22 18:28:33.847 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-22 18:28:33.852 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-22 18:28:33.853 Df ShopStride[76590:30bae] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x1045b8500> for initial
+2026-11-22 18:28:33.856 Df ShopStride[76590:30bae] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x1045b8500> for CADisplay KVO
+2026-11-22 18:28:33.856 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UIHomeAffordanceHostSceneSettings> on FBSSceneSettings
+2026-11-22 18:28:33.860 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-22 18:28:33.862 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-22 18:28:33.863 Df ShopStride[76590:30bae] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 1, category name = (null)
+2026-11-22 18:28:33.863 Df ShopStride[76590:30bae] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = (null)
+2026-11-22 18:28:33.865 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-22 18:28:33.866 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-22 18:28:33.867 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-22 18:28:33.868 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationSettingsExtension on FBSSceneSettings
+2026-11-22 18:28:33.869 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationClientSettingsExtension on FBSSceneClientSettings
+2026-11-22 18:28:33.871 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-22 18:28:33.874 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-22 18:28:33.874 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-22 18:28:33.879 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-22 18:28:33.881 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-22 18:28:33.881 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-22 18:28:33.882 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-22 18:28:33.883 Df ShopStride[76590:30bae] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-22 18:28:33.883 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-22 18:28:33.883 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-22 18:28:33.883 Df ShopStride[76590:30bae] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-22 18:28:33.884 Df ShopStride[76590:30bdd] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneZoomTransitionSettings> on FBSSceneSettings
+2026-11-22 18:28:33.884 Df ShopStride[76590:30bae] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-22 18:28:33.885 Df ShopStride[76590:30bae] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-22 18:28:33.887 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1024 -> 3072; animating application lifecycle event: 0
+2026-11-22 18:28:33.887 Df ShopStride[76590:30be3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-22 18:28:33.888 Df ShopStride[76590:30bae] (UIKitCore) You've implemented -[<UIApplicationDelegate> application:performFetchWithCompletionHandler:], but you still need to add "fetch" to the list of your supported UIBackgroundModes in your Info.plist.
+2026-11-22 18:28:33.888 Df ShopStride[76590:30bae] (UIKitCore) You've implemented -[<UIApplicationDelegate> application:didReceiveRemoteNotification:fetchCompletionHandler:], but you still need to add "remote-notification" to the list of your supported UIBackgroundModes in your Info.plist.
+2026-11-22 18:28:33.891 Df ShopStride[76590:30be3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-22 18:28:33.891 Df ShopStride[76590:30bae] (React) _setUpFeatureFlags called with release level 2
+2026-11-22 18:28:33.900 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3072 -> 2048; animating application lifecycle event: 0
+2026-11-22 18:28:33.904 Df ShopStride[76590:30bae] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-11-22 18:28:33.904 Df ShopStride[76590:30bae] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-11-22 18:28:33.904 Df ShopStride[76590:30bae] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-11-22 18:28:33.914 Df ShopStride[76590:30be3] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneSettings setting counterpart class: UIApplicationSceneSettings
+2026-11-22 18:28:33.916 Df ShopStride[76590:30be3] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneClientSettings setting counterpart class: UIApplicationSceneClientSettings
+2026-11-22 18:28:33.916 Df ShopStride[76590:30be3] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-22 18:28:33.927 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1045b8a00] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-22 18:28:33.976 Df ShopStride[76590:30bae] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-11-22 18:28:33.976 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1045b8c80] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-22 18:28:33.979 Df ShopStride[76590:30be3] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-11-22 18:28:33.981 Df ShopStride[76590:30bae] [com.apple.app_launch_measurement:ApplicationLaunch] alm_acquire_pageins_recording_assertion: acquired pageins recording assertion!
+2026-11-22 18:28:33.989 Df ShopStride[76590:30bae] [com.apple.UIKit:BackgroundTask] Will add backgroundTask with taskName: Persistent SceneSession Map Update, expirationHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-11-22 18:28:33.989 Df ShopStride[76590:30bae] [com.apple.UIKit:BackgroundTask] Reusing background assertion <BKSProcessAssertion: 0x102139800>
+2026-11-22 18:28:33.989 Df ShopStride[76590:30bae] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x102139800>
+2026-11-22 18:28:33.989 Df ShopStride[76590:30bae] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x104695bc0>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 2563 (elapsed = 0).
+2026-11-22 18:28:33.990 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason added: 5; deactivation reasons: 2048 -> 2080; animating application lifecycle event: 1
+2026-11-22 18:28:33.991 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 1 -> 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:33.995 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:33.996 Df ShopStride[76590:30bae] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x1046ace00>; with scene: <UIWindowScene: 0x10213d820>
+2026-11-22 18:28:33.997 Df ShopStride[76590:30bae] [com.apple.BacklightServices:scenes] 0x10446eee0 setDelegate:<0x10446ee20 _UIBacklightEnvironment> hasDelegate:YES for environment:sceneID:com.tweltz1.groceryrunner-default
+2026-11-22 18:28:33.999 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.000 Df ShopStride[76590:30bae] [com.apple.UIKit:EventDeferring] [0x1046ace70] Initialized with scene: <UIWindowScene: 0x10213d820>; behavior: <_UIEventDeferringBehavior_iOS: 0x10479cfe0>; availableForProcess: 1, systemShellManagesKeyboardFocus: 1
+2026-11-22 18:28:34.007 Df ShopStride[76590:30be3] [com.apple.BackBoard:EventDelivery] BKSHIDEventObserver - connection activation
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x1044aa9a0; process scope; status: target> was:none
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to LastOneWins
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 1; scene: UIWindowScene: 0x10213d820; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.groceryrunner-default
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.UIKit:EventDeferring] [0x1046ace70] Scene target of event deferring environments did update: scene: 0x10213d820; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x10213d820; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.groceryrunner-default
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Stack[KeyWindow] 0x10446ec40: Taking no further action for migration from LastOneWins -> SystemShellManaged as there are no scenes
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to SystemShellManaged
+2026-11-22 18:28:34.007 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Key window needs update: 0; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x10213d820; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x0; reason: UIWindowScene: 0x10213d820: Window scene became target of keyboard environment
+2026-11-22 18:28:34.008 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.009 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.012 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.046 Df ShopStride[76590:30bae] [com.apple.network:] networkd_settings_read_from_file_locked initialized networkd settings by reading plist directly
+2026-11-22 18:28:34.046 Df ShopStride[76590:30bae] [com.apple.network:] networkd_settings_read_from_file_locked initialized networkd settings by reading plist directly
+2026-11-22 18:28:34.226 Df ShopStride[76590:30bae] [com.apple.UIKit:Orientation] <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155) Scene updated orientation preferences: none -> ( Pu )
+2026-11-22 18:28:34.235 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-22 18:28:34.235 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x10213d820: Window became key in scene: UIWindow: 0x1045f8000; contextId: 0x8C375BFA: reason: UIWindowScene: 0x10213d820: Window requested to become key in scene: 0x1045f8000
+2026-11-22 18:28:34.235 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x10213d820; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x1045f8000; reason: UIWindowScene: 0x10213d820: Window requested to become key in scene: 0x1045f8000
+2026-11-22 18:28:34.235 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x1045f8000; contextId: 0x8C375BFA; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.groceryrunner-default
+2026-11-22 18:28:34.235 Df ShopStride[76590:30bae] [com.apple.UIKit:EventDeferring] [0x1046ace70] Begin local event deferring requested for token: 0x1044a8ea0; environments: 1; reason: UIWindowScene: 0x10213d820: Begin event deferring in keyboardFocus for window: 0x1045f8000
+2026-11-22 18:28:34.238 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.238 Df ShopStride[76590:30be3] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x1044aa9a0; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.groceryrunner-default; status: ancestor> was:target
+2026-11-22 18:28:34.240 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
+2026-11-22 18:28:34.240 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Ignoring already applied deactivation reason: 5; deactivation reasons: 2080
+2026-11-22 18:28:34.241 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2080 -> 6176; animating application lifecycle event: 1
+2026-11-22 18:28:34.246 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6176 -> 4128; animating application lifecycle event: 1
+2026-11-22 18:28:34.246 Df ShopStride[76590:30bae] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-22 18:28:34.249 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.254 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1070b0b40] activating connection: mach=true listener=false peer=false name=com.apple.IOSurface.Remote
+2026-11-22 18:28:34.263 Df ShopStride[76590:30bae] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:1 [20C603EF-AA33-435A-A2E0-041672307A78] (reporting strategy default)>
+2026-11-22 18:28:34.263 Df ShopStride[76590:30bae] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:2 [46B07CB2-EE98-4A51-ACF4-A94FDA60A9FF] (reporting strategy default)>
+2026-11-22 18:28:34.264 Df ShopStride[76590:30bae] [com.apple.network:activity] Set activity <nw_activity 50:1 [20C603EF-AA33-435A-A2E0-041672307A78] (reporting strategy default)> as the global parent
+2026-11-22 18:28:34.264 Df ShopStride[76590:30bae] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-11-22 18:28:34.264 Df ShopStride[76590:30bae] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x1044ec940>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 2563 (elapsed = 0), _expireHandler: (null)
+2026-11-22 18:28:34.266 Df ShopStride[76590:30bae] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x102139800> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x1044ec940>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 2563 (elapsed = 0))
+2026-11-22 18:28:34.266 Df ShopStride[76590:30bae] [com.apple.UIKit:EventDeferring] [0x1046ace70] Scene target of event deferring environments did update: scene: 0x10213d820; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-22 18:28:34.266 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x10213d820; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.groceryrunner-default
+2026-11-22 18:28:34.267 Df ShopStride[76590:30bae] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-11-22 18:28:34.267 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
+2026-11-22 18:28:34.267 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.268 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.268 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
+2026-11-22 18:28:34.268 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4128 -> 32; animating application lifecycle event: 1
+2026-11-22 18:28:34.269 Df ShopStride[76590:30bae] [com.apple.KeyboardArbiter:Client] Send setDeactivating: N (-DeactivationReason:SuspendedEventsOnly)
+2026-11-22 18:28:34.269 Df ShopStride[76590:30bdd] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-22 18:28:34.269 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason removed: 5; deactivation reasons: 32 -> 0; animating application lifecycle event: 0
+2026-11-22 18:28:34.270 Df ShopStride[76590:30bae] [com.apple.KeyboardArbiter:Client] startConnection
+2026-11-22 18:28:34.272 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1070b0000] activating connection: mach=true listener=false peer=false name=com.apple.UIKit.KeyboardManagement.hosted
+2026-11-22 18:28:34.273 Df ShopStride[76590:30bdd] [com.apple.xpc:session] [0x104601450] Session created.
+2026-11-22 18:28:34.273 Df ShopStride[76590:30bdd] [com.apple.xpc:session] [0x104601450] Session created from connection [0x1070b0140]
+2026-11-22 18:28:34.273 Df ShopStride[76590:30bdd] [com.apple.xpc:connection] [0x1070b0140] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-22 18:28:34.278 Df ShopStride[76590:30bae] [com.apple.KeyboardArbiter:Client] handleKeyboardChange: set currentKeyboard:N (wasKeyboard:N)
+2026-11-22 18:28:34.278 Df ShopStride[76590:30bdd] [com.apple.xpc:session] [0x104601450] Session activated
+2026-11-22 18:28:34.289 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyboardSceneDelegate] forceReloadInputViews
+2026-11-22 18:28:34.289 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <(null): 0x0; > force:Y
+2026-11-22 18:28:34.291 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyboardArbiterClientLog] isWritingToolsHandlingKeyboardTracking:Y (WT ready:Y, Arbiter ready:Y)
+2026-11-22 18:28:34.300 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
+2026-11-22 18:28:34.303 A  ShopStride[76590:30be0] (RunningBoardServices) didChangeInheritances
+2026-11-22 18:28:34.306 Df ShopStride[76590:30bae] [com.apple.FrontBoard:SceneExtension] Realizing settings extension SBUISecureRenderingSettingsExtension on FBSSceneSettings
+2026-11-22 18:28:34.312 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:34.312 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
+2026-11-22 18:28:34.326 A  ShopStride[76590:30be0] (RunningBoardServices) didChangeInheritances
+2026-11-22 18:28:34.362 Df ShopStride[76590:30bae] [com.apple.network:activity] <nw_activity 50:1 [20C603EF-AA33-435A-A2E0-041672307A78] (global parent) (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 4833ms
+2026-11-22 18:28:34.362 Df ShopStride[76590:30bae] [com.apple.network:activity] <nw_activity 50:2 [46B07CB2-EE98-4A51-ACF4-A94FDA60A9FF] (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 4833ms
+2026-11-22 18:28:34.362 Df ShopStride[76590:30bae] [com.apple.network:activity] Unsetting the global parent activity <nw_activity 50:1 [20C603EF-AA33-435A-A2E0-041672307A78] (global parent) (reporting strategy default) complete (reason success)>
+2026-11-22 18:28:34.362 Df ShopStride[76590:30bae] [com.apple.network:activity] Unset the global parent activity
+2026-11-22 18:28:34.362 Df ShopStride[76590:30bae] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
+2026-11-22 18:28:34.389 Df ShopStride[76590:30bae] [com.apple.Accessibility:AXCommon] Read Per-App on Init: Smart invert = (null)
+2026-11-22 18:28:34.399 Df ShopStride[76590:30be0] [com.apple.xpc:connection] [0x1070b0dc0] activating connection: mach=true listener=false peer=false name=com.apple.fontservicesd
+2026-11-22 18:28:34.494 A  ShopStride[76590:30be3] (RunningBoardServices) didChangeInheritances
+2026-11-22 18:28:34.500 Df ShopStride[76590:30be3] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 2
+2026-11-22 18:28:34.500 Df ShopStride[76590:30be3] [com.apple.UIKit:BackgroundTask] Ending task with identifier 2 and description: <_UIBackgroundTaskInfo: 0x104695bc0>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 2563 (elapsed = 1), _expireHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-11-22 18:28:34.501 Df ShopStride[76590:30be3] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x102139800> (used by background task with identifier 2: <_UIBackgroundTaskInfo: 0x104695bc0>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 2563 (elapsed = 1))
+2026-11-22 18:28:34.501 Df ShopStride[76590:30be3] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x102139800> for task identifier: 2
+2026-11-22 18:28:34.620 Df ShopStride[76590:30bdd] [com.apple.FileURL:default] kExcludedFromBackupXattrName set on path: /Users/runner/Library/Developer/CoreSimulator/Devices/6478AFFB-AE17-412A-A1E5-51BCFFD300B6/data/Containers/Data/Application/F26FD732-09E0-451C-82FF-5BF6574F3DF2/Library/Application Support/com.tweltz1.groceryrunner/RCTAsyncLocalStorage_V1
+2026-11-22 18:28:34.847 Df ShopStride[76590:30bae] [com.apple.runningboard:connection] Creating side-channel connection to com.apple.runningboard
+2026-11-22 18:28:34.847 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1070b17c0] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-22 18:28:34.848 Df ShopStride[76590:30bae] [com.apple.runningboard:process] Hit the server for a process handle 18ba88e00012b2e that resolved to: [app<com.tweltz1.groceryrunner((null))>:76590]
+2026-11-22 18:28:34.865 Df ShopStride[76590:30bdd] [com.apple.CFNetwork:Default] Initializing NSHTTPCookieStorage singleton
+2026-11-22 18:28:34.866 Df ShopStride[76590:30bdd] [com.apple.CFNetwork:Default] Initializing CFHTTPCookieStorage singleton
+2026-11-22 18:28:34.867 Df ShopStride[76590:30bdd] [com.apple.CFNetwork:Default] Creating default cookie storage with process/bundle identifier
+2026-11-22 18:28:34.868 A  ShopStride[76590:30bdd] (libsystem_containermanager.dylib) container_system_group_path_for_identifier
+2026-11-22 18:28:34.868 Df ShopStride[76590:30bdd] [com.apple.containermanager:xpc] Requesting container lookup; class = 13, identifier = com.apple.nsurlsessiond, group_identifier = systemgroup.com.apple.nsurlstoragedresources, create = 1, temp = 0, euid = 501, uid = 501
+2026-11-22 18:28:34.869 A  ShopStride[76590:30bdd] (libsystem_containermanager.dylib) container_query_t
+2026-11-22 18:28:34.869 Df ShopStride[76590:30bdd] [com.apple.containermanager:xpc] Query; euid = 501, uid = 501, class = 13, identifier = [com.apple.nsurlsessiond](1), flags = 900000003
+2026-11-22 18:28:34.881 Df ShopStride[76590:30bdd] [com.apple.containermanager:unspecified] _container_query_get_result_at_index: success
+2026-11-22 18:28:34.881 A  ShopStride[76590:30bdd] (libsystem_containermanager.dylib) container_copy_object
+2026-11-22 18:28:34.881 Df ShopStride[76590:30bdd] [com.apple.containermanager:unspecified] container_system_group_path_for_identifier: success
+2026-11-22 18:28:34.883 Df ShopStride[76590:30bdd] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> resuming, timeouts(0.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-11-22 18:28:34.884 A  ShopStride[76590:30bdd] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-11-22 18:28:34.927 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Initializing AlternativeServices Storage singleton
+2026-11-22 18:28:34.928 Df ShopStride[76590:30be0] [com.apple.FileURL:default] kExcludedFromBackupXattrName set on path: /Users/runner/Library/Developer/CoreSimulator/Devices/6478AFFB-AE17-412A-A1E5-51BCFFD300B6/data/Containers/Data/Application/F26FD732-09E0-451C-82FF-5BF6574F3DF2/Library/HTTPStorages/com.tweltz1.groceryrunner
+2026-11-22 18:28:34.938 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Connection 0: creating secure tcp or quic connection
+2026-11-22 18:28:34.946 E  ShopStride[76590:30bae] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-11-22 18:28:34.960 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Connection 1: enabling TLS
+2026-11-22 18:28:34.960 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Connection 1: starting, TC(0x0)
+2026-11-22 18:28:34.961 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1 EB497412-3277-4108-B483-8B6670E4E3AE Hostname#04eb1df4:443 quic-connection, url: https://nkwedlskhnojseeroezm.supabase.co/functions/v1/grocery-runner, definite, attribution: developer, context: com.apple.CFNetwork.NSURLSession.{4F84CB39-78C5-44C5-AE2B-757055F4ECE1}{(null)}{Y}{2}{0x0} (private), proc: 2EC9BC38-D7D2-3810-94F0-EF2786715BF2, delegated upid: 0] start
+2026-11-22 18:28:34.962 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1 Hostname#04eb1df4:443 initial parent-flow ((null))] event: path:start @0.000s
+2026-11-22 18:28:34.970 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1 Hostname#04eb1df4:443 waiting parent-flow (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.008s, uuid: 623CCB23-49CB-493B-9AF0-894474B81D31
+2026-11-22 18:28:34.970 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1 Hostname#04eb1df4:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.009s
+2026-11-22 18:28:34.977 Df ShopStride[76590:30be0] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C1] reporting state preparing
+2026-11-22 18:28:34.983 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1 Hostname#04eb1df4:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_child @0.021s
+2026-11-22 18:28:34.988 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1 Hostname#04eb1df4:443 initial path ((null))] event: path:start @0.026s
+2026-11-22 18:28:35.003 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1 Hostname#04eb1df4:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.041s, uuid: 623CCB23-49CB-493B-9AF0-894474B81D31
+2026-11-22 18:28:35.004 Df ShopStride[76590:30bae] [PrototypeTools:domain] Not observing PTDefaults on customer install.
+2026-11-22 18:28:35.007 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1 Hostname#04eb1df4:443 in_progress transform (satisfied (Path is satisfied), interface: en0)] event: transform:start @0.045s
+2026-11-22 18:28:35.008 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1.1 Hostname#04eb1df4:443 initial path ((null))] event: path:start @0.046s
+2026-11-22 18:28:35.009 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1.1 Hostname#04eb1df4:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.047s, uuid: 2DCC1B9F-5F15-4AEE-928B-A0830A266F85
+2026-11-22 18:28:35.010 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1.1 Hostname#04eb1df4:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:start_dns @0.048s
+2026-11-22 18:28:35.011 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> setting up Connection 1
+2026-11-22 18:28:35.046 Df ShopStride[76590:30be3] [com.apple.network:connection] nw_endpoint_resolver_update [C1.1.1 Hostname#04eb1df4:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#7b61cfb9:443
+2026-11-22 18:28:35.047 Df ShopStride[76590:30be3] [com.apple.network:connection] nw_endpoint_resolver_update [C1.1.1 Hostname#04eb1df4:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#a79eb87b:443
+2026-11-22 18:28:35.047 Df ShopStride[76590:30be3] [com.apple.network:connection] [C1.1.1 Hostname#04eb1df4:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:receive_dns @0.085s
+2026-11-22 18:28:35.050 Df ShopStride[76590:30be3] [com.apple.network:connection] [C1.1.1.1 IPv4#7b61cfb9:443 initial path ((null))] event: path:start @0.088s
+2026-11-22 18:28:35.051 Df ShopStride[76590:30be3] [com.apple.network:connection] [C1.1.1.1 IPv4#7b61cfb9:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.089s, uuid: E3A7E0E0-E1A3-4AE1-91D1-FD7DD896466D
+2026-11-22 18:28:35.057 Df ShopStride[76590:30be3] [com.apple.network:connection] [C1.1.1.1 IPv4#7b61cfb9:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.095s
+2026-11-22 18:28:35.061 Df ShopStride[76590:30be5] [com.apple.network:connection] nw_socket_handle_socket_event [C1.1.1.1:3] Socket received CONNECTED event
+2026-11-22 18:28:35.062 Df ShopStride[76590:30be5] [com.apple.network:connection] nw_flow_connected [C1.1.1.1 IPv4#7b61cfb9:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Transport protocol connected (socket)
+2026-11-22 18:28:35.062 Df ShopStride[76590:30be5] [com.apple.network:connection] [C1.1.1.1 IPv4#7b61cfb9:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_transport @0.100s
+2026-11-22 18:28:35.063 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_session_apply_protocol_options_for_transport_block_invoke_2(2367) [C1.1.1.1:2][0x1135011e0] TLS configured [server(0) min_version(0x0303) max_version(0x0304) name(redacted) tickets(false) false_start(false) enforce_ev(false) enforce_ats(false) ats_non_pfs_ciphersuite_allowed(false) cc_mode_enforced(false) ech(false) pqtls(true), pake(false) skip_ats_trust(false)]
+2026-11-22 18:28:35.069 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2806) [C1.1.1.1:2][0x1135011e0] Client handshake started
+2026-11-22 18:28:35.071 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS client enter_early_data
+2026-11-22 18:28:35.076 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLInternalGetAuthorizationStatus
+2026-11-22 18:28:35.082 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS client read_server_hello
+2026-11-22 18:28:35.095 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLInternalGetAuthorizationStatus", "event":activity}
+2026-11-22 18:28:35.097 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client read_hello_retry_request
+2026-11-22 18:28:35.097 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client read_server_hello
+2026-11-22 18:28:35.098 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client read_encrypted_extensions
+2026-11-22 18:28:35.098 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client read_certificate_request
+2026-11-22 18:28:35.098 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client read_server_certificate
+2026-11-22 18:28:35.100 Df ShopStride[76590:30bdd] [com.apple.xpc:connection] [0x1045bbe80] activating connection: mach=true listener=false peer=false name=com.apple.locationd.synchronous
+2026-11-22 18:28:35.106 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:35.106 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":initWithEffectiveBundleIdentifier:bundlePath:websiteIdentifier:delegate:silo:, "self":"0x1046634f0", "identifier":(null), "bundlePath":(null)}
+2026-11-22 18:28:35.107 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"client allocated", "client":"0x11359fd40"}
+2026-11-22 18:28:35.107 A  ShopStride[76590:30bdd] (CoreLocation) CL: _CLClientCreateConnection
+2026-11-22 18:28:35.107 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"_CLClientCreateConnection", "event":activity, "client":"0x11359fd40"}
+2026-11-22 18:28:35.107 A  ShopStride[76590:30bf1] (LocationSupport) CL: Sending cached messages to daemon
+2026-11-22 18:28:35.107 Df ShopStride[76590:30bf1] [com.apple.LocationSupport:Connection] {"msg":"Sending cached messages to daemon", "event":activity}
+2026-11-22 18:28:35.108 A  ShopStride[76590:30bdd] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:35.108 Df ShopStride[76590:30bf1] [com.apple.xpc:connection] [0x1045bbac0] activating connection: mach=true listener=false peer=false name=com.apple.locationd.registration
+2026-11-22 18:28:35.108 A  ShopStride[76590:30bdd] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:35.108 A  ShopStride[76590:30bf1] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:35.109 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLInternalGetPrecisionPermission
+2026-11-22 18:28:35.109 A  ShopStride[76590:30bf1] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:35.109 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLInternalGetPrecisionPermission", "event":activity}
+2026-11-22 18:28:35.114 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:35.115 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":dealloc, "self":"0x1046634f0"}
+2026-11-22 18:28:35.115 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"invalidating client", "client":"0x11359fd40"}
+2026-11-22 18:28:35.125 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client read_server_certificate_verify
+2026-11-22 18:28:35.125 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"invalidating client", "client":"0x11359fd40"}
+2026-11-22 18:28:35.125 Df ShopStride[76590:30be0] [com.apple.xpc:connection] [0x1045bbac0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-22 18:28:35.127 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLInternalGetAuthorizationStatus
+2026-11-22 18:28:35.127 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLInternalGetAuthorizationStatus", "event":activity}
+2026-11-22 18:28:35.128 Df ShopStride[76590:30be3] [com.apple.CoreAnalytics:client] No XPC connection in Simulator
+2026-11-22 18:28:35.140 E  ShopStride[76590:30be3] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-11-22 18:28:35.140 F  ShopStride[76590:30be3] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-11-22 18:28:35.140 A  ShopStride[76590:30be3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-22 18:28:35.145 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:35.145 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":initWithEffectiveBundleIdentifier:bundlePath:websiteIdentifier:delegate:silo:, "self":"0x104663a90", "identifier":(null), "bundlePath":(null)}
+2026-11-22 18:28:35.149 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"client allocated", "client":"0x109582bc0"}
+2026-11-22 18:28:35.154 A  ShopStride[76590:30bdd] (CoreLocation) CL: _CLClientCreateConnection
+2026-11-22 18:28:35.154 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"_CLClientCreateConnection", "event":activity, "client":"0x109582bc0"}
+2026-11-22 18:28:35.154 A  ShopStride[76590:30bdd] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:35.155 A  ShopStride[76590:30bdd] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:35.155 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLInternalGetPrecisionPermission
+2026-11-22 18:28:35.155 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLInternalGetPrecisionPermission", "event":activity}
+2026-11-22 18:28:35.155 A  ShopStride[76590:30be0] (LocationSupport) CL: Sending cached messages to daemon
+2026-11-22 18:28:35.161 Df ShopStride[76590:30be0] [com.apple.LocationSupport:Connection] {"msg":"Sending cached messages to daemon", "event":activity}
+2026-11-22 18:28:35.164 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async(2249) [C1.1.1.1:2][0x1135011e0] Performing external trust evaluation
+2026-11-22 18:28:35.165 Df ShopStride[76590:30be0] [com.apple.xpc:connection] [0x1136ac780] activating connection: mach=true listener=false peer=false name=com.apple.locationd.registration
+2026-11-22 18:28:35.167 A  ShopStride[76590:30be0] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:35.168 A  ShopStride[76590:30be0] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:35.169 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:35.169 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":dealloc, "self":"0x104663a90"}
+2026-11-22 18:28:35.169 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"invalidating client", "client":"0x109582bc0"}
+2026-11-22 18:28:35.172 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"invalidating client", "client":"0x109582bc0"}
+2026-11-22 18:28:35.172 Df ShopStride[76590:30be0] [com.apple.xpc:connection] [0x1136ac780] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-22 18:28:35.186 A  ShopStride[76590:30be5] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.192 A  ShopStride[76590:30be5] (Security) SecKeyCopyAttributes
+2026-11-22 18:28:35.192 A  ShopStride[76590:30be5] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.192 Df ShopStride[76590:30be5] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external(2234) [C1.1.1.1:2][0x1135011e0] Asyncing for external verify block
+2026-11-22 18:28:35.192 Df ShopStride[76590:30be5] [com.apple.CFNetwork:Default] Connection 1: asked to evaluate TLS Trust
+2026-11-22 18:28:35.212 Df ShopStride[76590:30be5] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> auth completion disp=1 cred=0x0
+2026-11-22 18:28:35.214 Df ShopStride[76590:30be5] [com.apple.securityd:trust] (Trust 0x1094e5ec0) No pending evals, starting
+2026-11-22 18:28:35.272 A  ShopStride[76590:30be0] (RunningBoardServices) didChangeInheritances
+2026-11-22 18:28:35.390 A  ShopStride[76590:30be5] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-11-22 18:28:35.392 Df ShopStride[76590:30be5] [com.apple.securityd:keychain] System Keychain Always Supported set via feature flag to disabled
+2026-11-22 18:28:35.392 Df ShopStride[76590:30be5] [com.apple.xpc:connection] [0x1137e1b80] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-11-22 18:28:35.392 Df ShopStride[76590:30be5] [com.apple.xpc:connection] [0x1137e3480] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-11-22 18:28:35.392 Df ShopStride[76590:30be5] [com.apple.securityd:trust] (Trust 0x1094e5ec0) Completed async eval kickoff
+2026-11-22 18:28:35.537 Df ShopStride[76590:30be3] [com.apple.securityd:trust] (Trust 0x1094e5ec0) trustd returned 4
+2026-11-22 18:28:35.538 Df ShopStride[76590:30be3] [com.apple.CFNetwork:Default] System Trust Evaluation yielded status(0)
+2026-11-22 18:28:35.538 Df ShopStride[76590:30be3] [com.apple.securityd:trust] (Trust 0x1094e6100) No pending evals, starting
+2026-11-22 18:28:35.538 A  ShopStride[76590:30be3] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-11-22 18:28:35.550 Df ShopStride[76590:30be3] [com.apple.xpc:connection] [0x11cc297c0] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-11-22 18:28:35.553 Df ShopStride[76590:30be3] [com.apple.securityd:trust] (Trust 0x1094e6100) Completed async eval kickoff
+2026-11-22 18:28:35.553 Df ShopStride[76590:30be3] [com.apple.xpc:connection] [0x1137e3480] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-22 18:28:35.556 E  ShopStride[76590:30bae] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-11-22 18:28:35.556 Df ShopStride[76590:30be0] [com.apple.securityd:trust] (Trust 0x1094e6100) trustd returned 4
+2026-11-22 18:28:35.556 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Connection 1: TLS Trust result 0
+2026-11-22 18:28:35.556 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external_block_invoke_3(2148) [C1.1.1.1:2][0x1135011e0] Returning from external verify block with result: true
+2026-11-22 18:28:35.558 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_certificate_verify_callback(2430) [C1.1.1.1:2][0x1135011e0] Certificate verification result: OK
+2026-11-22 18:28:35.563 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client read_server_finished
+2026-11-22 18:28:35.563 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client send_end_of_early_data
+2026-11-22 18:28:35.563 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client send_client_encrypted_extensions
+2026-11-22 18:28:35.563 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client send_client_certificate
+2026-11-22 18:28:35.563 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client complete_second_flight
+2026-11-22 18:28:35.564 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS 1.3 client done
+2026-11-22 18:28:35.564 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS client finish_client_handshake
+2026-11-22 18:28:35.564 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x1135011e0] Client handshake state: TLS client done
+2026-11-22 18:28:35.564 Df ShopStride[76590:30be0] [com.apple.network:boringssl] boringssl_context_info_handler(2812) [C1.1.1.1:2][0x1135011e0] Client handshake done
+2026-11-22 18:28:35.569 E  ShopStride[76590:30bae] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-11-22 18:28:35.574 A  ShopStride[76590:30be0] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.574 A  ShopStride[76590:30be0] (Security) SecKeyCopyAttributes
+2026-11-22 18:28:35.574 A  ShopStride[76590:30be0] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.574 Df ShopStride[76590:30be0] [com.apple.network:boringssl] nw_protocol_boringssl_signal_connected(895) [C1.1.1.1:2][0x1135011e0] TLS connected [server(0) version(0x0304) ciphersuite(TLS_AES_256_GCM_SHA384) group(0x11ec) signature_alg(0x0403) alpn(h2) resumed(0) offered_ticket(0) in_early_data(0) early_data_accepted(0) false_started(0) ocsp_received(0) sct_received(0) connect_time(505ms) flight_time(27ms) rtt(26ms) write_stalls(0) read_stalls(0) pake(0x0000)]
+2026-11-22 18:28:35.574 Df ShopStride[76590:30be0] [com.apple.network:connection] nw_flow_connected [C1.1.1.1 IPv4#7b61cfb9:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (CFNetworkConnection-666332534)
+2026-11-22 18:28:35.574 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1.1.1 IPv4#7b61cfb9:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.612s
+2026-11-22 18:28:35.577 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1.1 Hostname#04eb1df4:443 ready resolver (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.615s
+2026-11-22 18:28:35.578 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1.1 Hostname#04eb1df4:443 ready transform (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.616s
+2026-11-22 18:28:35.578 Df ShopStride[76590:30be0] [com.apple.network:connection] nw_flow_connected [C1 IPv4#7b61cfb9:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (endpoint_flow)
+2026-11-22 18:28:35.578 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1 IPv4#7b61cfb9:443 ready parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_connect @0.616s
+2026-11-22 18:28:35.579 Df ShopStride[76590:30be0] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C1] reporting state ready
+2026-11-22 18:28:35.585 A  ShopStride[76590:30be0] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.586 A  ShopStride[76590:30be0] (Security) SecKeyCopyAttributes
+2026-11-22 18:28:35.586 A  ShopStride[76590:30be0] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.589 A  ShopStride[76590:30be0] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.589 A  ShopStride[76590:30be0] (Security) SecKeyCopyAttributes
+2026-11-22 18:28:35.589 A  ShopStride[76590:30be0] (Security) SecKeyCopyPublicBytes
+2026-11-22 18:28:35.609 Df ShopStride[76590:30be0] [com.apple.xpc:connection] [0x11cc297c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-22 18:28:35.609 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Connection 1: connected successfully
+2026-11-22 18:28:35.609 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Connection 1: TLS handshake complete
+2026-11-22 18:28:35.609 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Connection 1: ready C(N) E(N)
+2026-11-22 18:28:35.610 Df ShopStride[76590:30be0] [com.apple.network:connection] [C1] event: client:connection_reused @0.648s
+2026-11-22 18:28:35.610 Df ShopStride[76590:30be0] [com.apple.network:connection] nw_protocol_socket_notify [C1.1.1.1:3] nw_protocol_notification_type_connection_idle is false
+2026-11-22 18:28:35.621 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> now using Connection 1
+2026-11-22 18:28:35.622 Df ShopStride[76590:30be0] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> sent request, body N 0
+2026-11-22 18:28:35.674 E  ShopStride[76590:30bae] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-11-22 18:28:35.692 A  ShopStride[76590:30bae] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-11-22 18:28:35.693 A  ShopStride[76590:30bae] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-11-22 18:28:35.705 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137c5680] activating connection: mach=true listener=false peer=false name=com.apple.geod
+2026-11-22 18:28:35.774 Df ShopStride[76590:30be3] [com.apple.xpc:connection] [0x1137c5cc0] activating connection: mach=true listener=false peer=false name=com.apple.geod
+2026-11-22 18:28:35.778 Df ShopStride[76590:30be3] [com.apple.xpc:connection] [0x1137c5f40] activating connection: mach=true listener=false peer=false name=com.apple.geod
+2026-11-22 18:28:35.781 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137c5180] activating connection: mach=true listener=false peer=false name=com.apple.geod
+2026-11-22 18:28:35.838 Df ShopStride[76590:30be3] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> received response, status 200 content K
+2026-11-22 18:28:35.842 Df ShopStride[76590:30be3] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> done using Connection 1
+2026-11-22 18:28:35.842 Df ShopStride[76590:30be3] [com.apple.network:connection] [C1] event: client:connection_idle @0.880s
+2026-11-22 18:28:35.842 Df ShopStride[76590:30be3] [com.apple.network:connection] nw_protocol_socket_notify [C1.1.1.1:3] nw_protocol_notification_type_connection_idle is true
+2026-11-22 18:28:35.843 A  ShopStride[76590:30be3] (Security) SecTrustEvaluateIfNecessary
+2026-11-22 18:28:35.858 Df ShopStride[76590:30be3] [com.apple.xpc:connection] [0x1137c5b80] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-11-22 18:28:35.865 Df ShopStride[76590:30be3] [com.apple.xpc:connection] [0x1137c5b80] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-22 18:28:35.866 Df ShopStride[76590:30be3] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> response ended
+2026-11-22 18:28:35.868 Df ShopStride[76590:30bdf] [com.apple.CFNetwork:Summary] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> summary for task success {transaction_duration_ms=978, response_status=200, connection=1, protocol="h2", domain_lookup_duration_ms=37, connect_duration_ms=521, secure_connection_duration_ms=505, private_relay=false, request_start_ms=732, request_duration_ms=0, response_start_ms=947, response_duration_ms=30, request_bytes=523, request_throughput_kbps=7080, response_bytes=896, response_throughput_kbps=237, cache_hit=false}
+2026-11-22 18:28:35.868 Df ShopStride[76590:30bdf] [com.apple.CFNetwork:Default] Task <A61B69D5-F3D8-4D0A-92B7-B190FCE80E52>.<1> finished successfully
+2026-11-22 18:28:35.960 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137c52c0] activating connection: mach=true listener=false peer=false name=com.apple.metal.simulator
+2026-11-22 18:28:35.963 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137c5b80] activating connection: mach=true listener=false peer=false name=com.apple.metal.simulator
+2026-11-22 18:28:35.963 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137c6300] activating connection: mach=true listener=false peer=false name=com.apple.metal.simulator
+2026-11-22 18:28:36.090 Df ShopStride[76590:30bae] [com.apple.GeoServices:ResourceManifest] Did not find downloaded resource "default.csv" at "(null)", trying fallback
+2026-11-22 18:28:36.105 E  ShopStride[76590:30bae] [com.apple.GeoServices:ResourceManifest] Failed to locate resource named "default.csv"
+2026-11-22 18:28:36.201 Df ShopStride[76590:30bae] [com.apple.GeoServices:ResourceManifest] Did not find downloaded resource "groundSettings.json" at "(null)", trying fallback
+2026-11-22 18:28:36.257 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137c6f80] activating connection: mach=true listener=false peer=false name=com.apple.geod
+2026-11-22 18:28:36.264 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137c7d40] activating connection: mach=true listener=false peer=false name=com.apple.geod
+2026-11-22 18:28:36.283 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137fcf00] activating connection: mach=true listener=true peer=false name=com.apple.notifyd.matching
+2026-11-22 18:28:36.333 Df ShopStride[76590:30be3] [com.apple.CFNetwork:Default] Garbage collection for alternative services
+2026-11-22 18:28:36.348 Df ShopStride[76590:30bae] [com.apple.GeoServices:ResourceManifest] Did not find downloaded resource "CurrencyStyleAttributes.plist" at "(null)", trying fallback
+2026-11-22 18:28:36.366 Df ShopStride[76590:30bae] [com.apple.GeoServices:ResourceManifest] Did not find downloaded resource "NonTiledAssets.pb" at "(null)", trying fallback
+2026-11-22 18:28:36.417 E  ShopStride[76590:30bae] [com.apple.coreanimation:API] CAMetalLayer ignoring invalid setDrawableSize width=0.000000 height=0.000000
+2026-11-22 18:28:36.453 Df ShopStride[76590:30bae] (AggregateDictionary) AggregateDictionary is not supported on this platform
+2026-11-22 18:28:36.503 Df ShopStride[76590:30bae] [com.apple.xpc:connection] [0x1137fdf40] activating connection: mach=true listener=false peer=false name=com.apple.geoanalyticsd
+2026-11-22 18:28:36.520 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.520 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":initWithEffectiveBundleIdentifier:bundlePath:websiteIdentifier:delegate:silo:, "self":"0x11dde63d0", "identifier":(null), "bundlePath":(null)}
+2026-11-22 18:28:36.521 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"client allocated", "client":"0x11dcbf9c0"}
+2026-11-22 18:28:36.521 A  ShopStride[76590:30be0] (CoreLocation) CL: _CLClientCreateConnection
+2026-11-22 18:28:36.521 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"_CLClientCreateConnection", "event":activity, "client":"0x11dcbf9c0"}
+2026-11-22 18:28:36.522 A  ShopStride[76590:30c06] (LocationSupport) CL: Sending cached messages to daemon
+2026-11-22 18:28:36.522 Df ShopStride[76590:30c06] [com.apple.LocationSupport:Connection] {"msg":"Sending cached messages to daemon", "event":activity}
+2026-11-22 18:28:36.523 Df ShopStride[76590:30c06] [com.apple.xpc:connection] [0x11e324500] activating connection: mach=true listener=false peer=false name=com.apple.locationd.registration
+2026-11-22 18:28:36.524 A  ShopStride[76590:30be0] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:36.524 A  ShopStride[76590:30be0] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:36.525 A  ShopStride[76590:30c06] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:36.525 A  ShopStride[76590:30c06] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:36.525 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.525 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":setDelegate:, "self":"0x11dde63d0", "delegate":"0x1047a24c0"}
+2026-11-22 18:28:36.525 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.526 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":setDistanceFilter:, "self":"0x11dde63d0", "distance":"-1.000000"}
+2026-11-22 18:28:36.526 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.526 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":setDesiredAccuracy:, "self":"0x11dde63d0", "accuracy":"-1.000000"}
+2026-11-22 18:28:36.526 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.526 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":setActivityType:, "self":"0x11dde63d0", "activityType":0}
+2026-11-22 18:28:36.527 A  ShopStride[76590:30be0] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:36.527 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.527 A  ShopStride[76590:30c07] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:36.527 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":setAllowsAlteredAccessoryLocations:, "self":"0x11dde63d0", "enabled":1}
+2026-11-22 18:28:36.528 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.528 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":startUpdatingLocation, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.528 A  ShopStride[76590:30be0] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:36.528 A  ShopStride[76590:30be0] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:36.545 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.545 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":onClientEventRegistration:, "self":"0x11dde63d0", "clientKey":icom.tweltz1.groceryrunner:}
+2026-11-22 18:28:36.545 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"#CLLocationManager invoking #delegate", "self":"0x11dde63d0", "delegate":"0x1047a24c0", "selector":locationManagerDidChangeAuthorization:, "authorizationStatus":0, "limitsPrecision":0, "isAuthorizedForWidgetUpdates":0}
+2026-11-22 18:28:36.545 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.545 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.545 A  ShopStride[76590:30be0] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.545 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.551 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.551 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.552 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.552 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.552 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.552 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.552 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.552 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.556 E  ShopStride[76590:30bae] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-11-22 18:28:36.563 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"client about to be destroyed", "client":"0x11359fd40"}
+2026-11-22 18:28:36.564 Df ShopStride[76590:30be0] [com.apple.locationd.Core:Client] {"msg":"client about to be destroyed", "client":"0x109582bc0"}
+2026-11-22 18:28:36.564 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.564 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":initWithEffectiveBundleIdentifier:bundlePath:websiteIdentifier:delegate:silo:, "self":"0x11dde70a0", "identifier":(null), "bundlePath":(null)}
+2026-11-22 18:28:36.564 Sd ShopStride[76590:0] (21AB2359-DEEC-3444-94FE-B7257E43BE34) IOHIDManager State
+{
+    DispatchQueue = 0;
+    RunLoop = 1;
+    createOptions = 0;
+    isOpen = 0;
+    openOptions = 0;
+}
+2026-11-22 18:28:36.564 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"client allocated", "client":"0x11dcbfb80"}
+2026-11-22 18:28:36.564 A  ShopStride[76590:30bae] (CoreLocation) CL: _CLClientCreateConnection
+2026-11-22 18:28:36.564 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"_CLClientCreateConnection", "event":activity, "client":"0x11dcbfb80"}
+2026-11-22 18:28:36.564 A  ShopStride[76590:30c06] (LocationSupport) CL: Sending cached messages to daemon
+2026-11-22 18:28:36.564 A  ShopStride[76590:30bae] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:36.564 A  ShopStride[76590:30bae] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:36.564 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.564 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":setDelegate:, "self":"0x11dde70a0", "delegate":"0x1047ba700"}
+2026-11-22 18:28:36.564 Df ShopStride[76590:30c06] [com.apple.LocationSupport:Connection] {"msg":"Sending cached messages to daemon", "event":activity}
+2026-11-22 18:28:36.564 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLInternalGetAuthorizationStatus
+2026-11-22 18:28:36.565 Df ShopStride[76590:30c06] [com.apple.xpc:connection] [0x11e3783c0] activating connection: mach=true listener=false peer=false name=com.apple.locationd.registration
+2026-11-22 18:28:36.565 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLInternalGetAuthorizationStatus", "event":activity}
+2026-11-22 18:28:36.565 A  ShopStride[76590:30c06] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:36.565 A  ShopStride[76590:30c06] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:36.566 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.566 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.566 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.566 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.566 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.566 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.566 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.566 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.566 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.566 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.566 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.567 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.567 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.567 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.567 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.567 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.567 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.567 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.568 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.568 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.568 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.568 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.568 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.568 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.569 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.569 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.569 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.569 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":desiredAccuracy, "self":"0x11dde63d0"}
+2026-11-22 18:28:36.574 A  ShopStride[76590:30bdd] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:36.574 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":requestWhenInUseAuthorization, "self":"0x11dde70a0"}
+2026-11-22 18:28:36.574 Df ShopStride[76590:30bdd] [com.apple.locationd.Core:Core] {"msg":"Requesting when in use authorization"}
+2026-11-22 18:28:36.578 A  ShopStride[76590:30bdd] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:36.579 A  ShopStride[76590:30c06] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:36.867 Df ShopStride[76590:30be5] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x1044aa9a0; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.groceryrunner-default; status: none> was:ancestor
+2026-11-22 18:28:37.039 A  ShopStride[76590:30bae] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:37.039 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":onClientEventRegistration:, "self":"0x11dde70a0", "clientKey":icom.tweltz1.groceryrunner:}
+2026-11-22 18:28:37.039 Df ShopStride[76590:30bae] [com.apple.locationd.Core:Client] {"msg":"#CLLocationManager invoking #delegate", "self":"0x11dde70a0", "delegate":"0x1047ba700", "selector":locationManagerDidChangeAuthorization:, "authorizationStatus":0, "limitsPrecision":0, "isAuthorizedForWidgetUpdates":0}
+2026-11-22 18:28:37.040 Df ShopStride[76590:30bae] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 0; scene: UIWindowScene: 0x10213d820; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.groceryrunner-default
+2026-11-22 18:28:37.107 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
+2026-11-22 18:28:37.108 Df ShopStride[76590:30bae] [com.apple.UIKit:UIAlertControllerStackManager] canShowAlerts Updated: <FBSSceneSettingsDiff: 0x11e84ba00; UIApplicationSceneSettings> {
+    subclassSettings = <BSSettingsDiff: 0x11e878db0> {
+        canShowAlerts = NO;
+    };
+}
+2026-11-22 18:28:37.110 Df ShopStride[76590:30bae] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x10213d820> (82FA57A6-84C3-4411-8A16-BCB5973FA155)
+2026-11-22 18:28:37.115 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
+2026-11-22 18:28:37.115 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason added: 13; deactivation reasons: 0 -> 8192; animating application lifecycle event: 0
+2026-11-22 18:28:37.118 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Ignoring already applied deactivation reason: 13; deactivation reasons: 8192
+2026-11-22 18:28:37.121 Df ShopStride[76590:30bae] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 8192 -> 12288; animating application lifecycle event: 0
+2026-11-22 18:28:37.131 A  ShopStride[76590:30be5] (CoreLocation) CL: CLLocationManager
+2026-11-22 18:28:37.132 Df ShopStride[76590:30be5] [com.apple.locationd.Core:Client] {"msg":"CLLocationManager", "event":activity, "_cmd":stopUpdatingLocation, "self":"0x11dde63d0"}
+2026-11-22 18:28:37.132 A  ShopStride[76590:30be5] (LocationSupport) CL: CLConnectionClient::sendMessage(cache)
+2026-11-22 18:28:37.133 A  ShopStride[76590:30be5] (LocationSupport) CL: CLConnection::sendMessage
+2026-11-22 18:28:37.167 Df ShopStride[76590:30bae] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.groceryrunner-default  persistentID: 82FA57A6-84C3-4411-8A16-BCB5973FA155
