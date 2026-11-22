@@ -193,6 +193,90 @@
         "#FFCC00",
         "#333366"
       ]
+    },
+    "a1": {
+      "name": "Buck W",
+      "light": "logo-a1.png",
+      "dark": "logo-a1.png",
+      "solo": true,
+      "threads": [
+        "#FFFFFF",
+        "#000000",
+        "#A67843",
+        "#01784E",
+        "#7BA35A",
+        "#96A1A8"
+      ]
+    },
+    "a2": {
+      "name": "Buck Mountain W",
+      "light": "logo-a2.png",
+      "dark": "logo-a2.png",
+      "solo": true,
+      "threads": [
+        "#FFFFFF",
+        "#000000",
+        "#A67843",
+        "#01784E",
+        "#96A1A8",
+        "#7BA35A"
+      ]
+    },
+    "a3": {
+      "name": "Bear Lake W",
+      "light": "logo-a3.png",
+      "dark": "logo-a3.png",
+      "solo": true,
+      "threads": [
+        "#000000",
+        "#FFFFFF",
+        "#E25C27",
+        "#A67843",
+        "#7BA35A",
+        "#96A1A8"
+      ]
+    },
+    "a4": {
+      "name": "Bear Night W",
+      "light": "logo-a4.png",
+      "dark": "logo-a4.png",
+      "solo": true,
+      "threads": [
+        "#000000",
+        "#333366",
+        "#FFFFFF",
+        "#96A1A8",
+        "#01784E",
+        "#A67843"
+      ]
+    },
+    "a5": {
+      "name": "Snow Tiger W",
+      "light": "logo-a5.png",
+      "dark": "logo-a5.png",
+      "solo": true,
+      "threads": [
+        "#FFFFFF",
+        "#000000",
+        "#96A1A8",
+        "#3399FF",
+        "#333366",
+        "#CC3366"
+      ]
+    },
+    "a6": {
+      "name": "Jungle Tiger W",
+      "light": "logo-a6.png",
+      "dark": "logo-a6.png",
+      "solo": true,
+      "threads": [
+        "#01784E",
+        "#7BA35A",
+        "#000000",
+        "#FFFFFF",
+        "#96A1A8",
+        "#3399FF"
+      ]
     }
   },
   "products": [
@@ -1631,6 +1715,71 @@
           "name": "Spruce",
           "printful": [
             "Spruce"
+          ],
+          "tone": "light"
+        }
+      ]
+    },
+    {
+      "key": "wild",
+      "name": "Wild W Dad Hat",
+      "type": "hat",
+      "price": 32,
+      "match": "Yupoong 6245CM",
+      "placements": [
+        "embroidery_front_large",
+        "embroidery_front"
+      ],
+      "logos": [
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6"
+      ],
+      "box": [
+        0.66,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "stone",
+          "name": "Stone",
+          "printful": [
+            "Stone"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "khaki",
+          "name": "Khaki",
+          "printful": [
+            "Khaki"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
           ],
           "tone": "light"
         }
