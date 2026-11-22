@@ -19,6 +19,7 @@ async function gen(prompt) {
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }),
       });
       const body = await r.json().catch(() => ({}));
+      if (r.status === 429 && /current quota/.test(JSON.stringify(body))) { last = `${model} no image quota on this key`; break; }
       if (r.status === 429 || r.status >= 500) { last = `${model} ${r.status} ${JSON.stringify(body).slice(0, 300)}`; await sleep(20000); continue; }
       if (!r.ok) { last = `${model} ${r.status} ${JSON.stringify(body).slice(0, 300)}`; break; }
       const part = (body.candidates?.[0]?.content?.parts || []).find(p => p.inlineData?.data);
