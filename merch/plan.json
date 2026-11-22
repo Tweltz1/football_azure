@@ -283,7 +283,7 @@
       }
     ]
   },
-  "script-stone": {
+  "wild-stone": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Stone",
@@ -299,103 +299,7 @@
       }
     ]
   },
-  "script-navy": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Navy",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7857,
-        "size": "One size"
-      }
-    ]
-  },
-  "script-black": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Black",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7854,
-        "size": "One size"
-      }
-    ]
-  },
-  "script-lightblue": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Light Blue",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7856,
-        "size": "One size"
-      }
-    ]
-  },
-  "script-spruce": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Spruce",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8745,
-        "size": "One size"
-      }
-    ]
-  },
-  "script-pink": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Pink",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7858,
-        "size": "One size"
-      }
-    ]
-  },
-  "script-cranberry": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Cranberry",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 12735,
-        "size": "One size"
-      }
-    ]
-  },
-  "script-khaki": {
+  "wild-khaki": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Khaki",
@@ -411,7 +315,7 @@
       }
     ]
   },
-  "script-white": {
+  "wild-white": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "White",
@@ -423,6 +327,38 @@
     "variants": [
       {
         "id": 7853,
+        "size": "One size"
+      }
+    ]
+  },
+  "wild-spruce": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Spruce",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8745,
+        "size": "One size"
+      }
+    ]
+  },
+  "wild-black": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7854,
         "size": "One size"
       }
     ]
@@ -895,7 +831,7 @@
       }
     ]
   },
-  "cord-brown": {
+  "wildcord-brown": {
     "product_id": 662,
     "product": "Vintage Corduroy Cap | Big Accessories BA703",
     "color": "Brown",
@@ -911,7 +847,7 @@
       }
     ]
   },
-  "cord-olive": {
+  "wildcord-olive": {
     "product_id": 662,
     "product": "Vintage Corduroy Cap | Big Accessories BA703",
     "color": "Olive",
@@ -927,7 +863,7 @@
       }
     ]
   },
-  "cord-navy": {
+  "wildcord-navy": {
     "product_id": 662,
     "product": "Vintage Corduroy Cap | Big Accessories BA703",
     "color": "Navy",
@@ -943,7 +879,7 @@
       }
     ]
   },
-  "cord-burgundy": {
+  "wildcord-burgundy": {
     "product_id": 662,
     "product": "Vintage Corduroy Cap | Big Accessories BA703",
     "color": "Burgundy",
@@ -959,7 +895,7 @@
       }
     ]
   },
-  "cord-black": {
+  "wildcord-black": {
     "product_id": 662,
     "product": "Vintage Corduroy Cap | Big Accessories BA703",
     "color": "Black",
@@ -975,130 +911,146 @@
       }
     ]
   },
-  "beanie-black": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Black",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 8936,
-        "size": "One size"
-      }
-    ]
-  },
-  "beanie-navy": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Navy",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 8940,
-        "size": "One size"
-      }
-    ]
-  },
-  "beanie-heathergrey": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Heather Grey",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 8937,
-        "size": "One size"
-      }
-    ]
-  },
-  "beanie-spruce": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Spruce",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 8941,
-        "size": "One size"
-      }
-    ]
-  },
-  "beanie-olive": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Olive",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 17495,
-        "size": "One size"
-      }
-    ]
-  },
-  "beanie-brown": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Brown",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 12880,
-        "size": "One size"
-      }
-    ]
-  },
-  "beanie-darkgrey": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Dark Grey",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 12881,
-        "size": "One size"
-      }
-    ]
-  },
-  "beanie-white": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
+  "woods-white": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "White",
-    "placement": "embroidery_front",
+    "placement": "embroidery_front_large",
     "area": {
-      "w": 1500,
-      "h": 525
+      "w": 1650,
+      "h": 600
     },
     "variants": [
       {
-        "id": 8938,
+        "id": 7853,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-stone": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Stone",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7859,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-khaki": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7855,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-lightblue": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Light Blue",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7856,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-navy": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7857,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-black": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7854,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-cranberry": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Cranberry",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 12735,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-darkgrey": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Dark Grey",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 12736,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-spruce": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Spruce",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8745,
         "size": "One size"
       }
     ]
@@ -1463,242 +1415,162 @@
       }
     ]
   },
-  "trucker-navywhite": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Navy/ White",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8755,
-        "size": "One size"
-      }
-    ]
-  },
-  "trucker-blackwhite": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Black/ White",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8748,
-        "size": "One size"
-      }
-    ]
-  },
-  "trucker-mosskhaki": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Moss/ Khaki",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8750,
-        "size": "One size"
-      }
-    ]
-  },
-  "trucker-heathergreywhite": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Heather Grey/White",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 22454,
-        "size": "One size"
-      }
-    ]
-  },
-  "trucker-brownkhaki": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Brown/ Khaki",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8749,
-        "size": "One size"
-      }
-    ]
-  },
-  "trucker-charcoalblack": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Charcoal/ Black",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 16709,
-        "size": "One size"
-      }
-    ]
-  },
-  "trucker-navy": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Navy",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8751,
-        "size": "One size"
-      }
-    ]
-  },
-  "trucker-black": {
-    "product_id": 252,
-    "product": "Retro Trucker Hat | Yupoong 6606",
-    "color": "Black",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1770,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8747,
-        "size": "One size"
-      }
-    ]
-  },
-  "puff-black": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Black",
+  "woodscord-brown": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Brown",
     "placement": "embroidery_front",
     "area": {
-      "w": 1500,
-      "h": 525
+      "w": 1650,
+      "h": 600
     },
     "variants": [
       {
-        "id": 8936,
+        "id": 16418,
         "size": "One size"
       }
     ]
   },
-  "puff-babypink": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Baby Pink",
+  "woodscord-olive": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Olive",
     "placement": "embroidery_front",
     "area": {
-      "w": 1500,
-      "h": 525
+      "w": 1650,
+      "h": 600
     },
     "variants": [
       {
-        "id": 17494,
+        "id": 16420,
         "size": "One size"
       }
     ]
   },
-  "puff-white": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "White",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 8938,
-        "size": "One size"
-      }
-    ]
-  },
-  "puff-heathergrey": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Heather Grey",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1500,
-      "h": 525
-    },
-    "variants": [
-      {
-        "id": 8937,
-        "size": "One size"
-      }
-    ]
-  },
-  "puff-navy": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
+  "woodscord-navy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
     "color": "Navy",
     "placement": "embroidery_front",
     "area": {
-      "w": 1500,
-      "h": 525
+      "w": 1650,
+      "h": 600
     },
     "variants": [
       {
-        "id": 8940,
+        "id": 16417,
         "size": "One size"
       }
     ]
   },
-  "puff-royal": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Royal",
+  "woodscord-burgundy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Burgundy",
     "placement": "embroidery_front",
     "area": {
-      "w": 1500,
-      "h": 525
+      "w": 1650,
+      "h": 600
     },
     "variants": [
       {
-        "id": 17496,
+        "id": 16419,
         "size": "One size"
       }
     ]
   },
-  "puff-darkgrey": {
-    "product_id": 266,
-    "product": "Cuffed Beanie | Yupoong 1501KC",
-    "color": "Dark Grey",
+  "woodscord-black": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Black",
     "placement": "embroidery_front",
     "area": {
-      "w": 1500,
-      "h": 525
+      "w": 1650,
+      "h": 600
     },
     "variants": [
       {
-        "id": 12881,
+        "id": 16416,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-greenkhaki": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Dark Green/Khaki",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24535,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-navykhaki": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Navy/Khaki",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24541,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-dustyrose": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Dusty Rose",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24536,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-gray": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Gray",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24537,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-maroon": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Maroon",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24539,
         "size": "One size"
       }
     ]
@@ -2521,23 +2393,7 @@
       }
     ]
   },
-  "pixelhat-black": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Black",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7854,
-        "size": "One size"
-      }
-    ]
-  },
-  "pixelhat-stone": {
+  "script-stone": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Stone",
@@ -2553,7 +2409,7 @@
       }
     ]
   },
-  "pixelhat-navy": {
+  "script-navy": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Navy",
@@ -2569,10 +2425,10 @@
       }
     ]
   },
-  "pixelhat-spruce": {
+  "script-black": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Spruce",
+    "color": "Black",
     "placement": "embroidery_front_large",
     "area": {
       "w": 1650,
@@ -2580,12 +2436,12 @@
     },
     "variants": [
       {
-        "id": 8745,
+        "id": 7854,
         "size": "One size"
       }
     ]
   },
-  "pixelhat-lightblue": {
+  "script-lightblue": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Light Blue",
@@ -2601,7 +2457,23 @@
       }
     ]
   },
-  "pixelhat-pink": {
+  "script-spruce": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Spruce",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8745,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-pink": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Pink",
@@ -2617,10 +2489,10 @@
       }
     ]
   },
-  "pixelhat-darkgrey": {
+  "script-cranberry": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Dark Grey",
+    "color": "Cranberry",
     "placement": "embroidery_front_large",
     "area": {
       "w": 1650,
@@ -2628,12 +2500,28 @@
     },
     "variants": [
       {
-        "id": 12736,
+        "id": 12735,
         "size": "One size"
       }
     ]
   },
-  "pixelhat-white": {
+  "script-khaki": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7855,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-white": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "White",
@@ -3033,10 +2921,218 @@
       }
     ]
   },
-  "woods-white": {
+  "cord-brown": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Brown",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16418,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-olive": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Olive",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16420,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-navy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Navy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16417,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-burgundy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Burgundy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16419,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-black": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Black",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16416,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-navywhite": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Navy/ White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8755,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-blackwhite": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Black/ White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8748,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-mosskhaki": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Moss/ Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8750,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-heathergreywhite": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Heather Grey/White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 22454,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-brownkhaki": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Brown/ Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8749,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-charcoalblack": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Charcoal/ Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16709,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-navy": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8751,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-black": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8747,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-black": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "White",
+    "color": "Black",
     "placement": "embroidery_front_large",
     "area": {
       "w": 1650,
@@ -3044,12 +3140,12 @@
     },
     "variants": [
       {
-        "id": 7853,
+        "id": 7854,
         "size": "One size"
       }
     ]
   },
-  "woods-stone": {
+  "pixelhat-stone": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Stone",
@@ -3065,39 +3161,7 @@
       }
     ]
   },
-  "woods-khaki": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Khaki",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7855,
-        "size": "One size"
-      }
-    ]
-  },
-  "woods-lightblue": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Light Blue",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7856,
-        "size": "One size"
-      }
-    ]
-  },
-  "woods-navy": {
+  "pixelhat-navy": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Navy",
@@ -3113,10 +3177,10 @@
       }
     ]
   },
-  "woods-black": {
+  "pixelhat-spruce": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Black",
+    "color": "Spruce",
     "placement": "embroidery_front_large",
     "area": {
       "w": 1650,
@@ -3124,15 +3188,15 @@
     },
     "variants": [
       {
-        "id": 7854,
+        "id": 8745,
         "size": "One size"
       }
     ]
   },
-  "woods-cranberry": {
+  "pixelhat-lightblue": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Cranberry",
+    "color": "Light Blue",
     "placement": "embroidery_front_large",
     "area": {
       "w": 1650,
@@ -3140,12 +3204,28 @@
     },
     "variants": [
       {
-        "id": 12735,
+        "id": 7856,
         "size": "One size"
       }
     ]
   },
-  "woods-darkgrey": {
+  "pixelhat-pink": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Pink",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7858,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-darkgrey": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "Dark Grey",
@@ -3161,55 +3241,7 @@
       }
     ]
   },
-  "woods-spruce": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Spruce",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8745,
-        "size": "One size"
-      }
-    ]
-  },
-  "wild-stone": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Stone",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7859,
-        "size": "One size"
-      }
-    ]
-  },
-  "wild-khaki": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Khaki",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7855,
-        "size": "One size"
-      }
-    ]
-  },
-  "wild-white": {
+  "pixelhat-white": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
     "color": "White",
@@ -3225,274 +3257,162 @@
       }
     ]
   },
-  "wild-spruce": {
+  "hat-navy": {
     "product_id": 206,
     "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7857,
+        "size": "One size"
+      }
+    ]
+  },
+  "hat-stone": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Stone",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7859,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-black": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Black",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8936,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-navy": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Navy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8940,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-heathergrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Heather Grey",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8937,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-spruce": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
     "color": "Spruce",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 8745,
-        "size": "One size"
-      }
-    ]
-  },
-  "wild-black": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Black",
-    "placement": "embroidery_front_large",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 7854,
-        "size": "One size"
-      }
-    ]
-  },
-  "wildcord-brown": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Brown",
     "placement": "embroidery_front",
     "area": {
-      "w": 1650,
-      "h": 600
+      "w": 1500,
+      "h": 525
     },
     "variants": [
       {
-        "id": 16418,
+        "id": 8941,
         "size": "One size"
       }
     ]
   },
-  "wildcord-olive": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+  "beanie-olive": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
     "color": "Olive",
     "placement": "embroidery_front",
     "area": {
-      "w": 1650,
-      "h": 600
+      "w": 1500,
+      "h": 525
     },
     "variants": [
       {
-        "id": 16420,
+        "id": 17495,
         "size": "One size"
       }
     ]
   },
-  "wildcord-navy": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Navy",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 16417,
-        "size": "One size"
-      }
-    ]
-  },
-  "wildcord-burgundy": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Burgundy",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 16419,
-        "size": "One size"
-      }
-    ]
-  },
-  "wildcord-black": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Black",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 16416,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodscord-brown": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+  "beanie-brown": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
     "color": "Brown",
     "placement": "embroidery_front",
     "area": {
-      "w": 1650,
-      "h": 600
+      "w": 1500,
+      "h": 525
     },
     "variants": [
       {
-        "id": 16418,
+        "id": 12880,
         "size": "One size"
       }
     ]
   },
-  "woodscord-olive": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Olive",
+  "beanie-darkgrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Dark Grey",
     "placement": "embroidery_front",
     "area": {
-      "w": 1650,
-      "h": 600
+      "w": 1500,
+      "h": 525
     },
     "variants": [
       {
-        "id": 16420,
+        "id": 12881,
         "size": "One size"
       }
     ]
   },
-  "woodscord-navy": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Navy",
+  "beanie-white": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "White",
     "placement": "embroidery_front",
     "area": {
-      "w": 1650,
-      "h": 600
+      "w": 1500,
+      "h": 525
     },
     "variants": [
       {
-        "id": 16417,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodscord-burgundy": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Burgundy",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 16419,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodscord-black": {
-    "product_id": 662,
-    "product": "Vintage Corduroy Cap | Big Accessories BA703",
-    "color": "Black",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 16416,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodstwo-greenkhaki": {
-    "product_id": 961,
-    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
-    "color": "Dark Green/Khaki",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 24535,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodstwo-navykhaki": {
-    "product_id": 961,
-    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
-    "color": "Navy/Khaki",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 24541,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodstwo-dustyrose": {
-    "product_id": 961,
-    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
-    "color": "Dusty Rose",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 24536,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodstwo-gray": {
-    "product_id": 961,
-    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
-    "color": "Gray",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 24537,
-        "size": "One size"
-      }
-    ]
-  },
-  "woodstwo-maroon": {
-    "product_id": 961,
-    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
-    "color": "Maroon",
-    "placement": "embroidery_front",
-    "area": {
-      "w": 1650,
-      "h": 600
-    },
-    "variants": [
-      {
-        "id": 24539,
+        "id": 8938,
         "size": "One size"
       }
     ]
@@ -3641,34 +3561,114 @@
       }
     ]
   },
-  "hat-navy": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Navy",
-    "placement": "embroidery_front_large",
+  "puff-black": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Black",
+    "placement": "embroidery_front",
     "area": {
-      "w": 1650,
-      "h": 600
+      "w": 1500,
+      "h": 525
     },
     "variants": [
       {
-        "id": 7857,
+        "id": 8936,
         "size": "One size"
       }
     ]
   },
-  "hat-stone": {
-    "product_id": 206,
-    "product": "Classic Dad Hat | Yupoong 6245CM",
-    "color": "Stone",
-    "placement": "embroidery_front_large",
+  "puff-babypink": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Baby Pink",
+    "placement": "embroidery_front",
     "area": {
-      "w": 1650,
-      "h": 600
+      "w": 1500,
+      "h": 525
     },
     "variants": [
       {
-        "id": 7859,
+        "id": 17494,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-white": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "White",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8938,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-heathergrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Heather Grey",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8937,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-navy": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Navy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8940,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-royal": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Royal",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 17496,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-darkgrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Dark Grey",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 12881,
         "size": "One size"
       }
     ]
