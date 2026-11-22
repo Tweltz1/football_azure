@@ -20,6 +20,21 @@
       "key": "buckw",
       "count": 3,
       "prompt": "A realistic white-tailed deer buck, front-facing head and shoulders, looking at the viewer. Its antler rack is shaped so the whole rack's outline reads as a W: the two main beams sweep up and outward to the far left and far right points, and each antler has one tall straight tine rising near the middle, with low dips between them, so the four upward points make a W silhouette. Only real antlers, nothing else between them, no letters. Warm tan and brown fur with white throat patch and white muzzle, dark eyes and nose. Behind and around its chest a soft treeline of sage green and deep green pines."
+    },
+    {
+      "key": "wshield",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. A bold vintage hat-badge logo: a thick, heavy slab-serif capital W in dark forest green with a thin tan outline is the base of the design. Rising from behind the W is a realistic white-tailed deer buck head with a full symmetrical rack, front-facing, warm tan and brown fur, white throat patch, dark eyes; the buck's neck sits behind the middle peak of the W and the antlers spread wide above it, so the buck and the W lock together as one compact emblem. Small band of pine trees tucked behind the lower W. Compact, about 1.6:1 wide, reads clearly at 4 inches."
+    },
+    {
+      "key": "wpeaks",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. A hat logo where a wide capital W is drawn as a mountain ridge: the W's three peaks are snowy mountain peaks with pine forest on the slopes, stitched in greens, greys and white. Standing in the center valley of the W, framed by it, is a realistic white-tailed deer buck head with a full symmetrical rack, front-facing, warm tan and brown fur, white throat patch, dark eyes, his antlers rising above the middle peak. One unified emblem, about 2:1 wide."
+    },
+    {
+      "key": "wcrest",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. A classic outdoor-brand hat crest: a realistic white-tailed deer buck head with a full symmetrical rack, front-facing, warm tan and brown fur, white throat patch, dark eyes sits centered, and a bold capital W in cream thread with a brown outline sits across the buck's lower neck and chest like a chest patch, partly overlapping it, with a few pine trees peeking out on both sides of the W. The W and buck clearly belong together as a single logo. About 1.8:1 wide."
     }
   ]
 }
