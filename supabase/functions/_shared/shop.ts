@@ -313,7 +313,7 @@ export interface ShopDeps {
   store: ShopStore;
   claimSalesRequest?: (email: string) => Promise<boolean>;
   sms: SmsSender;
-  email?: { send(to: string, subject: string, text: string, opts?: { fromName?: string; replyTo?: string }): Promise<SmsResult> };
+  email?: { send(to: string, subject: string, text: string, opts?: { fromName?: string; replyTo?: string; button?: { label: string; url: string }; footer?: string }): Promise<SmsResult> };
   /** Customer links are this plus the job's token, e.g. https://hood-league.com/shop/?c= */
   linkBase: string;
   newToken: () => string;
@@ -518,7 +518,13 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
     }
     else if (deps.email && c.email && deps.store.useEmails && !await deps.store.useEmails(shop.id, now.slice(0, 10), emailCap(shop)))
       result = { delivery: 'not_sent', note: `Your shop has sent its ${emailCap(shop)} customer emails for today. Email sending starts again tomorrow (UTC). Texts still work.` };
-    else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + (job.data.ro ? job.data.ro + ' ' : '') + say.subject, text, { fromName: shop.name, replyTo: shop.email || undefined });
+    else if (deps.email && c.email) {
+      // The subject says what this email is about, so the inbox isn't a row of identical "repair update" lines.
+      const pending = job.data.estimate?.some((e) => e.status === 'pending');
+      const what = job.stage === 'invited' && job.data.appointment ? say.subjectAppt : job.stage === 'approval' && pending ? say.subjectEstimate : job.stage === 'ready' ? say.subjectReady : say.subject;
+      result = await deps.email.send(c.email, shop.name + ' · ' + (job.data.ro ? job.data.ro + ' ' : '') + what, text,
+        { fromName: shop.name, replyTo: shop.email || undefined, footer: say.emailFoot, ...(job.token ? { button: { label: say.button, url: link } } : {}) });
+    }
     else result = { delivery: 'not_sent', note: 'Automatic email is not configured.' };
     return { dir: 'out', channel, t: now, text, ...result };
   }));

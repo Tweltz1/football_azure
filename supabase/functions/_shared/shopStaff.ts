@@ -91,7 +91,7 @@ async function sendInvite(deps: StaffDeps, shop: ShopLite, inv: Invite, token: s
   const text = `${hi}${shop.name} invited you to join their shop on Talk Shops as ${inv.role === 'owner' ? 'an Owner' : 'a Technician'}.\n\n`
     + `Open this link to accept: ${link}\n\nSign in or create a free account with this email address (${inv.email}). The link expires in ${INVITE_DAYS} days.\n\n`
     + `If you weren't expecting this, you can ignore this email.`;
-  return deps.email.send(inv.email, `Join ${shop.name} on Talk Shops`, text, { fromName: shop.name, replyTo: shop.email || undefined });
+  return deps.email.send(inv.email, `Join ${shop.name} on Talk Shops`, text, { fromName: shop.name, replyTo: shop.email || undefined, button: { label: 'Accept invite', url: link } });
 }
 
 /** Routes under shop/join (accepting an invite) and shop/staff (the owner's Team panel). Null for other paths. */

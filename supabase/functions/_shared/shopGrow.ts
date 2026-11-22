@@ -110,7 +110,7 @@ export const SHORT_ES = {
 /** Words the server puts into its own texts, by language. */
 export const SAY = {
   en: {
-    car: 'car', soon: 'soon', hours: 'during business hours', subject: 'repair update', details: 'Repair details: ',
+    car: 'car', soon: 'soon', hours: 'during business hours', subject: 'repair update', subjectAppt: 'your appointment', subjectEstimate: 'your estimate is ready to approve', subjectReady: 'your vehicle is ready for pickup', button: 'See your vehicle page', emailFoot: 'You are getting this because you asked for updates about your vehicle. Reply to this email to reach the shop.', details: 'Repair details: ',
     stop: 'Reply STOP to opt out.',
     walkaround: (shop: string, car: string, link: string) => fitOne([`${shop} asks for 8 quick photos of your ${car} to record its condition (about 2 min): ${link}`, `${shop}: please take 8 quick photos of your vehicle: ${link}`]),
     note: (car: string, shop: string, text: string, link: string) => fitOne([`Update on your ${car} from ${shop}: ${text} Details: ${link}`, `${shop}: ${text} ${link}`]),
@@ -131,7 +131,7 @@ export const SAY = {
     nudge: (shop: string, car: string, link: string) => fitOne([`${shop}: your ${car} estimate is still waiting for your OK: ${link} Reply STOP to opt out.`, `${shop}: your estimate is still waiting for your OK: ${link} Reply STOP to opt out.`]).replace(/ Reply STOP to opt out\.$/, ''),
   },
   es: {
-    car: 'vehículo', soon: 'pronto', hours: 'en horario de atención', subject: 'actualización de su reparación', details: 'Detalles de la reparación: ',
+    car: 'vehículo', soon: 'pronto', hours: 'en horario de atención', subject: 'actualización de su reparación', subjectAppt: 'su cita', subjectEstimate: 'su presupuesto está listo para aprobar', subjectReady: 'su vehículo está listo', button: 'Ver la página de su vehículo', emailFoot: 'Recibe este correo porque pidió actualizaciones sobre su vehículo. Responda a este correo para comunicarse con el taller.', details: 'Detalles de la reparación: ',
     stop: 'Responda STOP para salir.',
     walkaround: (shop: string, car: string, link: string) => fitOne([`${shop} le pide 8 fotos rápidas de su ${car} por todos los lados. Toma unos 2 minutos: ${link}`, `${shop}: tome 8 fotos rápidas de su vehículo: ${link}`]),
     note: (car: string, shop: string, text: string, link: string) => fitOne([`Novedades sobre su ${car} de ${shop}: ${text} Detalles: ${link}`, `${shop}: ${text} ${link}`]),
