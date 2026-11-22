@@ -150,10 +150,11 @@
   (function () {
     var P = new URLSearchParams(location.search), f = $('brief');
     if (!P.get('site') || !f) return;
-    var noun = { coffee: 'coffee shop', barber: 'barbershop', auto: 'auto repair shop', lawn: 'landscaping business', bakery: 'bakery', fitness: 'fitness studio', boutique: 'boutique', running: 'running store' }[P.get('site')] || 'business';
+    var noun = (P.get('sk') || '').slice(0, 60) || { coffee: 'coffee shop', barber: 'barbershop', auto: 'auto repair shop', lawn: 'landscaping business', bakery: 'bakery', fitness: 'fitness studio', boutique: 'boutique', running: 'running store' }[P.get('site')] || 'business';
+    var sp = /^[a-z0-9-]{3,60}$/.test(P.get('sp') || '') ? P.get('sp') : '';
     [].slice.call(f.elements.platform.options).forEach(function (o, i) { if (o.text === 'Website') f.elements.platform.selectedIndex = i; });
     if (f.elements.org && P.get('sn')) f.elements.org.value = P.get('sn').slice(0, 60);
-    f.elements.idea.value = 'Website for my ' + noun + (P.get('st') ? ' in ' + P.get('st').slice(0, 40) : '') + '. I tried the free sample site.\n\n';
+    f.elements.idea.value = 'Website for my ' + noun + (P.get('st') ? ' in ' + P.get('st').slice(0, 40) : '') + '. I tried the free sample site' + (sp ? ': https://weltzcraft.com/preview/' + sp : '') + '.\n\n';
   })();
 
   /* ---- route: shortest walk through a store ---- */
