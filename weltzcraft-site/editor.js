@@ -58,8 +58,13 @@
     '.ed-pg{display:flex;gap:8px;align-items:center;border:1.5px solid rgba(255,240,215,.14);border-radius:14px;padding:10px 12px;margin-top:8px}.ed-pg.cur{border-color:#ff8a3c}.ed-pg div{flex:1;min-width:0}.ed-pg b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ed-pg small{display:block;color:#b4aa98;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ed-pg .ed-btn{padding:8px 10px;font-size:13px}' +
     '.ed-adr{display:flex;align-items:center;gap:6px}.ed-adr span{color:#b4aa98;white-space:nowrap}' +
     '.ed-steps{margin:10px 0 0;padding:0;list-style:none}.ed-steps li{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-top:1px solid rgba(255,240,215,.1)}.ed-steps li:first-child{border-top:0}.ed-steps i{font-style:normal;font-size:22px;line-height:1.2;flex:none;width:30px;text-align:center}.ed-steps b{display:block}.ed-steps span{color:#b4aa98;font-size:14px}' +
+    '.ed-view{position:fixed;inset:0;z-index:9400;background:#1a1713;display:flex;flex-direction:column;font:600 14.5px system-ui,sans-serif;color:#f6efe2}' +
+    '.ed-vbar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#12100c;flex:none}.ed-vbar span{flex:1;min-width:0;color:#b4aa98;font-weight:500;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.ed-vsw{display:flex;background:#2a2620;border-radius:12px;padding:3px}.ed-vsw button{font:700 14px system-ui,sans-serif;border:0;border-radius:9px;padding:8px 13px;background:none;color:#f6efe2;cursor:pointer;white-space:nowrap}.ed-vsw button.on{background:#f6efe2;color:#1a1713}' +
+    '.ed-vbody{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start;overflow:hidden;padding:14px}.ed-vw{flex:none;overflow:hidden;background:#fff;box-shadow:0 30px 70px -20px #000}.ed-vw.phone{border-radius:34px;border:10px solid #000}.ed-vw.computer{border-radius:10px;border:1px solid #3a352d}' +
+    '.ed-vw iframe{border:0;display:block;transform-origin:0 0;background:#fff}@media(max-width:560px){.ed-vbar span{display:none}.ed-vbar{justify-content:space-between}.ed-vbody{padding:8px}}' +
     '.ed-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:9600;background:#f6efe2;color:#1a1713;font:600 15px system-ui,sans-serif;padding:12px 18px;border-radius:14px;box-shadow:0 18px 40px -12px #000;max-width:calc(100vw - 32px)}' +
-    '@media(max-width:700px){.ed-bar span{display:none}.ed-bar{justify-content:space-between}}@media(max-width:560px){.ed-tb b{display:none}.ed-tb .ed-grip{display:none}}@media(max-width:430px){.ed-bar{gap:5px;padding:0 6px}.ed-btn{padding:9px 9px;font-size:13px}.ed-bar .ed-btn i{display:none}}';
+    '@media(max-width:860px){.ed-bar span{display:none}.ed-bar{justify-content:space-between}}@media(max-width:700px){.ed-bar [data-ed="view"]{display:none}}@media(max-width:560px){.ed-tb b{display:none}.ed-tb .ed-grip{display:none}}@media(max-width:430px){.ed-bar{gap:5px;padding:0 6px}.ed-btn{padding:9px 9px;font-size:13px}.ed-bar .ed-btn i{display:none}}';
   document.head.appendChild(css);
 
   var toastT;
@@ -110,7 +115,7 @@
     document.documentElement.classList.add('ed-on');
     var bar = document.createElement('div'); bar.className = 'ed-bar';
     bar.innerHTML = '<span></span><button class="ed-btn" data-ed="pages" title="Add pages and menus"><i>📄</i>Pages</button><button class="ed-btn" data-ed="add" title="Add something to this page"><i>＋</i>Add</button>' +
-      '<button class="ed-btn ed-undo" data-ed="undo" title="Take back your last change" disabled><i>↶</i>Undo</button><button class="ed-btn" data-ed="more" title="Backups and help">More</button>' +
+      '<button class="ed-btn" data-ed="view" title="See your site the way it looks on a phone or on a computer"><i>📱</i>Phone / computer view</button><button class="ed-btn ed-undo" data-ed="undo" title="Take back your last change" disabled><i>↶</i>Undo</button><button class="ed-btn" data-ed="more" title="Backups and help">More</button>' +
       '<button class="ed-btn go ed-save" data-ed="save" disabled>Saved</button><button class="ed-btn" data-ed="exit">' + (PORTAL ? 'Back' : 'Done') + '</button>';
     document.body.appendChild(bar);
     var l = $('.ed-launch'); if (l) l.hidden = true;
@@ -218,6 +223,7 @@
       '<li><i>↕️</i><div><b>Move a section</b><span>Each section has Up and Down buttons. On a computer you can also hold Drag and pull it where you want.</span></div></li>' +
       '<li><i>➕</i><div><b>Add something new</b><span>Press Add to put in text, a picture, a button, boxes, tabs, a video or a booking calendar.</span></div></li>' +
       '<li><i>📄</i><div><b>Add more pages</b><span>Press Pages to add a page with its own address, and choose if it goes in a drop-down menu.</span></div></li>' +
+      '<li><i>📱</i><div><b>Check it on a phone and a computer</b><span>Phone / computer view shows how visitors will see your site on each. You will find it at the top, or under More.</span></div></li>' +
       '<li><i>↶</i><div><b>Made a mistake?</b><span>Press Undo to take back your last change. Under More you can save a backup and go back to it any time.</span></div></li>' +
       '<li><i>✅</i><div><b>Press Save when you like it</b><span>' + (PORTAL ? 'Your live site updates in under a minute.' : 'Your preview keeps the changes.') + '</span></div></li></ul>' +
       '<div class="row"><span class="sp"></span><button class="ed-btn go" id="ed-got">Got it</button></div>');
@@ -227,9 +233,11 @@
     var d = dialog('<h3>More</h3><p class="h">A backup is a copy of your whole site that you can always go back to.</p><div class="ed-types one">' +
       '<button data-m="backup"><i>💾</i>Save a backup<small>Keep a copy of your site the way it is right now</small></button>' +
       '<button data-m="restore"><i>⏪</i>Go back to my backup<small>' + (backupAt ? 'Your backup is from ' + esc(day(backupAt)) : 'Put your site back the way it was when you saved the backup') + '</small></button>' +
+      '<button data-m="phone"><i>📱</i>See it on a phone<small>How your site looks on a phone screen</small></button>' +
+      '<button data-m="computer"><i>💻</i>See it on a computer<small>How your site looks on a big screen</small></button>' +
       '<button data-m="guide"><i>❓</i>Show me how this works<small>A short list of what you can do here</small></button></div>' +
       '<div class="row"><span class="sp"></span><button class="ed-btn" data-m="x">Close</button></div>');
-    d.onclick = function (e) { var b = e.target.closest('[data-m]'); if (!b) return; var m = b.getAttribute('data-m'); close(); if (m === 'guide') guide(); else if (m !== 'x') backup(m); };
+    d.onclick = function (e) { var b = e.target.closest('[data-m]'); if (!b) return; var m = b.getAttribute('data-m'); close(); if (m === 'guide') guide(); else if (m === 'phone' || m === 'computer') view(m); else if (m !== 'x') backup(m); };
   }
   function addMenu(at) {
     addAt = at;
@@ -398,6 +406,42 @@
     };
   }
 
+  // ---- computer view / phone view ------------------------------------------------------------------------------
+  // Shows the page, with the changes made so far, the way a visitor sees it on a phone or on a computer screen. The
+  // page runs in a frame of that width (so it lays itself out for that screen); sample.js draws what we send it.
+  var viewMsg = null;
+  function closeView() { var v = $('.ed-view'); if (v) v.remove(); if (viewMsg) window.removeEventListener('message', viewMsg); viewMsg = null; window.removeEventListener('resize', sizeView); }
+  function sizeView() {
+    var v = $('.ed-view'); if (!v) return;
+    var body = $('.ed-vbody', v), w = $('.ed-vw', v), f = $('iframe', v), phone = w.classList.contains('phone'), pad = phone ? 20 : 2;
+    var aw = body.clientWidth - 2 * parseFloat(getComputedStyle(body).paddingLeft) - pad, ah = body.clientHeight - 2 * parseFloat(getComputedStyle(body).paddingTop) - pad;
+    var fw = phone ? 390 : 1280, k = Math.min(1, aw / fw), fh = phone ? Math.min(800, ah / k) : ah / k;
+    f.style.width = fw + 'px'; f.style.height = Math.floor(fh) + 'px'; f.style.transform = 'scale(' + k + ')';
+    w.style.width = Math.floor(fw * k) + pad + 'px'; w.style.height = Math.floor(fh * k) + pad + 'px';
+  }
+  function view(mode) {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    close(); closeView();
+    mode = mode || (window.innerWidth < 700 ? 'computer' : 'phone');
+    var v = document.createElement('div'); v.className = 'ed-view';
+    v.innerHTML = '<div class="ed-vbar"><div class="ed-vsw"><button type="button" data-v="computer">💻 Computer</button><button type="button" data-v="phone">📱 Phone</button></div><span>This is how visitors will see it.</span><button class="ed-btn go" data-v="x">Back to editing</button></div>' +
+      '<div class="ed-vbody"><div class="ed-vw"><iframe title="Your site"></iframe></div></div>';
+    document.body.appendChild(v);
+    var f = $('iframe', v);
+    function set(m) { $('.ed-vw', v).className = 'ed-vw ' + m; [].forEach.call(v.querySelectorAll('.ed-vsw button'), function (b) { b.classList.toggle('on', b.getAttribute('data-v') === m); }); sizeView(); }
+    v.onclick = function (e) { var b = e.target.closest('[data-v]'); if (!b) return; if (b.getAttribute('data-v') === 'x') closeView(); else set(b.getAttribute('data-v')); };
+    // The framed page says when it is ready; then it gets the page as it stands here, saved or not.
+    viewMsg = function (e) {
+      if (e.origin !== location.origin || e.source !== f.contentWindow || !e.data || !e.data.wcviewReady) return;
+      f.contentWindow.postMessage({ wcview: 1, a: A, copy: copyW || page.copy || null, live: page.live, pg: page.pg || '' }, location.origin);
+    };
+    window.addEventListener('message', viewMsg); window.addEventListener('resize', sizeView);
+    set(mode);
+    f.src = location.pathname + location.search + (location.search ? '&' : '?') + 'wcview=1';
+    hit('editor_view');
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('.ed-view')) closeView(); });
+
   // ---- saving and backups -------------------------------------------------------------------------------------
   function post(url, body, method) {
     return fetch(url, { method: method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }).catch(function () { return { error: 'No connection. Check your internet and try again.' }; });
@@ -456,6 +500,7 @@
       else if (act === 'pages') pagesDialog();
       else if (act === 'undo') undo();
       else if (act === 'more') more();
+      else if (act === 'view') view();
       else if (act === 'save') save();
       else if (act === 'exit') stop();
       else if (act === 'up') move(k, i - 1);

@@ -240,6 +240,7 @@
       rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); } });
     window.wcPage = { a: a, copy: copy, slug: slug, live: live, order: ORDER, pg: cur ? cur.path : '', base: BASEP, has: SEC, F: F, show: show, rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); }, redraw: function (a2, copy2, live2) { var y = window.scrollY; render(a2, copy2, slug, live2); window.scrollTo(0, y); } };
     if (window.wcEditor) window.wcEditor.decorate(window.wcPage);
+    if (VIEW && !render.told) { render.told = true; window.parent.postMessage({ wcviewReady: 1 }, location.origin); }
     if (!render.done && location.hash && location.hash.length > 1) { var el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
     render.done = true;
   }
@@ -263,7 +264,16 @@
   // (null when this view has no addresses of its own) and PG is the page being shown ('' = home).
   var BASEP = OWN ? '' : saved ? '/preview/' + saved[1] : EDIT ? '/portal/edit' : null;
   var PG = OWN ? location.pathname.replace(/^\/+|\/+$/g, '') : saved ? saved[2] || '' : EDIT ? EDIT[1] || '' : '';
-  var KEEPQ = EDIT ? location.search : '';
+  // VIEW: this page is inside the editor's "computer / phone view" frame. It shows what the editor sends it and has no editor of its own.
+  var VIEW = P.get('wcview') === '1' && window.parent !== window;
+  var KEEPQ = EDIT ? location.search : VIEW ? '?wcview=1' : '';
+  if (VIEW) {
+    document.documentElement.classList.add('wcview');
+    window.addEventListener('message', function (e) {
+      if (e.origin !== location.origin || e.source !== window.parent || !e.data || !e.data.wcview || !window.wcPage) return;
+      window.wcGo(e.data.pg || ''); window.wcPage.redraw(e.data.a, e.data.copy || window.wcPage.copy, e.data.live); window.scrollTo(0, 0);
+    });
+  }
   window.wcGo = function (path) { PG = path || ''; if (BASEP !== null) history.replaceState(null, '', (BASEP + (PG ? '/' + PG : '') || '/') + KEEPQ); };
   // Drop-down menus, the phone menu and tabs work by these clicks, on every page.
   document.addEventListener('click', function (e) {
@@ -275,7 +285,7 @@
       [].forEach.call(box.querySelectorAll('.tab-b'), function (b, j) { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
       [].forEach.call(box.querySelectorAll('.tab-p'), function (b, j) { b.hidden = j !== i; }); }
   });
-  function loadEditor() { if (document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=2'; document.body.appendChild(sc); }
+  function loadEditor() { if (VIEW || document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=3'; document.body.appendChild(sc); }
   if (EDIT) {
     document.getElementById('intro').remove();
     var auth = null;
