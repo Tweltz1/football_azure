@@ -6,6 +6,9 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wild-stone-a1--embroidery_back": [
+  "#333366"
+ ],
  "wild-stone-a2": [
   "#000000",
   "#01784E",
@@ -13,12 +16,18 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-stone-a2--embroidery_back": [
+  "#333366"
+ ],
  "wild-stone-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
   "#FFFFFF"
+ ],
+ "wild-stone-a3--embroidery_back": [
+  "#333366"
  ],
  "wild-stone-a4": [
   "#000000",
@@ -28,10 +37,16 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-stone-a4--embroidery_back": [
+  "#333366"
+ ],
  "wild-stone-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
+  "#333366"
+ ],
+ "wild-stone-a5--embroidery_back": [
   "#333366"
  ],
  "wild-stone-a6": [
@@ -40,12 +55,18 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wild-stone-a6--embroidery_back": [
+  "#333366"
+ ],
  "wild-khaki-a1": [
   "#A67843",
   "#000000",
   "#01784E",
   "#96A1A8",
   "#FFFFFF"
+ ],
+ "wild-khaki-a1--embroidery_back": [
+  "#333366"
  ],
  "wild-khaki-a2": [
   "#000000",
@@ -54,12 +75,18 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-khaki-a2--embroidery_back": [
+  "#333366"
+ ],
  "wild-khaki-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
   "#FFFFFF"
+ ],
+ "wild-khaki-a3--embroidery_back": [
+  "#333366"
  ],
  "wild-khaki-a4": [
   "#000000",
@@ -69,10 +96,16 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-khaki-a4--embroidery_back": [
+  "#333366"
+ ],
  "wild-khaki-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
+  "#333366"
+ ],
+ "wild-khaki-a5--embroidery_back": [
   "#333366"
  ],
  "wild-khaki-a6": [
@@ -81,12 +114,18 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wild-khaki-a6--embroidery_back": [
+  "#333366"
+ ],
  "wild-white-a1": [
   "#A67843",
   "#000000",
   "#01784E",
   "#96A1A8",
   "#FFFFFF"
+ ],
+ "wild-white-a1--embroidery_back": [
+  "#333366"
  ],
  "wild-white-a2": [
   "#000000",
@@ -95,12 +134,18 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-white-a2--embroidery_back": [
+  "#333366"
+ ],
  "wild-white-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
   "#FFFFFF"
+ ],
+ "wild-white-a3--embroidery_back": [
+  "#333366"
  ],
  "wild-white-a4": [
   "#000000",
@@ -110,10 +155,16 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-white-a4--embroidery_back": [
+  "#333366"
+ ],
  "wild-white-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
+  "#333366"
+ ],
+ "wild-white-a5--embroidery_back": [
   "#333366"
  ],
  "wild-white-a6": [
@@ -122,11 +173,17 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wild-white-a6--embroidery_back": [
+  "#333366"
+ ],
  "wild-spruce-a1": [
   "#A67843",
   "#000000",
   "#01784E",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wild-spruce-a1--embroidery_back": [
   "#FFFFFF"
  ],
  "wild-spruce-a2": [
@@ -136,11 +193,17 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-spruce-a2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wild-spruce-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wild-spruce-a3--embroidery_back": [
   "#FFFFFF"
  ],
  "wild-spruce-a4": [
@@ -151,16 +214,25 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-spruce-a4--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wild-spruce-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
   "#333366"
  ],
+ "wild-spruce-a5--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wild-spruce-a6": [
   "#01784E",
   "#000000",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wild-spruce-a6--embroidery_back": [
   "#FFFFFF"
  ],
  "wild-black-a1": [
@@ -170,6 +242,9 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wild-black-a1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wild-black-a2": [
   "#000000",
   "#01784E",
@@ -177,11 +252,17 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-black-a2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wild-black-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wild-black-a3--embroidery_back": [
   "#FFFFFF"
  ],
  "wild-black-a4": [
@@ -192,16 +273,25 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wild-black-a4--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wild-black-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
   "#333366"
  ],
+ "wild-black-a5--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wild-black-a6": [
   "#01784E",
   "#000000",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wild-black-a6--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-brown-a1": [
@@ -211,6 +301,9 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wildcord-brown-a1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-brown-a2": [
   "#000000",
   "#01784E",
@@ -218,11 +311,17 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-brown-a2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-brown-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-brown-a3--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-brown-a4": [
@@ -233,16 +332,25 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-brown-a4--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-brown-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
   "#333366"
  ],
+ "wildcord-brown-a5--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-brown-a6": [
   "#01784E",
   "#000000",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-brown-a6--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-olive-a1": [
@@ -252,6 +360,9 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wildcord-olive-a1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-olive-a2": [
   "#000000",
   "#01784E",
@@ -259,11 +370,17 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-olive-a2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-olive-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-olive-a3--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-olive-a4": [
@@ -274,16 +391,25 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-olive-a4--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-olive-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
   "#333366"
  ],
+ "wildcord-olive-a5--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-olive-a6": [
   "#01784E",
   "#000000",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-olive-a6--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-navy-a1": [
@@ -293,6 +419,9 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wildcord-navy-a1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-navy-a2": [
   "#000000",
   "#01784E",
@@ -300,11 +429,17 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-navy-a2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-navy-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-navy-a3--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-navy-a4": [
@@ -315,16 +450,25 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-navy-a4--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-navy-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
   "#333366"
  ],
+ "wildcord-navy-a5--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-navy-a6": [
   "#01784E",
   "#000000",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-navy-a6--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-burgundy-a1": [
@@ -334,6 +478,9 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wildcord-burgundy-a1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-burgundy-a2": [
   "#000000",
   "#01784E",
@@ -341,11 +488,17 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-burgundy-a2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-burgundy-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-burgundy-a3--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-burgundy-a4": [
@@ -356,16 +509,25 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-burgundy-a4--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-burgundy-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
   "#333366"
  ],
+ "wildcord-burgundy-a5--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-burgundy-a6": [
   "#01784E",
   "#000000",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-burgundy-a6--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-black-a1": [
@@ -375,6 +537,9 @@
   "#96A1A8",
   "#FFFFFF"
  ],
+ "wildcord-black-a1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-black-a2": [
   "#000000",
   "#01784E",
@@ -382,11 +547,17 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-black-a2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-black-a3": [
   "#000000",
   "#A67843",
   "#E25C27",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-black-a3--embroidery_back": [
   "#FFFFFF"
  ],
  "wildcord-black-a4": [
@@ -397,16 +568,25 @@
   "#FFFFFF",
   "#A67843"
  ],
+ "wildcord-black-a4--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-black-a5": [
   "#000000",
   "#96A1A8",
   "#FFFFFF",
   "#333366"
  ],
+ "wildcord-black-a5--embroidery_back": [
+  "#FFFFFF"
+ ],
  "wildcord-black-a6": [
   "#01784E",
   "#000000",
   "#96A1A8",
+  "#FFFFFF"
+ ],
+ "wildcord-black-a6--embroidery_back": [
   "#FFFFFF"
  ],
  "woods-white-h3": [
@@ -416,6 +596,9 @@
   "#7BA35A",
   "#000000"
  ],
+ "woods-white-h3--embroidery_back": [
+  "#333366"
+ ],
  "woods-stone-h3": [
   "#A67843",
   "#01784E",
@@ -423,11 +606,17 @@
   "#7BA35A",
   "#000000"
  ],
+ "woods-stone-h3--embroidery_back": [
+  "#333366"
+ ],
  "woods-khaki-h3": [
   "#000000",
   "#01784E",
   "#FFFFFF",
   "#7BA35A"
+ ],
+ "woods-khaki-h3--embroidery_back": [
+  "#333366"
  ],
  "woods-lightblue-h3": [
   "#A67843",
@@ -436,12 +625,18 @@
   "#7BA35A",
   "#000000"
  ],
+ "woods-lightblue-h3--embroidery_back": [
+  "#333366"
+ ],
  "woods-navy-h3": [
   "#A67843",
   "#01784E",
   "#FFFFFF",
   "#7BA35A",
   "#000000"
+ ],
+ "woods-navy-h3--embroidery_back": [
+  "#FFFFFF"
  ],
  "woods-black-h3": [
   "#A67843",
@@ -450,12 +645,18 @@
   "#7BA35A",
   "#000000"
  ],
+ "woods-black-h3--embroidery_back": [
+  "#FFFFFF"
+ ],
  "woods-cranberry-h3": [
   "#A67843",
   "#01784E",
   "#FFFFFF",
   "#7BA35A",
   "#000000"
+ ],
+ "woods-cranberry-h3--embroidery_back": [
+  "#FFFFFF"
  ],
  "woods-darkgrey-h3": [
   "#A67843",
@@ -464,11 +665,17 @@
   "#7BA35A",
   "#000000"
  ],
+ "woods-darkgrey-h3--embroidery_back": [
+  "#FFFFFF"
+ ],
  "woods-spruce-h3": [
   "#A67843",
   "#FFFFFF",
   "#7BA35A",
   "#000000"
+ ],
+ "woods-spruce-h3--embroidery_back": [
+  "#FFFFFF"
  ],
  "woodscord-brown-h3": [
   "#A67843",
@@ -477,12 +684,18 @@
   "#7BA35A",
   "#000000"
  ],
+ "woodscord-brown-h3--embroidery_back": [
+  "#FFFFFF"
+ ],
  "woodscord-olive-h3": [
   "#A67843",
   "#01784E",
   "#FFFFFF",
   "#7BA35A",
   "#000000"
+ ],
+ "woodscord-olive-h3--embroidery_back": [
+  "#FFFFFF"
  ],
  "woodscord-navy-h3": [
   "#A67843",
@@ -491,12 +704,18 @@
   "#7BA35A",
   "#000000"
  ],
+ "woodscord-navy-h3--embroidery_back": [
+  "#FFFFFF"
+ ],
  "woodscord-burgundy-h3": [
   "#A67843",
   "#01784E",
   "#FFFFFF",
   "#7BA35A",
   "#000000"
+ ],
+ "woodscord-burgundy-h3--embroidery_back": [
+  "#FFFFFF"
  ],
  "woodscord-black-h3": [
   "#A67843",
@@ -505,12 +724,18 @@
   "#7BA35A",
   "#000000"
  ],
+ "woodscord-black-h3--embroidery_back": [
+  "#FFFFFF"
+ ],
  "woodstwo-greenkhaki-h3": [
   "#A67843",
   "#01784E",
   "#FFFFFF",
   "#7BA35A",
   "#000000"
+ ],
+ "woodstwo-greenkhaki-h3--embroidery_back": [
+  "#FFFFFF"
  ],
  "woodstwo-navykhaki-h3": [
   "#A67843",
@@ -519,12 +744,18 @@
   "#7BA35A",
   "#000000"
  ],
+ "woodstwo-navykhaki-h3--embroidery_back": [
+  "#FFFFFF"
+ ],
  "woodstwo-dustyrose-h3": [
   "#A67843",
   "#01784E",
   "#FFFFFF",
   "#7BA35A",
   "#000000"
+ ],
+ "woodstwo-dustyrose-h3--embroidery_back": [
+  "#333366"
  ],
  "woodstwo-gray-h3": [
   "#A67843",
@@ -533,6 +764,9 @@
   "#7BA35A",
   "#000000"
  ],
+ "woodstwo-gray-h3--embroidery_back": [
+  "#333366"
+ ],
  "woodstwo-maroon-h3": [
   "#A67843",
   "#01784E",
@@ -540,64 +774,118 @@
   "#7BA35A",
   "#000000"
  ],
+ "woodstwo-maroon-h3--embroidery_back": [
+  "#FFFFFF"
+ ],
  "script-stone-v2": [
   "#333366",
   "#005397"
+ ],
+ "script-stone-v2--embroidery_back": [
+  "#333366"
  ],
  "script-navy-v2": [
   "#FFFFFF",
   "#3399FF"
  ],
+ "script-navy-v2--embroidery_back": [
+  "#FFFFFF"
+ ],
  "script-black-v2": [
   "#FFFFFF",
   "#3399FF"
+ ],
+ "script-black-v2--embroidery_back": [
+  "#FFFFFF"
  ],
  "script-lightblue-v2": [
   "#333366",
   "#005397"
  ],
+ "script-lightblue-v2--embroidery_back": [
+  "#333366"
+ ],
  "script-spruce-v2": [
   "#FFFFFF",
   "#3399FF"
+ ],
+ "script-spruce-v2--embroidery_back": [
+  "#FFFFFF"
  ],
  "script-pink-v2": [
   "#333366",
   "#005397"
  ],
+ "script-pink-v2--embroidery_back": [
+  "#333366"
+ ],
  "script-cranberry-v2": [
   "#FFFFFF",
   "#3399FF"
+ ],
+ "script-cranberry-v2--embroidery_back": [
+  "#FFFFFF"
  ],
  "script-khaki-v2": [
   "#333366",
   "#005397"
  ],
+ "script-khaki-v2--embroidery_back": [
+  "#333366"
+ ],
  "script-white-v2": [
   "#333366",
   "#005397"
  ],
+ "script-white-v2--embroidery_back": [
+  "#333366"
+ ],
  "rope-black-h1": [
   "#A67843"
+ ],
+ "rope-black-h1--embroidery_back": [
+  "#FFFFFF"
  ],
  "rope-espresso-h1": [
   "#A67843"
  ],
+ "rope-espresso-h1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "rope-moss-h1": [
   "#A67843"
+ ],
+ "rope-moss-h1--embroidery_back": [
+  "#FFFFFF"
  ],
  "rope-granite-h1": [
   "#A67843"
  ],
+ "rope-granite-h1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "rope-bluejean-h1": [
   "#A67843"
  ],
+ "rope-bluejean-h1--embroidery_back": [
+  "#FFFFFF"
+ ],
  "rope-chambray-h1": [
+  "#333366"
+ ],
+ "rope-chambray-h1--embroidery_back": [
   "#333366"
  ],
  "rope-ivory-h1": [
   "#333366"
  ],
+ "rope-ivory-h1--embroidery_back": [
+  "#333366"
+ ],
  "rope-peachy-h1": [
+  "#333366"
+ ],
+ "rope-peachy-h1--embroidery_back": [
   "#333366"
  ],
  "cord-brown-v9": [
@@ -605,25 +893,40 @@
   "#E25C27",
   "#FFCC00"
  ],
+ "cord-brown-v9--embroidery_back": [
+  "#FFFFFF"
+ ],
  "cord-olive-v9": [
   "#FFFFFF",
   "#E25C27",
   "#FFCC00"
+ ],
+ "cord-olive-v9--embroidery_back": [
+  "#FFFFFF"
  ],
  "cord-navy-v9": [
   "#FFFFFF",
   "#E25C27",
   "#FFCC00"
  ],
+ "cord-navy-v9--embroidery_back": [
+  "#FFFFFF"
+ ],
  "cord-burgundy-v9": [
   "#FFFFFF",
   "#E25C27",
   "#FFCC00"
  ],
+ "cord-burgundy-v9--embroidery_back": [
+  "#FFFFFF"
+ ],
  "cord-black-v9": [
   "#FFFFFF",
   "#E25C27",
   "#FFCC00"
+ ],
+ "cord-black-v9--embroidery_back": [
+  "#FFFFFF"
  ],
  "trucker-navywhite-v4": [
   "#FFFFFF"
@@ -652,81 +955,147 @@
  "pixelhat-black-m7": [
   "#FFFFFF"
  ],
+ "pixelhat-black-m7--embroidery_back": [
+  "#FFFFFF"
+ ],
  "pixelhat-stone-m7": [
+  "#333366"
+ ],
+ "pixelhat-stone-m7--embroidery_back": [
   "#333366"
  ],
  "pixelhat-navy-m7": [
   "#FFFFFF"
  ],
+ "pixelhat-navy-m7--embroidery_back": [
+  "#FFFFFF"
+ ],
  "pixelhat-spruce-m7": [
+  "#FFFFFF"
+ ],
+ "pixelhat-spruce-m7--embroidery_back": [
   "#FFFFFF"
  ],
  "pixelhat-lightblue-m7": [
   "#333366"
  ],
+ "pixelhat-lightblue-m7--embroidery_back": [
+  "#333366"
+ ],
  "pixelhat-pink-m7": [
+  "#333366"
+ ],
+ "pixelhat-pink-m7--embroidery_back": [
   "#333366"
  ],
  "pixelhat-darkgrey-m7": [
   "#FFFFFF"
  ],
+ "pixelhat-darkgrey-m7--embroidery_back": [
+  "#FFFFFF"
+ ],
  "pixelhat-white-m7": [
   "#000000"
  ],
+ "pixelhat-white-m7--embroidery_back": [
+  "#333366"
+ ],
  "hat-navy-42": [
+  "#FFFFFF"
+ ],
+ "hat-navy-42--embroidery_back": [
   "#FFFFFF"
  ],
  "hat-navy-43": [
   "#FFFFFF"
  ],
+ "hat-navy-43--embroidery_back": [
+  "#FFFFFF"
+ ],
  "hat-navy-44": [
+  "#FFFFFF"
+ ],
+ "hat-navy-44--embroidery_back": [
   "#FFFFFF"
  ],
  "hat-navy-55": [
   "#A67843",
   "#FFCC00"
  ],
+ "hat-navy-55--embroidery_back": [
+  "#FFFFFF"
+ ],
  "hat-navy-58": [
   "#E25C27",
   "#FFFFFF",
   "#FFCC00"
+ ],
+ "hat-navy-58--embroidery_back": [
+  "#FFFFFF"
  ],
  "hat-navy-59": [
   "#FFFFFF",
   "#E25C27",
   "#FFCC00"
  ],
+ "hat-navy-59--embroidery_back": [
+  "#FFFFFF"
+ ],
  "hat-navy-60": [
   "#FFFFFF",
   "#E25C27",
   "#FFCC00"
  ],
+ "hat-navy-60--embroidery_back": [
+  "#FFFFFF"
+ ],
  "hat-stone-42": [
   "#000000"
+ ],
+ "hat-stone-42--embroidery_back": [
+  "#333366"
  ],
  "hat-stone-43": [
   "#000000"
  ],
+ "hat-stone-43--embroidery_back": [
+  "#333366"
+ ],
  "hat-stone-44": [
   "#000000"
  ],
+ "hat-stone-44--embroidery_back": [
+  "#333366"
+ ],
  "hat-stone-55": [
   "#A67843"
+ ],
+ "hat-stone-55--embroidery_back": [
+  "#333366"
  ],
  "hat-stone-58": [
   "#E25C27",
   "#000000",
   "#FFCC00"
  ],
+ "hat-stone-58--embroidery_back": [
+  "#333366"
+ ],
  "hat-stone-59": [
   "#000000",
   "#E25C27",
   "#FFCC00"
  ],
+ "hat-stone-59--embroidery_back": [
+  "#333366"
+ ],
  "hat-stone-60": [
   "#000000",
   "#E25C27",
   "#FFCC00"
+ ],
+ "hat-stone-60--embroidery_back": [
+  "#333366"
  ],
  "beanie-black-v8": [
   "#FFFFFF",

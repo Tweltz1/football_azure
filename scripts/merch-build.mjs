@@ -112,7 +112,8 @@ if (MODE === 'mockups') {
       const url = main.mockup_url;
       fs.writeFileSync(`weltzcraft-site/img/merch/${c.slug}.jpg`, Buffer.from(await (await fetch(url)).arrayBuffer()));
       // Extra angles for the swipe gallery: other sides of the main photo, then other print spots (e.g. a sleeve).
-      const more = [...(main.extra || []).map(e => e.url), ...done.mockups.filter(m => m !== main).map(m => m.mockup_url)].slice(0, 3);
+      // Other print spots (e.g. a hat's back) come first so they are never cut off.
+      const more = [...done.mockups.filter(m => m !== main).map(m => m.mockup_url), ...(main.extra || []).map(e => e.url)].slice(0, 3);
       fs.mkdirSync('weltzcraft-site/img/merch/angles', { recursive: true });
       for (const [i, u] of more.entries()) fs.writeFileSync(`weltzcraft-site/img/merch/angles/${c.slug}~${i + 2}.jpg`, Buffer.from(await (await fetch(u)).arrayBuffer()));
       state[c.slug] = { hash: h, mockup_url: url, angles: 1 + more.length };
@@ -154,7 +155,12 @@ if (MODE === 'create') {
           variant_id: v.id,
           retail_price: (c.prod.price + upcharge(v.size)).toFixed(2),
           files: [{ type: p.placement, url: `${BASE}/placed/${c.slug}.png` }, ...(p.extras || []).map(e => ({ type: e.placement, url: `${BASE}/placed/${c.slug}--${e.placement}.png` }))],
-          ...(threads[c.slug] ? { options: [{ id: threadOption(p.placement), value: threads[c.slug] }] } : {}),
+          ...(() => {
+            // Thread colors for the main spot and for any embroidered extra spot (e.g. the hat's back).
+            const options = [[p.placement, threads[c.slug]], ...(p.extras || []).map(e => [e.placement, threads[`${c.slug}--${e.placement}`]])]
+              .filter(([, t]) => t).map(([pl, t]) => ({ id: threadOption(pl), value: t }));
+            return options.length ? { options } : {};
+          })(),
         })),
       };
       try { await pf('/store/products', { method: 'POST', body: JSON.stringify(body) }); }

@@ -142,8 +142,22 @@ for prod in cfg['products']:
                     t = Image.new('RGBA', art.size, rgb + (0,))
                     t.putalpha(art.getchannel('A'))
                     art = t
+                # An embroidered spot (e.g. the name on a hat's back) is stitched in one thread picked per hat
+                # color: the color's own 'back' thread, else the spot's thread for that tone.
+                ethread = None
+                if ex['placement'].startswith('embroidery'):
+                    ethread = (color.get('back') or ec.get('thread', {}).get(color['tone']) or '#FFFFFF').upper()
+                    t = Image.new('RGBA', art.size, hexrgb(ethread) + (0,))
+                    t.putalpha(art.getchannel('A'))
+                    art = t
                 k2 = min(EW * ec['box'][0] / art.width, EH * ec['box'][1] / art.height)
                 art = art.resize((max(1, round(art.width * k2)), max(1, round(art.height * k2))), Image.LANCZOS)
+                if ethread:
+                    # Hard edges only (stitches have no half-tones), thickened a touch so small letters hold.
+                    a = art.getchannel('A').filter(ImageFilter.MaxFilter(3)).point(lambda v: 255 if v >= 128 else 0)
+                    art = Image.new('RGBA', art.size, hexrgb(ethread) + (0,))
+                    art.putalpha(a)
+                    threads[f"{slug}--{ex['placement']}"] = [ethread]
                 ecan = Image.new('RGBA', (EW, EH), (0, 0, 0, 0))
                 etop = round(EH * ec['top']) if 'top' in ec else (EH - art.height) // 2
                 ecan.paste(art, ((EW - art.width) // 2, etop), art)
