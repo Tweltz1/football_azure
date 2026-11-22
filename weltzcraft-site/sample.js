@@ -66,6 +66,15 @@
     var cta = clip(a.cta, 24) || CTA[type], hrs = a.h || '', show = (a.s || 'list,pics,review,map').split(',');
     var color = /^[0-9a-f]{6}$/i.test(a.c || '') ? '#' + a.c : '#e0662a';
     var on = function (k) { return show.indexOf(k) > -1; };
+    // The look (AI's pick, then the visitor's own choice on top) and the built-in features.
+    var d = {}, F = { book: /book|reserv|schedul|appoint/i.test(cta) ? 1 : 0, form: /quote|estimate/i.test(cta) ? 'quote' : 'contact' };
+    [copy && copy.d, a.d].forEach(function (x) { if (x) Object.keys(x).forEach(function (k) { d[k] = x[k]; }); });
+    [copy && copy.f, a.f].forEach(function (x) { if (x) Object.keys(x).forEach(function (k) { F[k] = x[k]; }); });
+    var vibe = d.vibe || (t.serif ? 'classic' : 'warm'), hero = d.hero || 'photo', look = d.items || 'cards';
+    var hasForm = F.form === 'contact' || F.form === 'quote';
+    var go = F.book ? '#book' : hasForm ? '#ask' : '#visit';
+    // real = contact details we can show: the live site's, or a real business's public ones on a preview made from its listing.
+    var real = live || (a.addr || a.phone ? { phone: a.phone || '', email: '', address: a.addr || '', hours: '' } : null);
     function img(slot, alt) { return photo ? '<img src="/img/sample/' + photo + '-' + slot + '.webp" alt="' + esc(alt) + '" loading="' + (slot ? 'lazy' : 'eager') + '" onerror="this.remove()">' : ''; }
     function tile() { return photo ? '' : '<div class="tile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>'; }
     var HOURS = /weekday|mon to fri/i.test(hrs) ? [['Monday to Friday', '8am to 5pm'], ['Saturday', 'Closed'], ['Sunday', 'Closed']]
@@ -73,46 +82,58 @@
       : /wed to sun/i.test(hrs) ? [['Monday and Tuesday', 'Closed'], ['Wednesday to Saturday', '9am to 3pm'], ['Sunday', '9am to 3pm']]
       : /appointment/i.test(hrs) ? [['Monday to Saturday', 'By appointment'], ['Sunday', 'Closed']]
       : [['Monday to Friday', '8am to 5pm'], ['Saturday', '9am to 2pm'], ['Sunday', 'Closed']];
-    if (live) HOURS = live.hours ? [['Hours', live.hours]] : [];
-    var tel = live && live.phone ? 'tel:' + live.phone.replace(/[^\d+]/g, '') : '';
-    var faq = t.faq || [['When are you open?', live ? (live.hours || 'Call or message us and we\'ll find a time that works.') : HOURS.map(function (h) { return h[0] + ': ' + h[1]; }).join('. ') + '.'], ['Where are you?', 'Right here in ' + town + '. Find us on the map below or give us a call.'], ['How do I get started?', 'Tap "' + cta + '" and we\'ll take it from there. We answer every message the same day.']];
+    if (live && live.hours) HOURS = [['Hours', live.hours]];
+    else if (a.hrs && a.hrs.length) HOURS = a.hrs;
+    else if (live) HOURS = [];
+    var tel = real && real.phone ? 'tel:' + real.phone.replace(/[^\d+]/g, '') : '';
+    var faq = t.faq || [['When are you open?', live && !HOURS.length ? 'Call or message us and we\'ll find a time that works.' : live && live.hours ? live.hours : HOURS.map(function (h) { return h[0] + ': ' + h[1]; }).join('. ') + '.'], ['Where are you?', 'Right here in ' + town + '. Find us on the map below or give us a call.'], ['How do I get started?', 'Tap "' + cta + '" and we\'ll take it from there. We answer every message the same day.']];
     var initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
     var root = document.documentElement;
     root.style.setProperty('--c', color);
-    root.classList.toggle('serif', !!t.serif);
+    root.className = root.className.replace(/\b[vhi]-[a-z]+\b/g, '').replace(/\s+/g, ' ').trim();
+    root.classList.add('v-' + vibe, 'h-' + hero, 'i-' + look);
+    root.classList.toggle('serif', vibe === 'classic' || (!!t.serif && vibe === 'warm'));
     root.classList.toggle('nophoto', !photo);
     document.title = name + ' · ' + town;
     var brief = live ? (tel || (live.email ? 'mailto:' + live.email : '#visit')) : '/?site=' + encodeURIComponent(type) + '&sn=' + encodeURIComponent(name) + '&st=' + encodeURIComponent(town) + '&sk=' + encodeURIComponent(t.noun) + (slug ? '&sp=' + encodeURIComponent(slug) : '') + '#contact';
+    var act = F.book || hasForm ? go : brief;
     var reviews = on('review') && !live;
-    var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(reviews ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', 'Visit']]);
+    var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(F.book ? [['book', 'Book']] : []).concat(reviews ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', hasForm ? 'Contact' : 'Visit']]);
+    var steps = on('steps') && t.steps && t.steps.length ? t.steps : null, areas = on('areas') && t.areas && t.areas.length ? t.areas : null;
     document.getElementById('site').innerHTML =
       (live ? (LIVEVIEW ? '<div class="wz"><div class="wrap"><span>👀 This is how the live site will look.</span></div></div>' : '') :
       '<div class="wz"><div class="wrap"><span>✨ Sample site ' + (copy ? 'written and ' : '') + 'built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span>' +
         (slug ? '<button class="share" type="button" id="share">🔗 Share link</button> ' : '') + '<a class="back" href="/build">↺ Try another</a> ' +
         (slug ? '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a>' : '<a href="' + brief + '" data-track="sample_mine">Make it mine</a>') + '</span></div></div>') +
       '<header class="hd"><div class="wrap"><a class="logo" href="#top"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
-        navs.map(function (n) { return '<a href="#' + n[0] + '">' + esc(n[1]) + '</a>'; }).join('') + '</nav><a class="btn" href="#visit">' + esc(cta) + '</a></div></header>' +
-      '<section class="hero" id="top">' + img(0, name) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(town) + '\'s favorite ' + esc(t.noun) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
-        '<div class="cta"><a class="btn" href="#visit">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
-        '<div class="trust">' + (live ? (live.phone ? '<span><b>' + esc(live.phone) + '</b>Call or text</span>' : '') : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (HOURS.length && !(live && HOURS[0][1].length > 24) ? '<span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span>' : '') + '</div></div></section>' +
+        navs.map(function (n) { return '<a href="#' + n[0] + '">' + esc(n[1]) + '</a>'; }).join('') + '</nav><a class="btn" href="' + go + '">' + esc(cta) + '</a></div></header>' +
+      '<section class="hero" id="top">' + (img(0, name) || (hero === 'split' ? '<div class="htile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>' : '')) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(t.eyebrow || (town + '\'s favorite ' + t.noun)) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
+        '<div class="cta"><a class="btn" href="' + go + '">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
+        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (HOURS.length && !(HOURS[0][1].length > 24) ? '<span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span>' : '') + '</div></div></section>' +
       '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + tile() + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">' + esc(t.aboutTitle || ('More than a ' + t.noun + '. A neighbor.')) + '</h2><p>' + esc(t.about) + '</p>' +
         '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + esc(f[0]) + '</b><small>' + esc(f[1]) + '</small></div>'; }).join('') + '</div></div></div></section>' +
       (on('list') ? '<section id="menu" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">' + esc(t.list) + '</p><h2>' + esc(t.listSub) + '</h2></div><div class="items">' +
         t.items.map(function (i) { return '<div class="item"><div class="top"><h3>' + esc(i[0]) + '</h3><span class="price">' + esc(i[1]) + '</span></div><p>' + esc(i[2]) + '</p></div>'; }).join('') + '</div></div></section>' : '') +
+      (steps ? '<section id="steps"><div class="wrap"><div class="sec-h"><p class="eyebrow">How it works</p><h2>Getting started is easy.</h2></div><ol class="steps">' +
+        steps.map(function (x, i) { return '<li><i>' + (i + 1) + '</i><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></li>'; }).join('') + '</ol></div></section>' : '') +
+      (F.book ? '<section id="book" class="tint"><div class="wrap" id="wc-book"></div></section>' : '') +
       (on('pics') && photo ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>Come see for yourself.</h2></div><div class="gal">' +
         [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; }).join('') + '</div></div></section>' : '') +
       (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
         t.reviews.map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + ' · Sample review</span></div>'; }).join('') + '</div></div></section>' : '') +
       (on('faq') ? '<section id="faq"><div class="wrap"><div class="sec-h"><p class="eyebrow">Questions</p><h2>Good to know.</h2></div><div class="faq">' +
         faq.map(function (f) { return '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>'; }).join('') + '</div></div></section>' : '') +
+      (areas ? '<section id="areas"><div class="wrap"><div class="sec-h"><p class="eyebrow">Where we work</p><h2>Proudly serving ' + esc(town) + ' and nearby.</h2></div><ul class="areas"><li>' + esc(town) + '</li>' +
+        areas.filter(function (x) { return x.toLowerCase() !== town.toLowerCase(); }).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></section>' : '') +
+      (hasForm ? '<section id="ask"><div class="wrap" id="wc-ask"></div></section>' : '') +
       '<section id="visit"' + (on('faq') ? ' class="tint"' : '') + '><div class="wrap visit"><div class="card"><p class="eyebrow">Visit us</p><h2 style="font-size:34px">' + (live ? 'Get in touch' : 'Find us in ' + esc(town)) + '</h2><p style="color:var(--mut);margin:10px 0 0">' +
-        (live ? [live.address ? '📍 ' + esc(live.address) : '📍 ' + esc(town), live.phone ? '📞 <a href="' + tel + '">' + esc(live.phone) + '</a>' : '', live.email ? '✉️ <a href="mailto:' + esc(live.email) + '">' + esc(live.email) + '</a>' : ''].filter(Boolean).join('<br>')
+        (real ? [real.address ? '📍 ' + esc(real.address) : '📍 ' + esc(town), real.phone ? '📞 <a href="' + tel + '">' + esc(real.phone) + '</a>' : '', real.email ? '✉️ <a href="mailto:' + esc(real.email) + '">' + esc(real.email) + '</a>' : ''].filter(Boolean).join('<br>')
           : '📍 120 Main Street, ' + esc(town) + '<br>📞 (555) 014-2026') + '</p>' +
-        (HOURS.length ? '<ul class="hours">' + HOURS.map(function (h) { return '<li><span>' + esc(h[0]) + '</span><b>' + esc(h[1]) + '</b></li>'; }).join('') + '</ul>' : '') + '<a class="btn" style="margin-top:18px" href="' + brief + '">' + esc(cta) + '</a></div>' +
-        (live && live.address ? '<div class="map real"><iframe title="Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?output=embed&q=' + encodeURIComponent(live.address) + '"></iframe></div>'
+        (HOURS.length ? '<ul class="hours">' + HOURS.map(function (h) { return '<li><span>' + esc(h[0]) + '</span><b>' + esc(h[1]) + '</b></li>'; }).join('') + '</ul>' : '') + '<a class="btn" style="margin-top:18px" href="' + act + '">' + esc(cta) + '</a></div>' +
+        (real && real.address ? '<div class="map real"><iframe title="Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?output=embed&q=' + encodeURIComponent(real.address) + '"></iframe></div>'
         : (on('map') || !photo) && !live ? '<div class="map" aria-label="Map"><svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice"><rect width="600" height="400" fill="#e9ece4"/><path d="M0 120h600M0 280h600M150 0v400M420 0v400" stroke="#fff" stroke-width="18"/><path d="M0 200h600M290 0v400" stroke="#fff" stroke-width="30"/><path d="M-20 360C120 300 200 330 330 250s220-60 300-120" stroke="#cfe1f2" stroke-width="26" fill="none"/><rect x="40" y="20" width="90" height="80" rx="8" fill="#d6e6cf"/><rect x="460" y="300" width="120" height="80" rx="8" fill="#d6e6cf"/></svg><div class="pin"><i></i><span>' + esc(name) + '</span></div></div>'
           : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + tile() + '</div></div>') + '</div></section>' +
-      '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + brief + '">' + esc(cta) + '</a></div></div>' +
+      '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + act + '">' + esc(cta) + '</a></div></div>' +
       '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">' + (live ? 'Website by <a href="https://weltzcraft.com">Weltzcraft Studios</a>' : 'Sample site by <a href="/">Weltzcraft Studios</a>') + (photo ? ' · <span id="pc">Photos: Wikimedia Commons</span>' : '') + '</span></div></footer>';
     var sh = document.getElementById('share');
     if (sh) sh.addEventListener('click', function () {
@@ -125,7 +146,12 @@
       if (!list.length) return;
       document.getElementById('pc').innerHTML = 'Photos: ' + list.map(function (x) { return '<a href="' + esc(x.page || '#') + '" target="_blank" rel="noopener">' + esc((x.creator || 'Unknown').slice(0, 40)) + '</a> (' + esc(x.license || '') + ')'; }).join(', ') + ', via Wikimedia Commons';
     }).catch(function () {});
-    if (location.hash && location.hash.length > 1) { var el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
+    // Booking calendar, contact / quote form and the maker's Customize panel (features.js).
+    var site = window.WC_SITE || {};
+    if (window.wcFeatures) window.wcFeatures.mount({ a: a, copy: copy, t: t, slug: slug, live: !!(live && site.live), site: site.id || slug || '', name: name, town: town, cta: cta, F: F, d: { vibe: vibe, hero: hero, items: look }, photo: photo, show: show,
+      rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); } });
+    if (!render.done && location.hash && location.hash.length > 1) { var el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
+    render.done = true;
   }
 
   function gone(msg) {
@@ -163,6 +189,7 @@
       .then(function (x) {
         if (!x.ok || !x.j.slug) return function () { render(A, null, ''); };
         history.replaceState(null, '', '/preview/' + x.j.slug);
+        try { if (x.j.key) localStorage.setItem('wck:' + x.j.slug, x.j.key); } catch (e) {}
         if (window.wcHit) window.wcHit('preview_saved');
         return function () { render(x.j.answers, x.j.copy, x.j.slug); };
       }, function () { return function () { render(A, null, ''); }; });
