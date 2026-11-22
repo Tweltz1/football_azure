@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-22T05:11:27.345Z",
+ "updated": "2026-11-22T05:33:13.903Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -858,6 +858,43 @@
     {
      "key": "spruce",
      "name": "Spruce"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    }
+   ]
+  },
+  {
+   "key": "wildcord",
+   "name": "Wild W Corduroy Cap",
+   "type": "hat",
+   "price": 34,
+   "sizes": null,
+   "logos": [
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6"
+   ],
+   "colors": [
+    {
+     "key": "brown",
+     "name": "Brown"
+    },
+    {
+     "key": "olive",
+     "name": "Olive"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "burgundy",
+     "name": "Burgundy"
     },
     {
      "key": "black",
@@ -4351,6 +4388,366 @@
      "size": "One size",
      "id": 5658346236,
      "price": 32
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-brown-a1": {
+   "hash": "983cd7968691",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363455,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-brown-a2": {
+   "hash": "934931fdfb4e",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363543,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-brown-a3": {
+   "hash": "fd5a79612731",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363597,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-brown-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363598,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-brown-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363599,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-brown-a6": {
+   "hash": "f732a61fb25b",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363614,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-olive-a1": {
+   "hash": "983cd7968691",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363615,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-olive-a2": {
+   "hash": "934931fdfb4e",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363616,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-olive-a3": {
+   "hash": "fd5a79612731",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363638,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-olive-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658363720,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-olive-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364415,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-olive-a6": {
+   "hash": "f732a61fb25b",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364420,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-navy-a1": {
+   "hash": "983cd7968691",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364435,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-navy-a2": {
+   "hash": "934931fdfb4e",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364455,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-navy-a3": {
+   "hash": "fd5a79612731",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364479,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-navy-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364480,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-navy-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364496,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-navy-a6": {
+   "hash": "f732a61fb25b",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364519,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-burgundy-a1": {
+   "hash": "983cd7968691",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364532,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-burgundy-a2": {
+   "hash": "934931fdfb4e",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364555,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-burgundy-a3": {
+   "hash": "fd5a79612731",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364893,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-burgundy-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364894,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-burgundy-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364895,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-burgundy-a6": {
+   "hash": "f732a61fb25b",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364925,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-black-a1": {
+   "hash": "983cd7968691",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364931,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-black-a2": {
+   "hash": "934931fdfb4e",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364967,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-black-a3": {
+   "hash": "fd5a79612731",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364968,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-black-a4": {
+   "hash": "9fe43cd0d232",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364972,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-black-a5": {
+   "hash": "adfc8c5dd6e5",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658364977,
+     "price": 34
+    }
+   ],
+   "angles": 4
+  },
+  "wildcord-black-a6": {
+   "hash": "f732a61fb25b",
+   "price": 34,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658365004,
+     "price": 34
     }
    ],
    "angles": 4

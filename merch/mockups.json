@@ -1236,5 +1236,155 @@
     "hash": "f732a61fb25b",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7aa4d9f39e1d76bad52841b7719ff1d6/classic-dad-hat-black-front-6b02796b2bcc2.jpg",
     "angles": 4
+  },
+  "wildcord-brown-a1": {
+    "hash": "983cd7968691",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d248736c82d8fa88f61f64c2e8b90764/vintage-corduroy-cap-brown-front-6b027ab1bc041.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a2": {
+    "hash": "934931fdfb4e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/de4a5e9baabb0178252847a777814be2/vintage-corduroy-cap-brown-front-6b027abd70261.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a3": {
+    "hash": "fd5a79612731",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c4aa2e0657c48d3a4c3576b43e5bcf9c/vintage-corduroy-cap-brown-front-6b027afa4ffb8.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a4": {
+    "hash": "9fe43cd0d232",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/22de4b9212bbea844e524478a00ccf79/vintage-corduroy-cap-brown-front-6b027b05402b3.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a5": {
+    "hash": "adfc8c5dd6e5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d607dc703679d688844c996ffaefcf17/vintage-corduroy-cap-brown-front-6b027b425b568.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a6": {
+    "hash": "f732a61fb25b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/19814ed8bbb3f07802ed7278f65f7e88/vintage-corduroy-cap-brown-front-6b027b4a4b8be.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a1": {
+    "hash": "983cd7968691",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a2d2ba2e3e213370fd4715b629c95a40/vintage-corduroy-cap-olive-front-6b027b8685271.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a2": {
+    "hash": "934931fdfb4e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6ab4ff83c2631b5932ced73f150fb298/vintage-corduroy-cap-olive-front-6b027b9155a80.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a3": {
+    "hash": "fd5a79612731",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f85c55eef9b7a3be85b65c6dba8de907/vintage-corduroy-cap-olive-front-6b027bce10b4d.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a4": {
+    "hash": "9fe43cd0d232",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3ce700c4aae00213d0040ac41aa3a9fb/vintage-corduroy-cap-olive-front-6b027bd4a6ee8.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a5": {
+    "hash": "adfc8c5dd6e5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/695fd738af8f4aaa778c70ef2b5cb3f6/vintage-corduroy-cap-olive-front-6b027c12cb91c.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a6": {
+    "hash": "f732a61fb25b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ae80a51968d4dddda36349b922e9fb6d/vintage-corduroy-cap-olive-front-6b027c1a72f90.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a1": {
+    "hash": "983cd7968691",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/863f1005babce2e22cda7579ff684966/vintage-corduroy-cap-navy-front-6b027c561a4d0.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a2": {
+    "hash": "934931fdfb4e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/dd04d754c75346fa45cf6aa5fd3de2b0/vintage-corduroy-cap-navy-front-6b027c5d0ff4e.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a3": {
+    "hash": "fd5a79612731",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ee056a10a3e952bc2ff0e9f7c09a3e90/vintage-corduroy-cap-navy-front-6b027c99bd9a4.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a4": {
+    "hash": "9fe43cd0d232",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e86e56a5d12b13f268f26408ecd58126/vintage-corduroy-cap-navy-front-6b027ca119301.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a5": {
+    "hash": "adfc8c5dd6e5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/53859551386e0f5c2c63b05e2d1c7a22/vintage-corduroy-cap-navy-front-6b027cdd916db.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a6": {
+    "hash": "f732a61fb25b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6b50153b04ec70881c8ac734ba6144fa/vintage-corduroy-cap-navy-front-6b027ce47caeb.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a1": {
+    "hash": "983cd7968691",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/70b73e9327a277256585b1e5ff9e85cb/vintage-corduroy-cap-burgundy-front-6b027d2218cc2.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a2": {
+    "hash": "934931fdfb4e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8dd2c62a3c1cf5a374271fd5e8ff19b3/vintage-corduroy-cap-burgundy-front-6b027d2cb8ad6.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a3": {
+    "hash": "fd5a79612731",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/10b7c0c7a4c2147870ac89e8c8ba5aa1/vintage-corduroy-cap-burgundy-front-6b027d6b1c168.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a4": {
+    "hash": "9fe43cd0d232",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e41c57263452d65494b0109f2b5a4035/vintage-corduroy-cap-burgundy-front-6b027d76dcdc8.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a5": {
+    "hash": "adfc8c5dd6e5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b3edcd98f29ba779ff3faff61a16986f/vintage-corduroy-cap-burgundy-front-6b027db2ae0a1.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a6": {
+    "hash": "f732a61fb25b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c79c2f37edfe04ff846ec7dba9f13936/vintage-corduroy-cap-burgundy-front-6b027db9b877e.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a1": {
+    "hash": "983cd7968691",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0a67b463523354cc75c1ec68d42d58dd/vintage-corduroy-cap-black-front-6b027df65927a.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a2": {
+    "hash": "934931fdfb4e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/608a65af2550d61438e669039a7ceed6/vintage-corduroy-cap-black-front-6b027dfd1fe15.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a3": {
+    "hash": "fd5a79612731",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a98507e03776363dbe73718be3ee6f08/vintage-corduroy-cap-black-front-6b027e3a03f9c.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a4": {
+    "hash": "9fe43cd0d232",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/eab806cc572b28e220edaab235c7077b/vintage-corduroy-cap-black-front-6b027e408ab51.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a5": {
+    "hash": "adfc8c5dd6e5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/93deeedf072b87978c8057a2d896d021/vintage-corduroy-cap-black-front-6b027e7dd553c.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a6": {
+    "hash": "f732a61fb25b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/080bd09639a5fc71d7c1850967755b1e/vintage-corduroy-cap-black-front-6b027e885c71b.jpg",
+    "angles": 4
   }
 }
