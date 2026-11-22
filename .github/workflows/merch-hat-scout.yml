@@ -1,18 +1,28 @@
 name: Merch hat scout (read-only)
-# Lists Printful performance / athletic caps with colors, print spots and costs. Changes nothing.
+# Lists Printful performance / athletic caps with colors, print spots and costs, then makes preview mockup
+# photos of the shortlisted ones (merch/scout/photos, committed to this branch). Creates no store products.
 on:
   push:
     branches: [claude/project-thread-3fy47d]
-    paths: ['scripts/merch-hat-scout.mjs', '.github/workflows/merch-hat-scout.yml']
+    paths: ['scripts/merch-hat-scout*.mjs', '.github/workflows/merch-hat-scout.yml', 'merch/scout/*.png']
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   scout:
     runs-on: ubuntu-latest
     env:
       PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
       PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+      BRANCH: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - run: node scripts/merch-hat-scout.mjs
+      - run: node scripts/merch-hat-scout-photos.mjs
+      - name: Commit photos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add merch/scout/photos
+          git diff --cached --quiet || (git commit -m "Merch: athletic cap preview photos [skip ci]" && git push)
