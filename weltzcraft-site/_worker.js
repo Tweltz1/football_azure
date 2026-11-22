@@ -540,6 +540,7 @@ async function previewCopy(env, a, facts) {
     ' "features": {"book": true if customers of this kind of business book appointments, classes, tables or visits ahead of time, else false; "form": "quote" if customers ask for estimates or custom orders, else "contact"},',
     ' "bookTitle": "heading for the online booking section, under 40 characters", "bookNote": "one friendly sentence under 110 characters about booking with them",',
     ' "quoteQs": [up to 3 short questions their quote or contact form should ask besides name and phone, like "What kind of vehicle?"],',
+    ' "color": "a brand color that suits this business, as 6 hex digits without #, dark enough that white text reads on it",',
     ' "band": "closing call to action heading under 50 characters"}',
   ].filter(Boolean).join('\n');
   try {
@@ -556,6 +557,7 @@ async function previewCopy(env, a, facts) {
       areas: (Array.isArray(g.areas) ? g.areas : []).slice(0, 6).map((x) => str(x, 30)).filter(Boolean),
       f: featuresOf(g.features), bookTitle: str(g.bookTitle, 50), bookNote: str(g.bookNote, 140),
       quoteQs: (Array.isArray(g.quoteQs) ? g.quoteQs : []).slice(0, 3).map((x) => str(x, 60)).filter(Boolean),
+      color: /^[0-9a-f]{6}$/i.test(g.color || '') ? String(g.color).toLowerCase() : '',
     };
     if (!c.noun || !c.about || c.items.length < 3) return null;
     return c;
@@ -595,6 +597,8 @@ async function previewCreate(request, env) {
   } : b);
   if (facts) { a.src = src; if (facts.state) a.state = facts.state; }
   const copy = all < PREVIEW_ALL_DAY ? await previewCopy(env, a, facts) : null;
+  // Nobody picked a color for a looked-up business, so the AI's pick is used.
+  if (facts && copy && copy.color && !/^[0-9a-f]{6}$/i.test(b.c || '')) a.c = copy.color;
   const expires = new Date(Date.now() + PREVIEW_DAYS * 864e5).toISOString();
   // The maker of a preview gets a key (kept in their browser) that lets them change its look and features later.
   const key = hex(crypto.getRandomValues(new Uint8Array(16)));
@@ -696,9 +700,13 @@ const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864e5)
  */
 async function siteInfo(env, site) {
   if (!/^[a-z0-9.-]{3,80}$/.test(site || '')) return null;
-  if (typeof liveOwner === 'function') {
-    const o = await liveOwner(env, site).catch(() => null);
-    if (o && emailOk(o.email)) return { live: true, id: String(o.id || site), name: oneLine(o.name, 80) || 'your business', email: o.email, phone: oneLine(o.phone, 30), domain: oneLine(o.domain, 80), tz: o.tz || SITE_TZ, answers: o.answers || {} };
+  const o = await liveOwner(env, site).catch(() => null);
+  if (o) {
+    const row = await liveRow(env, 'id=eq.' + o.id);
+    const s = (row && row.site) || {}, a = { ...(s.answers || {}) };
+    if (s.contact && s.contact.address) a.addr = s.contact.address;
+    // Before the site is live (Tyler's look at it) the booking and form stay a demo.
+    return { live: o.status === 'live' && emailOk(o.email), id: o.id, name: oneLine(o.name, 80) || 'your business', email: o.email, phone: oneLine(o.phone, 30), domain: oneLine(o.domain, 80), tz: o.tz || SITE_TZ, answers: a };
   }
   if (!/^[a-z0-9-]{3,60}$/.test(site)) return null;
   const r = await sb(env, 'weltzcraft_previews?select=answers&slug=eq.' + site + '&expires_at=gt.' + new Date().toISOString());
@@ -1179,7 +1187,7 @@ async function customerSite(request, env, url) {
   if (url.pathname === '/api/site') return liveData(request, env);
   // Booking / contact forms on live sites (the "more custom" builder adds siteApi).
   if (url.pathname.startsWith('/api/site/') && typeof siteApi === 'function') return siteApi(request, env, url); // eslint-disable-line no-undef
-  if (/^\/(sample\.js|favicon\.svg|img\/sample\/[a-z0-9.-]+)$/.test(url.pathname)) return env.ASSETS.fetch(request);
+  if (/^\/(sample\.js|features\.js|favicon\.svg|img\/sample\/[a-z0-9.-]+)$/.test(url.pathname)) return env.ASSETS.fetch(request);
   if (url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /\n', { headers: { 'Content-Type': 'text/plain' } });
   if (url.pathname !== '/') return Response.redirect(url.origin + '/', 302);
   const row = await liveRow(env, 'status=eq.live&domain=eq.' + url.hostname);

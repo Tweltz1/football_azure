@@ -56,7 +56,17 @@ textarea.txt{resize:vertical;min-height:120px;line-height:1.45;font-size:16px}
 .sw.on{box-shadow:0 0 0 3px var(--card),0 0 0 6px #fff}
 button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:3px}
 .foot{text-align:center;color:#7d7464;font-size:13px;padding:0 20px 26px}
-@media (max-width:520px){.card{padding:24px 20px;border-radius:24px}.opt{padding:14px 12px;font-size:14.5px}.sw{width:48px;height:48px}}
+.or{display:flex;align-items:center;gap:12px;color:#7d7464;font-size:13px;margin:4px 0 -4px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.fb label{display:block;color:var(--mut);font-size:15px;margin-bottom:10px}
+.fbrow{display:flex;gap:10px}
+.fbrow .txt{font-size:16px;padding:14px;min-width:0}
+.go.alt{background:rgba(255,138,60,.14);color:var(--em2);box-shadow:none;border:1.5px solid var(--em);white-space:nowrap;font-size:15px;padding:14px 16px}
+.fberr{color:#ff8f7a;font-size:14px;margin:8px 0 0}
+.fberr:empty{display:none}
+.pulse{animation:wp 1.1s ease-in-out infinite}
+@keyframes wp{50%{box-shadow:0 0 70px 4px rgba(242,163,58,.75)}}
+@media (max-width:520px){.fbrow{flex-direction:column}.card{padding:24px 20px;border-radius:24px}.opt{padding:14px 12px;font-size:14.5px}.sw{width:48px;height:48px}}
 </style>
 </head>
 <body>
@@ -83,15 +93,41 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     { k: 'more', q: 'Tell us a little more', kind: 'area', ph: function () { return 'What you sell or do, rough prices, what customers always ask about…'; }, skip: true },
     { k: 'cta', q: 'What should customers do first?', kind: 'pick', opts: function () { var d = type()[4]; return [[d, '⭐', d]].concat([['Book online', '📅', 'Book online'], ['Order ahead', '🛍️', 'Order ahead'], ['Get a quote', '💬', 'Get a quote'], ['Call us', '📞', 'Call us']].filter(function (o) { return o[0] !== d; })).slice(0, 4); } },
     { k: 'h', q: 'When are you open?', kind: 'pick', opts: function () { return [['Mon to Fri', '🗓️', 'Weekdays'], ['Every day', '☀️', 'Every day'], ['Wed to Sun', '🌙', 'Wed to Sun'], ['By appointment', '📅', 'By appointment']]; } },
-    { k: 's', q: 'What should your site show?', kind: 'multi', opts: function () { return [['list', '🏷️', 'Prices'], ['pics', '📸', 'Photos'], ['review', '⭐', 'Reviews'], ['faq', '❓', 'Questions'], ['map', '📍', 'Map']]; } },
+    { k: 's', q: 'What should your site show?', kind: 'multi', opts: function () { return [['list', '🏷️', 'Prices'], ['steps', '🪜', 'How it works'], ['pics', '📸', 'Photos'], ['review', '⭐', 'Reviews'], ['faq', '❓', 'Questions'], ['areas', '🚐', 'Service area'], ['map', '📍', 'Map']]; } },
     { k: 'c', q: 'Pick your color', kind: 'color' }
   ];
-  var a = { type: 'coffee', what: '', name: '', town: '', tag: '', more: '', cta: '', h: 'Mon to Fri', s: ['list', 'pics', 'review', 'faq', 'map'], c: COLORS[0][1] };
+  var a = { type: 'coffee', what: '', name: '', town: '', tag: '', more: '', cta: '', h: 'Mon to Fri', s: ['list', 'steps', 'pics', 'review', 'faq', 'areas', 'map'], c: COLORS[0][1] };
   var step = -1, card = document.getElementById('card');
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function intro() {
-    card.innerHTML = '<div class="step"><div class="big-w">W</div><h1>See your website before you pay a thing.</h1><p class="sub">Answer a few quick questions about any kind of business and watch Weltzcraft write and build a real-looking site for it. You get your own link to share for 30 days.</p>' +
-      '<ul class="perks"><li>About 60 seconds</li><li>Free</li><li>No sign-up</li></ul><button class="go" data-go>Let\'s build it →</button></div>';
+    card.innerHTML = '<div class="step"><div class="big-w">W</div><h1>See your website before you pay a thing.</h1><p class="sub">Answer a few quick questions about any kind of business and watch Weltzcraft design and write a site made for it, with online booking and a contact form built in. You get your own link to share for 30 days.</p>' +
+      '<ul class="perks"><li>About 60 seconds</li><li>Free</li><li>No sign-up</li></ul><button class="go" data-go>Let\'s build it →</button>' +
+      '<div class="or"><span>or skip the questions</span></div>' +
+      '<form class="fb" id="fb"><label for="src">Already on Facebook? Paste your page and we\'ll build from what\'s public about your business.</label>' +
+      '<div class="fbrow"><input class="txt" id="src" maxlength="200" placeholder="facebook.com/yourbusiness, or name and town" autocomplete="off" enterkeyhint="go"><button class="go alt" type="submit">Build from this</button></div><p class="fberr" id="fberr" role="alert"></p></form></div>';
+    document.getElementById('fb').addEventListener('submit', function (e) { e.preventDefault(); lookup(document.getElementById('src').value.trim()); });
+  }
+  // "Build it from my Facebook page": the server looks the business up online, writes the site and saves it.
+  function lookup(src) {
+    var err = document.getElementById('fberr');
+    if (src.length < 4) { err.textContent = 'Paste the link to the Facebook page, or type the business name and town.'; return; }
+    if (window.wcHit) window.wcHit('fb_import');
+    var lines = ['Finding your business…', 'Reading what\'s public about it…', 'Checking hours, address and phone…', 'Listing what you offer…', 'Picking a style that fits…', 'Writing your words…', 'Adding online booking…', 'Almost there…'], i = 0;
+    card.innerHTML = '<div class="step"><div class="big-w pulse">W</div><h2>Building from your page</h2><p class="sub" id="look">' + lines[0] + '</p><div class="bar"><i id="lookbar" style="width:6%"></i></div><p class="sub" style="font-size:14px">This takes about 30 seconds. We search the web for your business, so the preview starts with your real details.</p></div>';
+    var tick = setInterval(function () { i = Math.min(i + 1, lines.length - 1); var l = document.getElementById('look'); if (!l) return clearInterval(tick); l.textContent = lines[i]; document.getElementById('lookbar').style.width = Math.round((i + 1) / lines.length * 94) + '%'; }, 4500);
+    function fail(msg) {
+      clearInterval(tick);
+      card.innerHTML = '<div class="step"><div class="big-w">W</div><h2>Let\'s do it the quick way</h2><p class="sub">' + esc(msg) + '</p><button class="go" data-go>Answer the questions →</button><div class="row"><button class="back" data-home>← Try another link</button><span></span></div></div>';
+    }
+    fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ src: src }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok || !j.slug) return fail(j.error || 'We couldn\'t build from that link.');
+        clearInterval(tick);
+        try { if (j.key) localStorage.setItem('wck:' + j.slug, j.key); } catch (e) {}
+        if (window.wcHit) window.wcHit('preview_saved');
+        location.href = '/preview/' + j.slug;
+      }, function () { fail('We couldn\'t reach the server. Check your connection and try again.'); });
   }
   function ask() {
     var q = Q[step], vis = Q.filter(shown), at = vis.indexOf(q), h = '<div class="step"><div class="bar"><i style="width:' + Math.round(at / vis.length * 100) + '%"></i></div><span class="n">QUESTION ' + (at + 1) + ' OF ' + vis.length + '</span><h2>' + q.q + '</h2>';
@@ -122,6 +158,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     else if (b.dataset.m) { var i = a.s.indexOf(b.dataset.m); if (i > -1) a.s.splice(i, 1); else a.s.push(b.dataset.m); b.classList.toggle('on'); b.setAttribute('aria-pressed', i < 0); }
     else if (b.dataset.c) { a.c = b.dataset.c; [].forEach.call(card.querySelectorAll('.sw'), function (s) { s.classList.toggle('on', s === b); }); }
     else if (b.hasAttribute('data-go')) next();
+    else if (b.hasAttribute('data-home')) { step = -1; intro(); }
     else if (b.hasAttribute('data-back')) { save(); step--; while (step >= 0 && !shown(Q[step])) step--; step < 0 ? intro() : ask(); }
   });
   card.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); next(); } });
