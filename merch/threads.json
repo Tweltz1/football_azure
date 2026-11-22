@@ -35,20 +35,30 @@
   "#333366",
   "#005397"
  ],
- "cord-brown-v7": [
-  "#FFFFFF"
+ "cord-brown-v9": [
+  "#FFFFFF",
+  "#E25C27",
+  "#FFCC00"
  ],
- "cord-olive-v7": [
-  "#FFFFFF"
+ "cord-olive-v9": [
+  "#FFFFFF",
+  "#E25C27",
+  "#FFCC00"
  ],
- "cord-navy-v7": [
-  "#FFFFFF"
+ "cord-navy-v9": [
+  "#FFFFFF",
+  "#E25C27",
+  "#FFCC00"
  ],
- "cord-burgundy-v7": [
-  "#FFFFFF"
+ "cord-burgundy-v9": [
+  "#FFFFFF",
+  "#E25C27",
+  "#FFCC00"
  ],
- "cord-black-v7": [
-  "#FFFFFF"
+ "cord-black-v9": [
+  "#FFFFFF",
+  "#E25C27",
+  "#FFCC00"
  ],
  "beanie-black-v8": [
   "#FFFFFF",
@@ -213,6 +223,21 @@
   "#01784E",
   "#7BA35A"
  ],
+ "woods-cranberry-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woods-darkgrey-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woods-spruce-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
  "woodscord-brown-h3": [
   "#A67843",
   "#01784E",
@@ -234,6 +259,31 @@
   "#7BA35A"
  ],
  "woodscord-black-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woodstwo-greenkhaki-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woodstwo-navykhaki-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woodstwo-dustyrose-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woodstwo-gray-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woodstwo-maroon-h3": [
   "#A67843",
   "#01784E",
   "#7BA35A"

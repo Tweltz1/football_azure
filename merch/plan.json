@@ -3381,6 +3381,54 @@
       }
     ]
   },
+  "woods-cranberry": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Cranberry",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 12735,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-darkgrey": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Dark Grey",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 12736,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-spruce": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Spruce",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8745,
+        "size": "One size"
+      }
+    ]
+  },
   "woodscord-brown": {
     "product_id": 662,
     "product": "Vintage Corduroy Cap | Big Accessories BA703",
@@ -3457,6 +3505,86 @@
     "variants": [
       {
         "id": 16416,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-greenkhaki": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Dark Green/Khaki",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24535,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-navykhaki": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Navy/Khaki",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24541,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-dustyrose": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Dusty Rose",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24536,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-gray": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Gray",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24537,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodstwo-maroon": {
+    "product_id": 961,
+    "product": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+    "color": "Maroon",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 24539,
         "size": "One size"
       }
     ]
