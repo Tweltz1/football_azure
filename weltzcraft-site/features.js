@@ -111,6 +111,53 @@
     if (days.length) loadDay(ymd(days[0]));
   }
 
+  // ---- order ahead (pick items, pay at pickup) --------------------------------------------------------------
+  function orderForm(p) {
+    var box = document.getElementById('wc-order');
+    if (!box) return;
+    var items = (p.t.items || []).slice(0, 8), qty = items.map(function () { return 0; }), cfg = bookCfg(p.a, p.F), days = [], d = new Date();
+    for (var i = 0; i < 21 && days.length < 7; i++) {
+      var x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i);
+      // Today only counts while there is still at least an hour before closing.
+      if (cfg.days.indexOf(x.getDay()) > -1 && (i > 0 || d.getHours() * 60 + d.getMinutes() < mins(cfg.close) - 60)) days.push(x);
+    }
+    var times = []; for (var m = mins(cfg.open); m <= mins(cfg.close) - 30; m += 30) times.push(clock(m));
+    box.innerHTML = '<form class="bk od" novalidate><div class="bk-l"><p class="bk-h"><b>1</b> What would you like?</p>' +
+      items.map(function (it, i) { return '<div class="od-row"><div><b>' + esc(it[0]) + '</b><small>' + esc(it[1] || '') + '</small></div><div class="qty"><button type="button" data-q="' + i + '" data-d="-1" aria-label="One less ' + esc(it[0]) + '">−</button><output>0</output><button type="button" data-q="' + i + '" data-d="1" aria-label="One more ' + esc(it[0]) + '">+</button></div></div>'; }).join('') +
+      '</div><div class="bk-r"><p class="bk-h"><b>2</b> Pickup and your details</p>' +
+      '<div class="two"><label>Pickup day<select name="day">' + days.map(function (x, i) { return '<option>' + (i === 0 && ymd(x) === ymd(d) ? 'Today, ' : '') + DAYS[x.getDay()] + ' ' + MONTHS[x.getMonth()] + ' ' + x.getDate() + '</option>'; }).join('') + '</select></label>' +
+      '<label>Time<select name="time">' + times.map(function (s) { return '<option>' + clock12(s) + '</option>'; }).join('') + '</select></label></div>' + contactFields('od-hp') +
+      '<label>Notes <small>(optional)</small><textarea name="note" maxlength="1500" rows="2"></textarea></label><p class="bk-sum" aria-live="polite"></p><p class="err" role="alert"></p><button class="btn" type="submit">Send my order</button>' +
+      '<p class="hint" style="margin-top:10px;font-size:13.5px">You pay when you pick up.</p></div></form>';
+    var form = box.querySelector('form'), err = box.querySelector('.err'), sum = box.querySelector('.bk-sum');
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-q]'); if (!b) return;
+      var i = Number(b.dataset.q); qty[i] = Math.max(0, Math.min(20, qty[i] + Number(b.dataset.d)));
+      b.parentNode.querySelector('output').textContent = qty[i];
+      var n = qty.reduce(function (a, c) { return a + c; }, 0); sum.textContent = n ? n + (n === 1 ? ' item' : ' items') + ' in your order' : ''; err.textContent = '';
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault(); err.textContent = '';
+      var f = form.elements, name = f.name.value.trim(), phone = f.phone.value.trim(), email = f.email.value.trim();
+      var qa = items.map(function (it, i) { return [it[0] + (it[1] ? ' (' + it[1] + ')' : ''), 'x' + qty[i]]; }).filter(function (x, i) { return qty[i] > 0; });
+      if (!qa.length) { err.textContent = 'Add at least one item with the + buttons.'; return; }
+      if (!name) { err.textContent = 'Add your name.'; f.name.focus(); return; }
+      if (!email && phone.replace(/\D/g, '').length < 7) { err.textContent = 'Add a phone number or an email so we can reach you.'; f.phone.focus(); return; }
+      var when = f.day.value + ' at ' + f.time.value; qa.push(['Pickup:', when]);
+      var btn = form.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Sending…';
+      function done() {
+        hit('form_try');
+        form.outerHTML = '<div class="sent"><div class="tick">✓</div><h3>Order sent for ' + esc(when) + '</h3><p>Thanks, ' + esc(name.split(/\s+/)[0]) + '. We\'ll have it ready. You pay when you pick up.</p>' +
+          demoNote(p, 'the owner gets the order by email right away with the items and pickup time, and the customer gets a copy.') + '</div>';
+      }
+      if (!p.site) return setTimeout(done, 500);
+      post('/api/site/message', { site: p.site, kind: 'order', name: name, phone: phone, email: email, note: f.note.value, qa: qa, website: f.website.value }).then(function (j) {
+        if (j.ok) return done();
+        btn.disabled = false; btn.textContent = 'Send my order'; err.textContent = j.error || 'Something went wrong. Please try again.';
+      }, function () { btn.disabled = false; btn.textContent = 'Send my order'; err.textContent = 'We couldn\'t reach the server. Please try again.'; });
+    });
+  }
+
   // ---- contact / quote form --------------------------------------------------------------------------------
   function askForm(p) {
     var box = document.getElementById('wc-ask');
@@ -149,6 +196,19 @@
   var COLORS = ['e0662a', '1f8a55', '2563c9', '7a3fb8', 'c2416b', '2b2925', 'c79a2b', '0e7c86'];
   var SECTIONS = [['list', 'Prices'], ['steps', 'How it works'], ['pics', 'Photos'], ['review', 'Reviews'], ['faq', 'Questions'], ['areas', 'Service area'], ['map', 'Map']];
   var panel = null, saveTimer = null, state = null;
+  // Sorts pasted links by site, the same way the server does, so the page updates before the save comes back.
+  var LINK_HOSTS = { doordash: /(^|\.)doordash\.com$/, ubereats: /(^|\.)ubereats\.com$/, grubhub: /(^|\.)grubhub\.com$/, facebook: /(^|\.)(facebook|fb)\.com$/, instagram: /(^|\.)instagram\.com$/, yelp: /(^|\.)yelp\.com$/, tiktok: /(^|\.)tiktok\.com$/ };
+  var ORDER_HOSTS = /(^|\.)(toasttab\.com|square\.site|squareup\.com|clover\.com|chownow\.com|slicelife\.com|ezcater\.com|order\.online|menufy\.com|olo\.com|getbento\.com|popmenu\.com|shopify\.com|etsy\.com|instacart\.com)$/;
+  function linksOf(text) {
+    var o = {};
+    (String(text || '').match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s,;<>"']*)?/gi) || []).slice(0, 12).forEach(function (raw) {
+      var u; try { u = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw); } catch (e) { return; }
+      if (u.pathname.length + u.search.length < 2) return;
+      var k = Object.keys(LINK_HOSTS).filter(function (x) { return LINK_HOSTS[x].test(u.hostname); })[0] || (ORDER_HOSTS.test(u.hostname) ? 'order' : '');
+      if (k && !o[k]) o[k] = 'https://' + u.host + u.pathname + u.search;
+    });
+    return o;
+  }
   function keyFor(slug) { try { return localStorage.getItem('wck:' + slug) || ''; } catch (e) { return ''; } }
   function customize(p) {
     var key = p.slug && !p.live && !(window.WC_SITE && window.WC_SITE.id) ? keyFor(p.slug) : '';
@@ -162,11 +222,12 @@
       '<p class="cz-l">Prices shown as</p>' + seg('items', LOOKS, p.d.items) +
       '<p class="cz-l">Color</p><div class="cz-colors">' + COLORS.map(function (c) { return '<button type="button" class="' + (c === p.a.c ? 'on' : '') + '" data-c="' + c + '" style="background:#' + c + '" aria-label="Color"></button>'; }).join('') + '<input type="color" value="#' + esc(p.a.c || 'e0662a') + '" aria-label="Any color"></div>' +
       '<p class="cz-l">Sections</p><div class="cz-checks">' + SECTIONS.map(function (s) { return '<label><input type="checkbox" data-s="' + s[0] + '"' + (p.show.indexOf(s[0]) > -1 ? ' checked' : '') + '> ' + s[1] + '</label>'; }).join('') + '</div>' +
-      '<p class="cz-l">Built-in features</p><div class="cz-checks"><label><input type="checkbox" data-f="book"' + (p.F.book ? ' checked' : '') + '> Online booking</label></div>' +
+      '<p class="cz-l">Built-in features</p><div class="cz-checks"><label><input type="checkbox" data-f="book"' + (p.F.book ? ' checked' : '') + '> Online booking</label><label><input type="checkbox" data-f="order"' + (p.F.order ? ' checked' : '') + '> Order ahead</label></div>' +
       '<div class="cz-row"' + (p.F.book ? '' : ' hidden') + ' data-bookrow><label>Each visit <select data-f="len">' + [15, 30, 45, 60, 90, 120].map(function (m) { return '<option value="' + m + '"' + (m === cfg.len ? ' selected' : '') + '>' + (m < 60 ? m + ' min' : (m / 60) + (m === 60 ? ' hour' : ' hours')) + '</option>'; }).join('') + '</select></label>' +
         '<label>From <input type="time" data-f="open" value="' + cfg.open + '" step="900"></label><label>To <input type="time" data-f="close" value="' + cfg.close + '" step="900"></label>' +
         '<div class="cz-days">' + DAYS.map(function (n, i) { return '<button type="button" data-day="' + i + '" class="' + (cfg.days.indexOf(i) > -1 ? 'on' : '') + '">' + n[0] + '</button>'; }).join('') + '</div></div>' +
       '<p class="cz-l">Form on the site</p>' + seg('form', [['contact', 'Contact'], ['quote', 'Quote request'], ['none', 'None']], p.F.form) +
+      '<p class="cz-l">Your links</p><textarea class="cz-in" data-links rows="3" placeholder="Paste links: Facebook, Instagram, DoorDash, Uber Eats, online ordering">' + esc(Object.keys(p.a.links || {}).map(function (k) { return p.a.links[k]; }).join('\n')) + '</textarea>' +
       '<p class="cz-l">Headline</p><input class="cz-in" data-tag maxlength="80" value="' + esc(p.a.tag || p.t.tag || '') + '">' +
       '<p class="cz-s" aria-live="polite">Changes save to your link automatically.</p></div>';
     var wasOpen = panel && !panel.querySelector('.cz-box').hidden, scroll = panel ? panel.querySelector('.cz-box').scrollTop : 0;
@@ -184,9 +245,10 @@
     if (patch.d) { a.d = {}; Object.keys(p.a.d || {}).forEach(function (k) { a.d[k] = p.a.d[k]; }); Object.keys(patch.d).forEach(function (k) { a.d[k] = patch.d[k]; }); }
     if (patch.f) { a.f = {}; Object.keys(p.a.f || {}).forEach(function (k) { a.f[k] = p.a.f[k]; }); Object.keys(patch.f).forEach(function (k) { a.f[k] = patch.f[k]; }); }
     ['s', 'c', 'tag'].forEach(function (k) { if (patch[k] !== undefined) a[k] = patch[k]; });
+    if (patch.links !== undefined) a.links = linksOf(patch.links);
     state.pending = state.pending || {};
     ['d', 'f'].forEach(function (k) { if (patch[k]) { state.pending[k] = state.pending[k] || {}; Object.keys(patch[k]).forEach(function (x) { state.pending[k][x] = patch[k][x]; }); } });
-    ['s', 'c', 'tag'].forEach(function (k) { if (patch[k] !== undefined) state.pending[k] = patch[k]; });
+    ['s', 'c', 'tag', 'links'].forEach(function (k) { if (patch[k] !== undefined) state.pending[k] = patch[k]; });
     var key = state.key, slug = p.slug, note = panel.querySelector('.cz-s');
     // A color drag or typing fires many times: only repaint what changed and keep the control focused.
     if (quiet) { p.a = a; document.documentElement.style.setProperty('--c', '#' + a.c); }
@@ -223,6 +285,8 @@
       return change({ s: s.join(',') });
     }
     if (el.dataset.f === 'book') return change({ f: { book: el.checked ? 1 : 0 } });
+    if (el.dataset.f === 'order') return change({ f: { order: el.checked ? 1 : 0 } });
+    if (el.hasAttribute('data-links')) return change({ links: el.value });
     if (el.dataset.f === 'len') return change({ f: { len: Number(el.value) } });
     if (el.dataset.f === 'open' || el.dataset.f === 'close') {
       var o = panel.querySelector('[data-f=open]').value, c = panel.querySelector('[data-f=close]').value;
@@ -233,5 +297,5 @@
     if (el.hasAttribute('data-tag')) return change({ tag: el.value.trim() });
   }
 
-  window.wcFeatures = { mount: function (p) { booking(p); askForm(p); customize(p); } };
+  window.wcFeatures = { mount: function (p) { booking(p); orderForm(p); askForm(p); customize(p); } };
 })();
