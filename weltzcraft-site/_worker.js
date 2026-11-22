@@ -608,7 +608,7 @@ async function previewCopy(env, a, facts) {
 const PHOTO_UA = 'WeltzcraftPreview/1.0 (https://weltzcraft.com; hello@weltzcraft.com)';
 // Openverse (Flickr photos) doesn't answer Cloudflare's servers in time, so it is off; Wikimedia Commons is the source.
 const PHOTO_OPENVERSE = false;
-const PHOTO_HOSTS = /^(upload\.wikimedia\.org|[a-z0-9-]+\.staticflickr\.com)$/;
+const PHOTO_HOSTS = /^((upload|thumb)\.wikimedia\.org|[a-z0-9-]+\.staticflickr\.com)$/;
 const PHOTO_SKIP = /logo|map\b|diagram|poster|flag|coat of arms|\bsign\b|screenshot|chart|stamp|drawing|illustration|painting|engraving|\b1[5-9]\d\d\b|fortepan|bundesarchiv|\.svg|\.gif|\.tif/i;
 const licOk = (l) => /^(cc0|pdm|public domain|pd\b|cc[ -]by([ -]sa)?([ -][\d.]+)?( [a-z]{2,4})?$)/i.test(String(l || '').trim()) && !/nc|nd/i.test(l);
 const stripTags = (v) => String(v || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
@@ -670,7 +670,7 @@ async function previewPhotos(env, a, copy, log) {
   if (usable.length < 2) return null;
   const what = a.what || (copy && copy.noun) || 'small business';
   const parts = [{ text: 'These are ' + usable.length + ' numbered stock photos. Pick photos for the website of a small local business: ' + JSON.stringify(what) + '.\n' +
-    'Choose only photos that clearly fit this kind of business, look professional and inviting, and are modern color photos. Reject any photo with a watermark, a visible brand or another business\'s name or sign, lots of text, a close-up of a person\'s face, poor lighting or focus, or a subject that does not fit.\n' +
+    'Choose only photos that clearly fit this kind of business, look professional and inviting, and are modern color photos. Reject any photo with a watermark, a visible brand or another business\'s name or sign, lots of text, people whose faces can be recognized (hands at work or people seen from behind or far away are fine), a wedding or other private event, poor lighting or focus, or a subject that does not fit.\n' +
     'Return JSON: {"hero": number of the best wide scene to sit behind the page\'s headline (or -1), "about": number of the best photo of the work or product (or -1), "gallery": [up to 4 more numbers, best first]}. Never use a number twice. Prefer filling hero and about when any photo is a reasonable fit; use -1 only when nothing suits.' }];
   usable.forEach((x, i) => { parts.push({ text: 'Photo ' + i + ' (searched: ' + x.c.q + ')' }); parts.push({ inline_data: { mime_type: 'image/jpeg', data: x.t } }); });
   const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } } }, 30000, log));
