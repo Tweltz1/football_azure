@@ -91,12 +91,13 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     { k: 'town', q: 'Where are you located?', kind: 'text', ph: function () { return 'Springfield'; } },
     { k: 'tag', q: 'What makes you different?', kind: 'text', ph: function () { return TAGS[a.type]; }, skip: true },
     { k: 'more', q: 'Tell us a little more', kind: 'area', ph: function () { return 'What you sell or do, rough prices, what customers always ask about…'; }, skip: true },
+    { k: 'links', q: 'Any links your customers use?', kind: 'area', ph: function () { return 'Paste any you have: Facebook, Instagram, DoorDash, Uber Eats, your online ordering page…'; }, skip: true },
     { k: 'cta', q: 'What should customers do first?', kind: 'pick', opts: function () { var d = type()[4]; return [[d, '⭐', d]].concat([['Book online', '📅', 'Book online'], ['Order ahead', '🛍️', 'Order ahead'], ['Get a quote', '💬', 'Get a quote'], ['Call us', '📞', 'Call us']].filter(function (o) { return o[0] !== d; })).slice(0, 4); } },
     { k: 'h', q: 'When are you open?', kind: 'pick', opts: function () { return [['Mon to Fri', '🗓️', 'Weekdays'], ['Every day', '☀️', 'Every day'], ['Wed to Sun', '🌙', 'Wed to Sun'], ['By appointment', '📅', 'By appointment']]; } },
     { k: 's', q: 'What should your site show?', kind: 'multi', opts: function () { return [['list', '🏷️', 'Prices'], ['steps', '🪜', 'How it works'], ['pics', '📸', 'Photos'], ['review', '⭐', 'Reviews'], ['faq', '❓', 'Questions'], ['areas', '🚐', 'Service area'], ['map', '📍', 'Map']]; } },
     { k: 'c', q: 'Pick your color', kind: 'color' }
   ];
-  var a = { type: 'coffee', what: '', name: '', town: '', tag: '', more: '', cta: '', h: 'Mon to Fri', s: ['list', 'steps', 'pics', 'review', 'faq', 'areas', 'map'], c: COLORS[0][1] };
+  var a = { type: 'coffee', what: '', name: '', town: '', tag: '', more: '', links: '', cta: '', h: 'Mon to Fri', s: ['list', 'steps', 'pics', 'review', 'faq', 'areas', 'map'], c: COLORS[0][1] };
   var step = -1, card = document.getElementById('card');
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function intro() {
@@ -134,7 +135,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     if (q.kind === 'pick') h += '<div class="opts">' + q.opts().map(function (o) { return '<button class="opt' + (a[q.k] === o[0] ? ' on' : '') + '" data-v="' + esc(o[0]) + '"><span class="e">' + o[1] + '</span>' + esc(o[2]) + '</button>'; }).join('') + '</div>';
     if (q.kind === 'multi') h += '<div class="opts">' + q.opts().map(function (o) { var on = a.s.indexOf(o[0]) > -1; return '<button class="opt' + (on ? ' on' : '') + '" data-m="' + o[0] + '" aria-pressed="' + on + '"><span class="e">' + o[1] + '</span>' + o[2] + '</button>'; }).join('') + '</div><button class="go" data-go>Next →</button>';
     if (q.kind === 'text') h += '<input class="txt" maxlength="40" value="' + esc(a[q.k]) + '" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '" enterkeyhint="next"><button class="go" data-go>' + (q.skip ? 'Next (or skip) →' : 'Next →') + '</button>';
-    if (q.kind === 'area') h += '<textarea class="txt area" maxlength="300" rows="4" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '">' + esc(a[q.k]) + '</textarea><button class="go" data-go>Next (or skip) →</button>';
+    if (q.kind === 'area') h += '<textarea class="txt area" maxlength="' + (q.k === 'links' ? 600 : 300) + '" rows="4" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '">' + esc(a[q.k]) + '</textarea><button class="go" data-go>Next (or skip) →</button>';
     if (q.kind === 'color') h += '<div class="colors">' + COLORS.map(function (c) { return '<button class="sw' + (a.c === c[1] ? ' on' : '') + '" data-c="' + c[1] + '" style="background:' + c[1] + '" aria-label="' + c[0] + '"></button>'; }).join('') + '</div><button class="go" data-go>Build my website ✨</button>';
     h += '<div class="row"><button class="back" data-back>← Back</button><span></span></div></div>';
     card.innerHTML = h;
@@ -147,7 +148,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     save(); step++;
     while (step < Q.length && !shown(Q[step])) step++;
     if (step < Q.length) return ask();
-    var q = { ai: 1, t: a.type, what: a.type === 'other' ? a.what : '', more: a.more, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };
+    var q = { ai: 1, t: a.type, what: a.type === 'other' ? a.what : '', more: a.more, links: a.links, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };
     if (window.wcHit) window.wcHit('build_done');
     location.href = '/sample?' + Object.keys(q).filter(function (k) { return q[k]; }).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
   }
