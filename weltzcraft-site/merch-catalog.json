@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-22T16:34:04.229Z",
+ "updated": "2026-11-22T18:12:08.648Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -446,7 +446,7 @@
   },
   {
    "key": "woodstwo",
-   "name": "Northwoods Two-Tone Cap",
+   "name": "Northwoods Washed Cap",
    "type": "hat",
    "price": 30,
    "sizes": null,
@@ -1418,12 +1418,12 @@
    "angles": 4
   },
   "wild-stone-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 32,
    "variants": [
     {
      "size": "One size",
-     "id": 5658342762,
+     "id": 5659443882,
      "price": 32
     }
    ],
@@ -1490,12 +1490,12 @@
    "angles": 4
   },
   "wild-khaki-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 32,
    "variants": [
     {
      "size": "One size",
-     "id": 5658343011,
+     "id": 5659444024,
      "price": 32
     }
    ],
@@ -1562,12 +1562,12 @@
    "angles": 4
   },
   "wild-white-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 32,
    "variants": [
     {
      "size": "One size",
-     "id": 5658344226,
+     "id": 5659444042,
      "price": 32
     }
    ],
@@ -1634,12 +1634,12 @@
    "angles": 4
   },
   "wild-spruce-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 32,
    "variants": [
     {
      "size": "One size",
-     "id": 5658344636,
+     "id": 5659444110,
      "price": 32
     }
    ],
@@ -1706,12 +1706,12 @@
    "angles": 4
   },
   "wild-black-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 32,
    "variants": [
     {
      "size": "One size",
-     "id": 5658346162,
+     "id": 5659444225,
      "price": 32
     }
    ],
@@ -1742,12 +1742,12 @@
    "angles": 4
   },
   "wild-black-a4": {
-   "hash": "9fe43cd0d232",
+   "hash": "3c63b519fce1",
    "price": 32,
    "variants": [
     {
      "size": "One size",
-     "id": 5658346165,
+     "id": 5659444265,
      "price": 32
     }
    ],
@@ -2074,197 +2074,197 @@
    "angles": 4
   },
   "ringer-naturalmidnightnavy-v5": {
-   "hash": "0597622a31b3",
+   "hash": "bfd47ef276e0",
    "price": 28,
    "variants": [
     {
      "size": "S",
-     "id": 5657305295,
+     "id": 5659444336,
      "price": 28
     },
     {
      "size": "M",
-     "id": 5657305296,
+     "id": 5659444337,
      "price": 28
     },
     {
      "size": "L",
-     "id": 5657305297,
+     "id": 5659444338,
      "price": 28
     },
     {
      "size": "XL",
-     "id": 5657305298,
+     "id": 5659444339,
      "price": 28
     },
     {
      "size": "2XL",
-     "id": 5657305299,
+     "id": 5659444340,
      "price": 30
     },
     {
      "size": "3XL",
-     "id": 5657305300,
+     "id": 5659444341,
      "price": 31
     }
    ],
    "angles": 4
   },
   "ringer-naturalforestgreen-v5": {
-   "hash": "d680c8e5e5d9",
+   "hash": "62efc7f9f2dd",
    "price": 28,
    "variants": [
     {
      "size": "S",
-     "id": 5657305309,
+     "id": 5659444411,
      "price": 28
     },
     {
      "size": "M",
-     "id": 5657305310,
+     "id": 5659444415,
      "price": 28
     },
     {
      "size": "L",
-     "id": 5657305311,
+     "id": 5659444416,
      "price": 28
     },
     {
      "size": "XL",
-     "id": 5657305312,
+     "id": 5659444417,
      "price": 28
     },
     {
      "size": "2XL",
-     "id": 5657305313,
+     "id": 5659444418,
      "price": 30
     },
     {
      "size": "3XL",
-     "id": 5657305314,
+     "id": 5659444420,
      "price": 31
     }
    ],
    "angles": 4
   },
   "ringer-naturalblack-v5": {
-   "hash": "9b46b8367adb",
+   "hash": "7ec35a58a808",
    "price": 28,
    "variants": [
     {
      "size": "S",
-     "id": 5657305322,
+     "id": 5659444482,
      "price": 28
     },
     {
      "size": "M",
-     "id": 5657305323,
+     "id": 5659444483,
      "price": 28
     },
     {
      "size": "L",
-     "id": 5657305324,
+     "id": 5659444484,
      "price": 28
     },
     {
      "size": "XL",
-     "id": 5657305325,
+     "id": 5659444485,
      "price": 28
     },
     {
      "size": "2XL",
-     "id": 5657305326,
+     "id": 5659444486,
      "price": 30
     },
     {
      "size": "3XL",
-     "id": 5657305327,
+     "id": 5659444487,
      "price": 31
     }
    ],
    "angles": 4
   },
   "ringer-whiteblack-v5": {
-   "hash": "9b46b8367adb",
+   "hash": "7ec35a58a808",
    "price": 28,
    "variants": [
     {
      "size": "S",
-     "id": 5657305333,
+     "id": 5659444516,
      "price": 28
     },
     {
      "size": "M",
-     "id": 5657305334,
+     "id": 5659444517,
      "price": 28
     },
     {
      "size": "L",
-     "id": 5657305335,
+     "id": 5659444519,
      "price": 28
     },
     {
      "size": "XL",
-     "id": 5657305336,
+     "id": 5659444520,
      "price": 28
     },
     {
      "size": "2XL",
-     "id": 5657305337,
+     "id": 5659444522,
      "price": 30
     },
     {
      "size": "3XL",
-     "id": 5657305339,
+     "id": 5659444523,
      "price": 31
     }
    ],
    "angles": 4
   },
   "ringer-heathergrayblack-v5": {
-   "hash": "9b46b8367adb",
+   "hash": "7ec35a58a808",
    "price": 28,
    "variants": [
     {
      "size": "S",
-     "id": 5657305345,
+     "id": 5659446280,
      "price": 28
     },
     {
      "size": "M",
-     "id": 5657305346,
+     "id": 5659446281,
      "price": 28
     },
     {
      "size": "L",
-     "id": 5657305347,
+     "id": 5659446282,
      "price": 28
     },
     {
      "size": "XL",
-     "id": 5657305348,
+     "id": 5659446283,
      "price": 28
     },
     {
      "size": "2XL",
-     "id": 5657305349,
+     "id": 5659446285,
      "price": 30
     },
     {
      "size": "3XL",
-     "id": 5657305350,
+     "id": 5659446286,
      "price": 31
     }
    ],
    "angles": 4
   },
   "wildcord-brown-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 34,
    "variants": [
     {
      "size": "One size",
-     "id": 5658384604,
+     "id": 5659446354,
      "price": 34
     }
    ],
@@ -2331,12 +2331,12 @@
    "angles": 4
   },
   "wildcord-olive-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 34,
    "variants": [
     {
      "size": "One size",
-     "id": 5658384812,
+     "id": 5659446399,
      "price": 34
     }
    ],
@@ -2403,12 +2403,12 @@
    "angles": 4
   },
   "wildcord-navy-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 34,
    "variants": [
     {
      "size": "One size",
-     "id": 5658385822,
+     "id": 5659446490,
      "price": 34
     }
    ],
@@ -2439,12 +2439,12 @@
    "angles": 4
   },
   "wildcord-navy-a4": {
-   "hash": "9fe43cd0d232",
+   "hash": "3c63b519fce1",
    "price": 34,
    "variants": [
     {
      "size": "One size",
-     "id": 5658385978,
+     "id": 5659446554,
      "price": 34
     }
    ],
@@ -2475,12 +2475,12 @@
    "angles": 4
   },
   "wildcord-burgundy-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 34,
    "variants": [
     {
      "size": "One size",
-     "id": 5658386036,
+     "id": 5659446582,
      "price": 34
     }
    ],
@@ -2547,12 +2547,12 @@
    "angles": 4
   },
   "wildcord-black-a1": {
-   "hash": "983cd7968691",
+   "hash": "44bd45d23436",
    "price": 34,
    "variants": [
     {
      "size": "One size",
-     "id": 5658386961,
+     "id": 5659446676,
      "price": 34
     }
    ],
@@ -2583,12 +2583,12 @@
    "angles": 4
   },
   "wildcord-black-a4": {
-   "hash": "9fe43cd0d232",
+   "hash": "3c63b519fce1",
    "price": 34,
    "variants": [
     {
      "size": "One size",
-     "id": 5658387226,
+     "id": 5659446739,
      "price": 34
     }
    ],
@@ -2643,12 +2643,12 @@
    "angles": 4
   },
   "woods-khaki-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "dab7a67998d4",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658039955,
+     "id": 5659446787,
      "price": 28
     }
    ],
@@ -2715,12 +2715,12 @@
    "angles": 4
   },
   "woods-spruce-h3": {
-   "hash": "2d26f09f5ef9",
+   "hash": "0b7cba896107",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5658041161,
+     "id": 5659446839,
      "price": 28
     }
    ],
@@ -3217,296 +3217,296 @@
    "angles": 4
   },
   "smalltee-black-m3": {
-   "hash": "8101e365495c",
+   "hash": "7037fe6bb531",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385042,
+     "id": 5659448529,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385043,
+     "id": 5659448530,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385044,
+     "id": 5659448531,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385045,
+     "id": 5659448532,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385046,
+     "id": 5659448533,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385048,
+     "id": 5659448534,
      "price": 27
     }
    ],
    "angles": 4
   },
   "smalltee-white-m3": {
-   "hash": "f16e0a4dce70",
+   "hash": "0e4e577f9e10",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385097,
+     "id": 5659448566,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385098,
+     "id": 5659448570,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385099,
+     "id": 5659448573,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385101,
+     "id": 5659448578,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385102,
+     "id": 5659448581,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385103,
+     "id": 5659448584,
      "price": 27
     }
    ],
    "angles": 4
   },
   "smalltee-heatherdust-m3": {
-   "hash": "f16e0a4dce70",
+   "hash": "0e4e577f9e10",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385118,
+     "id": 5659448608,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385119,
+     "id": 5659448609,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385120,
+     "id": 5659448610,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385121,
+     "id": 5659448611,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385127,
+     "id": 5659448612,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385138,
+     "id": 5659448613,
      "price": 27
     }
    ],
    "angles": 4
   },
   "smalltee-navy-m3": {
-   "hash": "8101e365495c",
+   "hash": "7037fe6bb531",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385175,
+     "id": 5659448693,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385177,
+     "id": 5659448694,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385178,
+     "id": 5659448695,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385180,
+     "id": 5659448697,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385181,
+     "id": 5659448700,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385183,
+     "id": 5659448701,
      "price": 27
     }
    ],
    "angles": 4
   },
   "smalltee-natural-m3": {
-   "hash": "f16e0a4dce70",
+   "hash": "0e4e577f9e10",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385207,
+     "id": 5659448784,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385208,
+     "id": 5659448785,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385209,
+     "id": 5659448786,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385210,
+     "id": 5659448787,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385211,
+     "id": 5659448788,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385213,
+     "id": 5659448789,
      "price": 27
     }
    ],
    "angles": 4
   },
   "smalltee-forest-m3": {
-   "hash": "8101e365495c",
+   "hash": "7037fe6bb531",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385257,
+     "id": 5659448865,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385259,
+     "id": 5659448866,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385261,
+     "id": 5659448867,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385269,
+     "id": 5659448869,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385270,
+     "id": 5659448870,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385272,
+     "id": 5659448872,
      "price": 27
     }
    ],
    "angles": 4
   },
   "smalltee-maroon-m3": {
-   "hash": "8101e365495c",
+   "hash": "7037fe6bb531",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385300,
+     "id": 5659448939,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385301,
+     "id": 5659448942,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385302,
+     "id": 5659448944,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385305,
+     "id": 5659448945,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385307,
+     "id": 5659448947,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385308,
+     "id": 5659448950,
      "price": 27
     }
    ],
    "angles": 4
   },
   "smalltee-athleticheather-m3": {
-   "hash": "f16e0a4dce70",
+   "hash": "0e4e577f9e10",
    "price": 24,
    "variants": [
     {
      "size": "S",
-     "id": 5657385325,
+     "id": 5659449059,
      "price": 24
     },
     {
      "size": "M",
-     "id": 5657385326,
+     "id": 5659449061,
      "price": 24
     },
     {
      "size": "L",
-     "id": 5657385327,
+     "id": 5659449062,
      "price": 24
     },
     {
      "size": "XL",
-     "id": 5657385328,
+     "id": 5659449063,
      "price": 24
     },
     {
      "size": "2XL",
-     "id": 5657385329,
+     "id": 5659449065,
      "price": 26
     },
     {
      "size": "3XL",
-     "id": 5657385330,
+     "id": 5659449066,
      "price": 27
     }
    ],
