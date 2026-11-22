@@ -118,6 +118,7 @@
       '<div class="wz"><div class="wrap"><span>✨ Sample site ' + (copy ? 'written and ' : '') + 'built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span>' +
         (slug ? '<button class="share" type="button" id="share">🔗 Share link</button> ' : '') + '<a class="back" href="/build">↺ Try another</a> ' +
         (slug ? '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a>' : '<a href="' + brief + '" data-track="sample_mine">Make it mine</a>') + '</span></div></div>') +
+      (t.notice ? '<div class="notice"><div class="wrap">' + esc(t.notice) + '</div></div>' : '') +
       '<header class="hd"><div class="wrap"><a class="logo" href="#top"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
         navs.map(function (n) { return '<a href="#' + n[0] + '">' + esc(n[1]) + '</a>'; }).join('') + '</nav><a class="btn" href="' + go + '">' + esc(cta) + '</a></div></header>' +
       '<section class="hero" id="top">' + (img(0, name) || (hero === 'split' ? '<div class="htile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>' : '')) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(t.eyebrow || (town + '\'s favorite ' + t.noun)) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +

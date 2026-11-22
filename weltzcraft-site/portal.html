@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Your website portal · Weltzcraft Studios</title>
+<meta name="description" content="Change your Weltzcraft website yourself, or ask us for a change.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f0d0a;--card:#1a1713;--line:rgba(255,240,215,.12);--ink:#f6efe2;--mut:#b4aa98;--em:#ff8a3c;--em2:#ffc061;--ok:#5fd38d;--bad:#ff8f7a;--fd:"Bricolage Grotesque",system-ui,sans-serif;--fb:"Inter",system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,rgba(255,138,60,.18),transparent 60%),var(--bg);color:var(--ink);font:16px/1.55 var(--fb);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 16px;max-width:760px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font:800 18px var(--fd)}
+.brand i{width:36px;height:36px;border-radius:10px;background:#1b1a17;border:1px solid rgba(242,163,58,.35);color:#f2a33a;display:grid;place-items:center;font:900 20px var(--fd);font-style:normal}
+.top button.out{background:none;color:var(--mut);padding:6px 0;font-weight:500;font-size:14.5px}
+main{max-width:760px;margin:0 auto;padding:8px 16px 140px}
+h1{font:800 clamp(28px,5.4vw,42px)/1.08 var(--fd);margin:8px 0 8px;letter-spacing:-.01em;overflow-wrap:anywhere}
+h2{font:800 21px/1.2 var(--fd);margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 20px;font-size:16.5px}
+.sub a{color:var(--em2)}
+.pill{display:inline-block;font:700 12.5px var(--fb);padding:4px 10px;border-radius:999px;background:rgba(95,211,141,.14);color:var(--ok);margin-right:6px;vertical-align:2px}
+.pill.w{background:rgba(255,192,97,.14);color:var(--em2)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;margin:0 0 16px}
+.card .hint{color:var(--mut);font-size:14.5px;margin:0 0 14px}
+label{display:block;font-weight:600;font-size:14px;margin:14px 0 6px}
+label small{color:var(--mut);font-weight:500}
+input,textarea,select{font:500 16px var(--fb);padding:12px 13px;border-radius:12px;border:1.5px solid var(--line);background:rgba(255,240,215,.04);color:var(--ink);width:100%;min-width:0}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%;background-size:5px 5px;background-repeat:no-repeat;padding-right:34px}
+select option{background:#1a1713;color:var(--ink)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--em)}
+input::placeholder,textarea::placeholder{color:#7d7464}
+input[type=color]{padding:4px;height:48px}
+textarea{resize:vertical;min-height:92px;line-height:1.45}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px}
+button{font:700 15px var(--fb);cursor:pointer;border:0;border-radius:12px;padding:12px 16px;background:#2a2620;color:var(--ink)}
+button.go{padding:14px 20px;font:800 16.5px var(--fd);background:linear-gradient(135deg,var(--em),var(--em2));color:#221502;border-radius:14px}
+button.wide{width:100%}
+button:disabled{opacity:.55;cursor:default}
+button.x{padding:0;width:40px;height:40px;flex:none;background:rgba(255,143,122,.1);color:var(--bad);font-size:18px}
+.msg{font-size:14.5px;margin:12px 0 0;min-height:1em}
+.msg.bad{color:var(--bad)}.msg.good{color:var(--ok)}
+details{border-top:1px solid var(--line)}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;list-style:none;padding:15px 0;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary small{color:var(--mut);font-weight:500;font-size:13.5px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
+summary::after{content:"+";color:var(--em);font:800 22px var(--fd);flex:none}
+details[open] summary::after{content:"–"}
+details[open] summary small{display:none}
+details .in{padding:0 0 18px}
+.it{display:grid;grid-template-columns:1fr 92px 40px;gap:8px;margin:0 0 6px}
+.it input.d{grid-column:1/3;font-size:14.5px;padding:10px 13px}
+.it.qa{grid-template-columns:1fr 40px}
+.it.qa textarea{grid-column:1/2;min-height:64px;font-size:14.5px}
+.itw{padding:0 0 10px;margin:0 0 10px;border-bottom:1px dashed var(--line)}
+.chk{display:flex;flex-wrap:wrap;gap:8px}
+.chk label{margin:0;display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1.5px solid var(--line);border-radius:999px;font-weight:600;cursor:pointer;user-select:none}
+.chk input{width:auto;accent-color:var(--em);margin:0}
+.chk label:has(input:checked){border-color:var(--em);background:rgba(255,138,60,.12)}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.sw span{font-weight:600}
+.sw small{display:block;color:var(--mut);font-weight:500;font-size:13.5px}
+.sw input{width:22px;height:22px;accent-color:var(--em);flex:none}
+.prop{background:rgba(255,138,60,.08);border:1px solid rgba(255,138,60,.35);border-radius:16px;padding:16px;margin:14px 0 0}
+.prop ul{margin:8px 0 14px;padding-left:20px}
+.prop li{margin:4px 0;overflow-wrap:anywhere}
+.prop li s{color:var(--mut)}
+.prop .btns{display:flex;gap:8px;flex-wrap:wrap}
+.req{border-top:1px solid var(--line);padding:12px 0;font-size:15px;overflow-wrap:anywhere}
+.req small{color:var(--mut);display:block}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(20,17,13,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:none;z-index:5}
+.bar.on{display:block}
+.bar div{max-width:728px;margin:0 auto;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.bar span{color:var(--mut);font-size:14.5px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#f6efe2;color:#1a1713;font-weight:600;padding:12px 18px;border-radius:14px;box-shadow:0 18px 40px -12px #000;z-index:6;display:none;max-width:calc(100vw - 32px);font-size:15px}
+.toast.on{display:flex;gap:12px;align-items:center}
+.toast button{background:#1a1713;color:#f6efe2;padding:7px 12px;font-size:14px}
+.demo{background:rgba(255,192,97,.12);border:1px solid rgba(255,192,97,.35);color:var(--em2);border-radius:14px;padding:12px 16px;margin:0 0 16px;font-size:15px}
+[hidden]{display:none!important}
+@media (max-width:520px){.row2,.row3{grid-template-columns:1fr}.card{padding:18px;border-radius:18px}.it{grid-template-columns:1fr 78px 40px}}
+</style>
+</head>
+<body>
+<div class="top"><a class="brand" href="/"><i>W</i><span>Weltzcraft Studios</span></a><button class="out" id="out" hidden>Sign out</button></div>
+<main>
+  <section id="signin" hidden>
+    <h1>Your website portal</h1>
+    <p class="sub">Change your hours, prices and words yourself, or ask us for a change. No password needed.</p>
+    <div class="card">
+      <h2>Sign in</h2>
+      <p class="hint">Type the email you used when you bought your site. We'll send you a sign-in link.</p>
+      <form id="linkform"><label for="em">Email</label><input id="em" type="email" autocomplete="email" required placeholder="you@yourbusiness.com">
+      <p style="margin:16px 0 0"><button class="go wide" id="linkbtn">Email me a sign-in link</button></p><p class="msg" id="linkmsg"></p></form>
+    </div>
+    <div class="card"><h2>Just looking?</h2><p class="hint">Try the portal with a pretend bakery. Nothing is saved.</p><a href="/portal?demo=1"><button type="button">Try the demo</button></a></div>
+  </section>
+
+  <section id="app" hidden>
+    <div class="demo" id="demonote" hidden>This is a demo with a pretend bakery. Try anything. Nothing is saved or sent.</div>
+    <h1 id="nm"></h1>
+    <p class="sub"><span class="pill" id="st"></span><span class="pill w" id="cp" hidden>Care plan</span> <a id="dm" target="_blank" rel="noopener"></a></p>
+
+    <div class="card">
+      <h2>Tell us what to change</h2>
+      <p class="hint">Say it like you'd text it. We'll show you the change before anything goes on your site.</p>
+      <textarea id="asktext" maxlength="1200" placeholder="Example: Change Saturday hours to 9 to 2, add a pumpkin pie for $18, and put up a banner that we're closed Thanksgiving."></textarea>
+      <p style="margin:12px 0 0"><button class="go" id="askbtn">Make the change</button></p>
+      <p class="msg" id="askmsg"></p>
+      <div class="prop" id="prop" hidden></div>
+    </div>
+
+    <div class="card" id="edit">
+      <h2>Quick edits</h2>
+      <p class="hint">Change anything here and tap Save. Your site updates within a couple of minutes.</p>
+      <details><summary>Notice banner <small id="s-notice"></small></summary><div class="in">
+        <label for="f-notice">A short line across the top of your site <small>(holiday hours, a special, "now hiring"). Leave empty for none.</small></label><input id="f-notice" maxlength="160" placeholder="Closed Thanksgiving Day. Back Friday at 7am.">
+      </div></details>
+      <details><summary>Headline and about <small id="s-tag"></small></summary><div class="in">
+        <label for="f-tag">Headline</label><input id="f-tag" maxlength="90">
+        <label for="f-about">About your business</label><textarea id="f-about" maxlength="700" rows="5"></textarea>
+        <label for="f-cta">Main button words</label><input id="f-cta" maxlength="24">
+      </div></details>
+      <details><summary>Contact and hours <small id="s-contact"></small></summary><div class="in">
+        <div class="row2"><div><label for="f-phone">Phone</label><input id="f-phone" maxlength="30" inputmode="tel"></div><div><label for="f-email">Email</label><input id="f-email" maxlength="80" type="email"></div></div>
+        <label for="f-address">Address</label><input id="f-address" maxlength="120">
+        <label for="f-hours">Hours</label><input id="f-hours" maxlength="200" placeholder="Mon to Fri 8am to 5pm, Sat 9am to 1pm">
+      </div></details>
+      <details><summary><span id="l-items">Menu and prices</span> <small id="s-items"></small></summary><div class="in">
+        <label for="f-listTitle">Section title</label><input id="f-listTitle" maxlength="30">
+        <label>Items <small>(name, price, short description)</small></label><div id="items"></div>
+        <button type="button" id="additem">+ Add an item</button>
+      </div></details>
+      <details><summary>Booking, ordering and forms <small id="s-feat"></small></summary><div class="in">
+        <div class="sw"><span>Online booking<small>Customers pick a time; you confirm with one tap from your email.</small></span><input type="checkbox" id="f-book"></div>
+        <div id="bookopts">
+          <label>Days you take bookings</label><div class="chk" id="days"></div>
+          <div class="row3"><div><label for="f-open">From</label><input id="f-open" type="time" step="900"></div><div><label for="f-close">Until</label><input id="f-close" type="time" step="900"></div>
+          <div><label for="f-len">Each booking</label><select id="f-len"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select></div></div>
+        </div>
+        <div class="sw"><span>Order ahead<small>Customers pick items from your list and send the order. They pay at pickup.</small></span><input type="checkbox" id="f-order"></div>
+        <label for="f-form">Message form</label><select id="f-form"><option value="contact">Contact form</option><option value="quote">Quote request form</option><option value="none">No form</option></select>
+      </div></details>
+      <details><summary>Links <small id="s-links"></small></summary><div class="in" id="links"></div></details>
+      <details><summary>Questions and answers <small id="s-faq"></small></summary><div class="in"><div id="faq"></div><button type="button" id="addfaq">+ Add a question</button></div></details>
+      <details><summary>Look <small id="s-look"></small></summary><div class="in">
+        <div class="row2"><div><label for="f-c">Main color</label><input id="f-c" type="color"></div>
+        <div><label for="f-vibe">Style</label><select id="f-vibe"><option value="warm">Warm</option><option value="clean">Clean</option><option value="bold">Bold</option><option value="classic">Classic</option><option value="playful">Playful</option><option value="rugged">Rugged</option></select></div></div>
+        <div class="row2"><div><label for="f-hero">Top of the page</label><select id="f-hero"><option value="photo">Big photo</option><option value="split">Photo beside words</option><option value="center">Centered, no photo</option></select></div>
+        <div><label for="f-items">List style</label><select id="f-items"><option value="cards">Cards</option><option value="menu">Menu lines</option></select></div></div>
+        <label>Sections on your site</label><div class="chk" id="secs"></div>
+      </div></details>
+    </div>
+
+    <div class="card">
+      <h2>Ask Weltzcraft for a change</h2>
+      <p class="hint" id="reqhint"></p>
+      <textarea id="reqtext" maxlength="2000" placeholder="Example: Swap the top photo for one of our new storefront, and add a page about catering."></textarea>
+      <p style="margin:12px 0 0"><button id="reqbtn">Send request</button></p>
+      <p class="msg" id="reqmsg"></p>
+      <div id="reqs"></div>
+    </div>
+
+    <div class="card" id="billcard" hidden>
+      <h2>Billing</h2>
+      <p class="hint">See receipts, update your card, or manage your care plan.</p>
+      <button id="billbtn">Open billing</button><p class="msg" id="billmsg"></p>
+    </div>
+  </section>
+  <p class="sub" id="loading">Loading…</p>
+</main>
+<div class="bar" id="bar"><div><span>You have changes that aren't saved.</span><span><button id="discard" style="margin-right:6px">Discard</button><button class="go" id="save">Save</button></span></div></div>
+<div class="toast" id="toast"><span id="toastmsg"></span><button id="undo" hidden>Undo</button></div>
+<script src="/hit.js?v=2" defer></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var track = function (e) { try { navigator.sendBeacon('/api/hit/' + e); } catch (x) {} };
+  var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var SECS = [['list', 'Menu / services'], ['pics', 'Photo gallery'], ['map', 'Map'], ['faq', 'Questions'], ['steps', 'How it works'], ['areas', 'Areas served']];
+  var LINKS = [['order', 'Your own online ordering page'], ['doordash', 'DoorDash'], ['ubereats', 'Uber Eats'], ['grubhub', 'Grubhub'], ['facebook', 'Facebook'], ['instagram', 'Instagram'], ['yelp', 'Yelp'], ['tiktok', 'TikTok']];
+  var TEXT = ['notice', 'tag', 'about', 'cta', 'phone', 'email', 'address', 'hours', 'listTitle'];
+  var auth = null, S = null, saved = '';
+
+  // Sign-in details arrive in the link (?o&x&k), are kept on this device, and are taken out of the address bar.
+  var q = new URLSearchParams(location.search);
+  if (q.get('demo')) auth = { o: 'demo' };
+  else if (q.get('o') && q.get('k')) {
+    auth = { o: q.get('o'), x: Number(q.get('x')), k: q.get('k') };
+    try { localStorage.setItem('wcportal', JSON.stringify(auth)); } catch (e) {}
+    history.replaceState(null, '', '/portal');
+  } else { try { auth = JSON.parse(localStorage.getItem('wcportal') || 'null'); } catch (e) {} }
+
+  function api(act, body) {
+    return fetch('/api/portal/' + act, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({}, auth || {}, body || {})) })
+      .then(function (r) { return r.json().then(function (j) { j.status = r.status; return j; }); })
+      .catch(function () { return { error: 'No connection. Check your internet and try again.', status: 0 }; });
+  }
+  function msg(id, text, good) { var m = $(id); m.textContent = text || ''; m.className = 'msg ' + (good ? 'good' : 'bad'); }
+  var toastT;
+  function toast(text, undo) { $('toastmsg').textContent = text; $('undo').hidden = !undo; $('toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { $('toast').classList.remove('on'); }, undo ? 9000 : 4000); }
+  function signedOut() { auth = null; try { localStorage.removeItem('wcportal'); } catch (e) {} $('app').hidden = true; $('loading').hidden = true; $('signin').hidden = false; $('out').hidden = true; $('bar').classList.remove('on'); }
+
+  function itemRow(r) {
+    var d = document.createElement('div'); d.className = 'itw';
+    d.innerHTML = '<div class="it"><input class="n" maxlength="50" placeholder="Name" value="' + esc(r[0]) + '"><input class="p" maxlength="20" placeholder="$0" value="' + esc(r[1]) + '"><button type="button" class="x" aria-label="Remove">×</button><input class="d" maxlength="140" placeholder="Short description" value="' + esc(r[2]) + '"></div>';
+    return d;
+  }
+  function faqRow(r) {
+    var d = document.createElement('div'); d.className = 'itw';
+    d.innerHTML = '<div class="it qa"><input class="n" maxlength="120" placeholder="Question" value="' + esc(r[0]) + '"><button type="button" class="x" aria-label="Remove">×</button><textarea class="d" maxlength="400" placeholder="Answer">' + esc(r[1]) + '</textarea></div>';
+    return d;
+  }
+  /** Put the site's current values into the form. */
+  function fill(v) {
+    TEXT.forEach(function (k) { $('f-' + k).value = v[k] || ''; });
+    $('items').innerHTML = ''; (v.items || []).forEach(function (r) { $('items').appendChild(itemRow(r)); });
+    $('faq').innerHTML = ''; (v.faq || []).forEach(function (r) { $('faq').appendChild(faqRow(r)); });
+    var f = v.f || {}, d = v.d || {};
+    $('f-book').checked = !!f.book; $('f-order').checked = !!f.order; $('f-form').value = f.form || 'contact';
+    $('f-open').value = f.open || '09:00'; $('f-close').value = f.close || '17:00'; $('f-len').value = String(f.len || 30);
+    var days = f.days || [1, 2, 3, 4, 5];
+    $('days').innerHTML = DAYS.map(function (n, i) { return '<label><input type="checkbox" value="' + i + '"' + (days.indexOf(i) > -1 ? ' checked' : '') + '>' + n + '</label>'; }).join('');
+    $('links').innerHTML = LINKS.map(function (l) { return '<label for="l-' + l[0] + '">' + l[1] + '</label><input id="l-' + l[0] + '" maxlength="300" inputmode="url" placeholder="Paste the link" value="' + esc((v.links || {})[l[0]] || '') + '">'; }).join('');
+    $('f-c').value = '#' + (v.c || 'e0662a'); $('f-vibe').value = d.vibe || 'warm'; $('f-hero').value = d.hero || 'photo'; $('f-items').value = d.items || 'cards';
+    var on = (v.s || '').split(',');
+    $('secs').innerHTML = SECS.map(function (s) { return '<label><input type="checkbox" value="' + s[0] + '"' + (on.indexOf(s[0]) > -1 ? ' checked' : '') + '>' + s[1] + '</label>'; }).join('');
+    $('bookopts').hidden = !f.book;
+    $('l-items').textContent = (v.listTitle || 'Menu') + ' and prices';
+    $('s-notice').textContent = v.notice || 'None'; $('s-tag').textContent = v.tag; $('s-contact').textContent = [v.phone, v.hours].filter(Boolean).join(' · ');
+    $('s-items').textContent = (v.items || []).length + ' items'; $('s-faq').textContent = (v.faq || []).length + ' questions';
+    $('s-feat').textContent = [f.book ? 'Booking on' : '', f.order ? 'Ordering on' : '', f.form && f.form !== 'none' ? 'Form on' : ''].filter(Boolean).join(' · ') || 'All off';
+    $('s-links').textContent = Object.keys(v.links || {}).length + ' links'; $('s-look').textContent = d.vibe || '';
+  }
+  /** Read the form back as one set of changes. */
+  function read() {
+    var p = {};
+    TEXT.forEach(function (k) { p[k] = $('f-' + k).value.trim(); });
+    p.items = [].map.call($('items').querySelectorAll('.it'), function (r) { return [r.querySelector('.n').value.trim(), r.querySelector('.p').value.trim(), r.querySelector('.d').value.trim()]; }).filter(function (r) { return r[0]; });
+    p.faq = [].map.call($('faq').querySelectorAll('.it'), function (r) { return [r.querySelector('.n').value.trim(), r.querySelector('.d').value.trim()]; }).filter(function (r) { return r[0] && r[1]; });
+    p.f = { book: $('f-book').checked ? 1 : 0, order: $('f-order').checked ? 1 : 0, form: $('f-form').value, len: Number($('f-len').value), open: $('f-open').value, close: $('f-close').value,
+      days: [].map.call($('days').querySelectorAll('input:checked'), function (i) { return Number(i.value); }) };
+    p.links = {}; LINKS.forEach(function (l) { var v = $('l-' + l[0]).value.trim(); if (v) p.links[l[0]] = v; });
+    p.c = $('f-c').value.replace('#', ''); p.d = { vibe: $('f-vibe').value, hero: $('f-hero').value, items: $('f-items').value };
+    // Sections this page doesn't list (like reviews) stay as they are.
+    var known = SECS.map(function (s) { return s[0]; });
+    p.s = (S.view.s || '').split(',').filter(function (x) { return x && known.indexOf(x) < 0; }).concat([].map.call($('secs').querySelectorAll('input:checked'), function (i) { return i.value; })).join(',');
+    return p;
+  }
+  function dirty() { $('bar').classList.toggle('on', !!S && JSON.stringify(read()) !== saved); $('bookopts').hidden = !$('f-book').checked; }
+  function reqList(list) {
+    $('reqs').innerHTML = (list || []).map(function (r) { return '<div class="req"><span class="pill' + (r.status === 'done' ? '' : ' w') + '">' + (r.status === 'done' ? 'Done' : 'Open') + '</span>' + esc(r.text) + (r.note ? '<small>Weltzcraft: ' + esc(r.note) + '</small>' : '') + '<small>' + new Date(r.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + '</small></div>'; }).join('');
+  }
+  function show(j) {
+    S = j;
+    $('loading').hidden = true; $('signin').hidden = true; $('app').hidden = false; $('out').hidden = !!j.demo; $('demonote').hidden = !j.demo;
+    $('nm').textContent = j.name; $('st').textContent = j.status === 'live' ? 'Live' : j.step; $('st').className = 'pill' + (j.status === 'live' ? '' : ' w'); $('cp').hidden = !j.care;
+    $('dm').textContent = j.domain; if (!j.demo) $('dm').href = 'https://' + j.domain; else $('dm').removeAttribute('href');
+    $('reqhint').textContent = j.care ? 'For anything you can\'t do above: new photos, a new section, something custom. It\'s included in your care plan, usually done within 2 business days.'
+      : 'For anything you can\'t do above: new photos, a new section, something custom. We reply within 2 business days, and if it\'s more than a quick fix we send a price first.';
+    $('billcard').hidden = !j.billing;
+    fill(j.view); saved = JSON.stringify(read()); dirty(); reqList(j.requests);
+  }
+  function save(patch, ai) {
+    $('save').disabled = true;
+    return api('save', { patch: patch, ai: !!ai }).then(function (j) {
+      $('save').disabled = false;
+      if (j.status === 401) return signedOut();
+      if (j.error) { toast(j.error); return false; }
+      show(j); track('portal_save');
+      toast(j.demo ? 'Demo: that would be saved to your site.' : (j.changes || []).length ? 'Saved. Your site updates within 2 minutes.' : 'Nothing changed.', j.canUndo && (j.changes || []).length);
+      return true;
+    });
+  }
+
+  $('edit').addEventListener('input', dirty); $('edit').addEventListener('change', dirty);
+  $('edit').addEventListener('click', function (e) { if (e.target.classList.contains('x')) { e.target.closest('.itw').remove(); dirty(); } });
+  $('additem').onclick = function () { var r = itemRow(['', '', '']); $('items').appendChild(r); r.querySelector('input').focus(); };
+  $('addfaq').onclick = function () { var r = faqRow(['', '']); $('faq').appendChild(r); r.querySelector('input').focus(); };
+  $('save').onclick = function () { save(read()); };
+  $('discard').onclick = function () { fill(S.view); dirty(); };
+  $('undo').onclick = function () { api('undo').then(function (j) { if (j.error) return toast(j.error); show(j); toast('Undone. Your site goes back within 2 minutes.'); }); };
+  $('out').onclick = signedOut;
+  window.addEventListener('beforeunload', function (e) { if ($('bar').classList.contains('on')) { e.preventDefault(); e.returnValue = ''; } });
+
+  $('askbtn').onclick = function () {
+    var text = $('asktext').value.trim();
+    if (text.length < 4) return msg('askmsg', 'Type what you\'d like changed first.');
+    if ($('bar').classList.contains('on')) return msg('askmsg', 'Save or discard your quick edits first.');
+    $('askbtn').disabled = true; $('prop').hidden = true; msg('askmsg', 'Working on it…', true); track('portal_ask');
+    api('ask', { text: text }).then(function (j) {
+      $('askbtn').disabled = false;
+      if (j.status === 401) return signedOut();
+      if (j.error) return msg('askmsg', j.error);
+      msg('askmsg', '');
+      var p = $('prop'); p.hidden = false;
+      if (j.can) {
+        p.innerHTML = '<b>' + esc(j.reply || 'Here\'s what will change:') + '</b><ul>' + j.changes.map(function (c) { return '<li><b>' + esc(c.label) + ':</b> ' + (c.from ? '<s>' + esc(c.from) + '</s> → ' : '') + esc(c.to) + '</li>'; }).join('') + '</ul><div class="btns"><button class="go" id="apply">Put it on my site</button><button id="nope">Never mind</button></div>';
+        $('apply').onclick = function () { $('apply').disabled = true; save(j.patch, true).then(function (ok) { if (ok) { p.hidden = true; $('asktext').value = ''; } else $('apply').disabled = false; }); };
+        $('nope').onclick = function () { p.hidden = true; };
+      } else {
+        p.innerHTML = '<b>' + esc(j.reply || 'That one needs a person.') + '</b><p style="margin:8px 0 14px;color:var(--mut)">Want us to do it for you?</p><div class="btns"><button class="go" id="handoff">Send it to Weltzcraft</button><button id="nope">Never mind</button></div>';
+        $('handoff').onclick = function () { $('reqtext').value = text; p.hidden = true; $('reqbtn').click(); $('reqtext').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+        $('nope').onclick = function () { p.hidden = true; };
+      }
+    });
+  };
+  $('reqbtn').onclick = function () {
+    var text = $('reqtext').value.trim();
+    if (text.length < 4) return msg('reqmsg', 'Type what you\'d like changed first.');
+    $('reqbtn').disabled = true; track('portal_request');
+    api('request', { text: text }).then(function (j) {
+      $('reqbtn').disabled = false;
+      if (j.status === 401) return signedOut();
+      if (j.error) return msg('reqmsg', j.error);
+      $('reqtext').value = ''; reqList(j.requests); msg('reqmsg', j.demo ? 'Demo: that would be sent to Weltzcraft.' : 'Sent. We\'ll email you when it\'s done.', true);
+    });
+  };
+  $('billbtn').onclick = function () { $('billbtn').disabled = true; api('billing').then(function (j) { if (j.url) location.href = j.url; else { $('billbtn').disabled = false; msg('billmsg', j.error || 'Billing isn\'t available right now.'); } }); };
+  $('linkform').onsubmit = function (e) {
+    e.preventDefault(); $('linkbtn').disabled = true;
+    api('link', { email: $('em').value.trim() }).then(function (j) {
+      $('linkbtn').disabled = false;
+      if (j.error) return msg('linkmsg', j.error);
+      msg('linkmsg', 'Check your email. If that address has a Weltzcraft site, the sign-in link is on its way.', true);
+    });
+  };
+
+  if (!auth) signedOut();
+  else api('get').then(function (j) { if (j.error) { signedOut(); if (j.status !== 401) msg('linkmsg', j.error); return; } show(j); track('portal_open'); });
+})();
+</script>
+</body>
+</html>
