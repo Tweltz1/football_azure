@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Make your website live · Weltzcraft Studios</title>
+<meta name="description" content="Pick your domain and put your Weltzcraft preview online.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f0d0a;--card:#1a1713;--line:rgba(255,240,215,.12);--ink:#f6efe2;--mut:#b4aa98;--em:#ff8a3c;--em2:#ffc061;--ok:#5fd38d;--fd:"Bricolage Grotesque",system-ui,sans-serif;--fb:"Inter",system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,rgba(255,138,60,.18),transparent 60%),var(--bg);color:var(--ink);font:16px/1.55 var(--fb);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;max-width:860px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font:800 18px var(--fd)}
+.brand i{width:36px;height:36px;border-radius:10px;background:#1b1a17;border:1px solid rgba(242,163,58,.35);color:#f2a33a;display:grid;place-items:center;font:900 20px var(--fd);font-style:normal}
+.top a.home{color:var(--mut);text-decoration:none;font-size:14.5px}
+main{max-width:760px;margin:0 auto;padding:8px 16px 120px}
+h1{font:800 clamp(30px,5.4vw,44px)/1.08 var(--fd);margin:8px 0 10px;letter-spacing:-.01em}
+h2{font:800 22px/1.2 var(--fd);margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 24px;font-size:17px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px;margin:0 0 16px}
+.card .hint{color:var(--mut);font-size:14.5px;margin:0 0 16px}
+.num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:rgba(255,138,60,.16);color:var(--em);font:800 14px var(--fb);margin-right:8px;vertical-align:2px}
+label{display:block;font-weight:600;font-size:14px;margin:14px 0 6px}
+label small{color:var(--mut);font-weight:500}
+input,textarea{font:500 16px var(--fb);padding:13px 14px;border-radius:12px;border:1.5px solid var(--line);background:rgba(255,240,215,.04);color:var(--ink);width:100%}
+input:focus,textarea:focus{outline:none;border-color:var(--em)}
+input::placeholder,textarea::placeholder{color:#7d7464}
+textarea{resize:vertical;min-height:96px;line-height:1.45}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.search{display:flex;gap:8px}
+.search input{flex:1}
+button{font:700 15px var(--fb);cursor:pointer;border:0;border-radius:12px;padding:13px 18px;background:#2a2620;color:var(--ink)}
+button.go{width:100%;padding:18px;font:800 18px var(--fd);background:linear-gradient(135deg,var(--em),var(--em2));color:#221502;border-radius:16px;box-shadow:0 14px 32px -12px rgba(255,138,60,.9)}
+button:disabled{opacity:.55;cursor:default}
+.doms{display:grid;gap:8px;margin-top:14px}
+.dom{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:14px 16px;border-radius:14px;border:1.5px solid var(--line);background:rgba(255,240,215,.03);font-weight:600}
+.dom.on{border-color:var(--em);background:rgba(255,138,60,.12)}
+.dom span{font-weight:500;color:var(--mut)}
+.dom b{color:var(--ok);white-space:nowrap}
+.dom[disabled]{opacity:.45}
+.dom[disabled] b{color:var(--mut)}
+.items{display:grid;gap:10px}
+.it{display:grid;grid-template-columns:1fr 110px 36px;gap:8px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:14px}
+.it input.d{grid-column:1 / 3}
+.it .x{padding:8px;background:none;color:var(--mut);font-size:18px}
+.add{margin-top:10px;background:none;border:1.5px dashed var(--line);width:100%}
+.care{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:14px;border:1.5px solid var(--line);cursor:pointer}
+.care.on{border-color:var(--em);background:rgba(255,138,60,.1)}
+.care input{width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--em)}
+.care p{margin:4px 0 0;color:var(--mut);font-size:14.5px}
+.sum{list-style:none;padding:0;margin:0 0 18px}
+.sum li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.sum li.t{font-weight:800;font-size:18px;border:0}
+.sum li span:last-child{white-space:nowrap}
+.fine{color:var(--mut);font-size:13.5px;margin:12px 0 0}
+.err{background:rgba(255,90,60,.14);border:1px solid rgba(255,90,60,.4);border-radius:12px;padding:12px 14px;margin:12px 0 0}
+.msg{color:var(--mut);font-size:14.5px;margin:12px 0 0}
+.done{text-align:center;padding:40px 10px}
+.done .big{font-size:64px}
+.pv{display:inline-flex;gap:6px;align-items:center;color:var(--em2);font-weight:600;text-decoration:none}
+@media (max-width:560px){.row2{grid-template-columns:1fr}.card{padding:18px}.it{grid-template-columns:1fr 90px 32px}}
+</style>
+</head>
+<body>
+<header class="top"><a class="brand" href="/"><i>W</i>Weltzcraft</a><a class="home" href="/">← weltzcraft.com</a></header>
+<main id="app"><p class="sub">Loading your preview…</p></main>
+<script src="/hit.js?v=2"></script>
+<script>
+(function () {
+  var P = new URLSearchParams(location.search), slug = P.get('p') || '', app = document.getElementById('app');
+  var state = { domain: P.get('d') || '', price: 0, care: true, items: [], prev: null };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function $(id) { return document.getElementById(id); }
+  var money = function (c) { return '$' + (c / 100).toFixed(c % 100 ? 2 : 0); };
+
+  if (P.get('done') === '1') {
+    app.innerHTML = '<div class="done"><div class="big">🎉</div><h1>You\'re all set.</h1><p class="sub">Thanks! We\'re checking over your site now, usually within 1 business day. Once it\'s approved, your domain is registered in your name and the site goes live. We\'ll email you at each step.</p>' +
+      (slug ? '<a class="pv" href="/preview/' + esc(slug) + '">← Back to your preview</a>' : '') + '</div>';
+    return;
+  }
+  if (!/^[a-z0-9-]{3,60}$/.test(slug)) { app.innerHTML = '<h1>Start with a free preview</h1><p class="sub">Build your preview first, then come back here to put it online.</p><a class="pv" href="/build">Build a free preview →</a>'; return; }
+
+  fetch('/api/preview/' + slug).then(function (r) { return r.json(); }).then(function (j) {
+    if (!j.answers) { app.innerHTML = '<h1>This preview has expired</h1><p class="sub">Free previews last 30 days. Make a new one in about a minute.</p><a class="pv" href="/build">Build a free preview →</a>'; return; }
+    state.prev = j;
+    state.items = (j.copy && j.copy.items || []).map(function (i) { return i.slice(); });
+    if (!state.items.length) state.items = [['', '', ''], ['', '', ''], ['', '', '']];
+    draw();
+    search(state.domain || j.answers.n);
+  }, function () { app.innerHTML = '<h1>Couldn\'t load your preview</h1><p class="sub">Check your connection and try again.</p>'; });
+
+  function draw() {
+    var a = state.prev.answers, c = state.prev.copy || {};
+    app.innerHTML =
+      '<h1>Make ' + esc(a.n) + ' live</h1><p class="sub">Pick your web address, check the details, and we\'ll put your site online. <a class="pv" href="/preview/' + esc(slug) + '" target="_blank">See your preview ↗</a></p>' +
+      '<section class="card"><h2><span class="num">1</span>Pick your web address</h2><p class="hint">It\'s registered in your name, so it\'s yours to keep.</p>' +
+        '<form class="search" id="sf"><input id="q" value="' + esc(state.domain || a.n) + '" aria-label="Search for a domain" autocomplete="off" autocapitalize="off" spellcheck="false"><button>Search</button></form>' +
+        '<div class="doms" id="doms"></div><div id="dmsg"></div></section>' +
+      '<section class="card"><h2><span class="num">2</span>How customers reach you</h2><p class="hint">This replaces the made-up phone and address on your preview.</p>' +
+        '<div class="row2"><div><label for="ph">Phone</label><input id="ph" type="tel" autocomplete="tel" placeholder="(715) 555-0123"></div><div><label for="em">Email <small>(shown on your site)</small></label><input id="em" type="email" autocomplete="email" placeholder="hello@yourbusiness.com"></div></div>' +
+        '<label for="ad">Address <small>(leave blank if you go to your customers)</small></label><input id="ad" autocomplete="street-address" placeholder="120 Main St, ' + esc(a.town || 'Eau Claire') + ', WI">' +
+        '<label for="hr">Hours <small>(optional)</small></label><input id="hr" placeholder="Mon to Fri 8 to 5, Sat 9 to noon"></section>' +
+      '<section class="card"><h2><span class="num">3</span>Check your words and prices</h2><p class="hint">We wrote these as a starting point. Fix anything that isn\'t right. We\'ll polish it before launch too.</p>' +
+        '<label for="tg">Headline</label><input id="tg" maxlength="90" value="' + esc(c.tag || a.tag || '') + '">' +
+        '<label for="ab">About you</label><textarea id="ab" maxlength="700">' + esc(c.about || '') + '</textarea>' +
+        '<label>' + esc(c.list || 'Services') + ' and prices</label><div class="items" id="items"></div><button type="button" class="add" id="addi">+ Add another</button></section>' +
+      '<section class="card"><h2><span class="num">4</span>Keep it running</h2>' +
+        '<label class="care on" id="carel"><input type="checkbox" id="care" checked><div><b>Care plan, $49 a month</b><p>Hosting, your domain renewal each year, small changes and fixes whenever you ask. Cancel any time.</p></div></label>' +
+        '<p class="fine">Without it, we hand everything over at launch and you take care of hosting and renewing the domain yourself.</p></section>' +
+      '<section class="card"><h2>Your total</h2><ul class="sum" id="sum"></ul>' +
+        '<button class="go" id="pay">Continue to payment →</button><div id="perr"></div>' +
+        '<p class="fine">You pay half of the $500 Starter site now and half when it launches. Nothing goes live and no domain is bought until we\'ve checked your site. Rather talk first? <a href="/?site=' + esc(a.t) + '&sn=' + encodeURIComponent(a.n) + '&st=' + encodeURIComponent(a.town || '') + '&sp=' + esc(slug) + '#contact">Send us a message</a>.</p></section>';
+    drawItems(); total();
+    // Real details the builder already knows (e.g. read from the business's Facebook page).
+    if (a.phone) $('ph').value = a.phone;
+    if (a.email) $('em').value = a.email;
+    if (a.addr) $('ad').value = a.addr;
+    if (Array.isArray(a.hrs) && a.hrs.length) $('hr').value = a.hrs.map(function (h) { return h[0] + ' ' + h[1]; }).join(', ');
+    $('sf').addEventListener('submit', function (e) { e.preventDefault(); search($('q').value); });
+    $('addi').addEventListener('click', function () { readItems(); if (state.items.length < 8) state.items.push(['', '', '']); drawItems(); });
+    $('care').addEventListener('change', function () { state.care = this.checked; $('carel').classList.toggle('on', state.care); total(); });
+    $('pay').addEventListener('click', pay);
+  }
+  function drawItems() {
+    $('items').innerHTML = state.items.map(function (i, n) {
+      return '<div class="it" data-i="' + n + '"><input class="n" maxlength="50" placeholder="Service or product" value="' + esc(i[0]) + '"><input class="p" maxlength="20" placeholder="Price" value="' + esc(i[1]) + '">' +
+        '<button type="button" class="x" aria-label="Remove">✕</button><input class="d" maxlength="140" placeholder="Short description" value="' + esc(i[2]) + '"></div>';
+    }).join('');
+    [].forEach.call($('items').querySelectorAll('.x'), function (b) { b.addEventListener('click', function () { readItems(); state.items.splice(+b.parentNode.dataset.i, 1); drawItems(); }); });
+    $('addi').style.display = state.items.length >= 8 ? 'none' : '';
+  }
+  function readItems() {
+    state.items = [].map.call($('items').querySelectorAll('.it'), function (r) { return [r.querySelector('.n').value.trim(), r.querySelector('.p').value.trim(), r.querySelector('.d').value.trim()]; });
+  }
+  function total() {
+    var l = [['Starter website, first half', 25000]];
+    if (state.domain) l.push([state.domain + ' (1 year)', state.price]); else l.push(['Web address', null]);
+    var now = l.reduce(function (s, x) { return s + (x[1] || 0); }, 0);
+    $('sum').innerHTML = l.map(function (x) { return '<li><span>' + esc(x[0]) + '</span><span>' + (x[1] == null ? 'pick one above' : money(x[1])) + '</span></li>'; }).join('') +
+      (state.care ? '<li><span>Care plan</span><span>$49/month</span></li>' : '') +
+      '<li class="t"><span>Due today</span><span>' + money(now + (state.care ? 4900 : 0)) + '</span></li>' +
+      '<li><span>Due at launch</span><span>$250</span></li>';
+  }
+  function search(q) {
+    q = String(q || '').trim(); if (!q) return;
+    $('doms').innerHTML = ''; $('dmsg').innerHTML = '<p class="msg">Checking which addresses are free…</p>';
+    fetch('/api/live/domains?q=' + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (j) {
+      $('dmsg').innerHTML = '';
+      if (!j.domains) { $('dmsg').innerHTML = '<p class="err">' + esc(j.error || 'Domain search isn\'t available right now.') + '</p>'; return; }
+      var free = j.domains.filter(function (d) { return d.ok; });
+      if (!free.length) $('dmsg').innerHTML = '<p class="msg">Those are all taken. Try another spelling, or add your town.</p>';
+      if (!state.domain || !free.some(function (d) { return d.name === state.domain; })) { state.domain = free.length ? free[0].name : ''; state.price = free.length ? free[0].price : 0; }
+      else state.price = free.filter(function (d) { return d.name === state.domain; })[0].price;
+      $('doms').innerHTML = j.domains.map(function (d) {
+        return '<button type="button" class="dom' + (d.name === state.domain ? ' on' : '') + '" data-d="' + esc(d.name) + '" data-p="' + (d.price || 0) + '"' + (d.ok ? '' : ' disabled') + '>' + esc(d.name) +
+          ' <b>' + (d.ok ? money(d.price) + '<span>/yr</span>' : 'taken') + '</b></button>';
+      }).join('');
+      [].forEach.call($('doms').querySelectorAll('.dom:not([disabled])'), function (b) {
+        b.addEventListener('click', function () { state.domain = b.dataset.d; state.price = +b.dataset.p; [].forEach.call($('doms').children, function (x) { x.classList.toggle('on', x === b); }); total(); });
+      });
+      total();
+    }, function () { $('dmsg').innerHTML = '<p class="err">Couldn\'t search right now. Try again in a minute.</p>'; });
+  }
+  function pay() {
+    readItems();
+    var err = $('perr'); err.innerHTML = '';
+    var body = { p: slug, domain: state.domain, care: state.care, phone: $('ph').value, email: $('em').value, address: $('ad').value, hours: $('hr').value,
+      tag: $('tg').value, about: $('ab').value, items: state.items.filter(function (i) { return i[0]; }) };
+    if (!body.domain) { err.innerHTML = '<p class="err">Pick a web address first.</p>'; return; }
+    if (!body.phone.trim() && !body.email.trim()) { err.innerHTML = '<p class="err">Add a phone number or email so customers can reach you.</p>'; $('ph').focus(); return; }
+    var b = $('pay'); b.disabled = true; b.textContent = 'Opening secure checkout…';
+    if (window.wcHit) window.wcHit('live_checkout');
+    fetch('/api/live/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); }).then(function (j) {
+        if (j.url) { location.href = j.url; return; }
+        err.innerHTML = '<p class="err">' + esc(j.error || 'Something went wrong.') + '</p>'; b.disabled = false; b.textContent = 'Continue to payment →';
+      }, function () { err.innerHTML = '<p class="err">Couldn\'t reach checkout. Try again.</p>'; b.disabled = false; b.textContent = 'Continue to payment →'; });
+  }
+})();
+</script>
+</body>
+</html>
