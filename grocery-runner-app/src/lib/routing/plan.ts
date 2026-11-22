@@ -1,10 +1,11 @@
 // Real floor plans for stores whose layout we know (from the store's own published map).
-// Walmart and Target maps are in blockPlan.ts. Pure logic, no React.
+// Woodman's plans are in woodmans.ts, Walmart and Target maps in blockPlan.ts. Pure logic, no React.
 import type { StoreProfile } from '../storeProfile';
 import { Cell, Department, Store } from '../types';
 import { BLOCK_PLANS, BlockPlan } from './blockPlan';
 import { StoreGrid } from './grid';
 import { MAX_BAY, StoreLayout, Zone } from './layout';
+import { WOODMANS_PLANS } from './woodmans';
 
 /** A place along the walls or the front. "left-back" = left wall, toward the back. */
 export type Spot =
@@ -35,36 +36,10 @@ export type StorePlan = {
   checkout: 'left' | 'middle' | 'right';
 };
 
-/**
- * Woodman's Markets Altoona, 2855 Woodman Drive. From the store's published map (woodmans-food.com):
- * produce on the right wall with bakery in the front-right corner, dairy and meat across the back,
- * frozen down the left wall (aisles 24-26), soda & water front-left, aisles 1-23 numbered from the
- * produce side, and health & beauty, candy, cards and pet in short lettered aisles A-Z in front of
- * the checkouts, A on the right.
- */
-export const WOODMANS_ALTOONA: StorePlan = {
-  name: "Woodman's Altoona",
-  chain: 'woodmans',
-  lat: 44.8158,
-  lon: -91.4572,
-  aisles: 23,
-  aisleOne: 'right',
-  walls: {
-    frozen: { at: 'left', label: 'Frozen' },
-    dairy: { at: 'back-left', label: 'Dairy' },
-    meat: { at: 'back-right', label: 'Meat' },
-    produce: { at: 'right-back', label: 'Produce' },
-    deli: { at: 'right', label: '' },
-    bakery: { at: 'right-front', label: 'Bakery' },
-  },
-  wallAisles: { 24: 'left-front', 25: 'left', 26: 'left-back' },
-  frontLetters: 'right',
-  named: { SODA: { at: 'front-left', label: 'Soda & Water' }, DAIRY: { at: 'back-left' }, MEAT: { at: 'back-right' } },
-  entrance: 'right',
-  checkout: 'middle',
-};
+export { WOODMANS_ALTOONA } from './woodmans';
 
-export const STORE_PLANS: StorePlan[] = [WOODMANS_ALTOONA];
+/** Every store whose own aisle plan we have (all 21 Woodman's, from their published store maps). */
+export const STORE_PLANS: StorePlan[] = WOODMANS_PLANS;
 
 /** A store's own floor plan: numbered aisles (Woodman's) or blocks (Walmart, Target). */
 export type AnyPlan = StorePlan | BlockPlan;
