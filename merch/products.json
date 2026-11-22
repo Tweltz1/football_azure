@@ -1804,7 +1804,7 @@
       "colors": [
         {
           "key": "greenkhaki",
-          "name": "Green + Khaki brim",
+          "name": "Khaki + Green brim",
           "printful": [
             "Dark Green/Khaki"
           ],
@@ -1812,7 +1812,7 @@
         },
         {
           "key": "navykhaki",
-          "name": "Navy + Khaki brim",
+          "name": "Khaki + Navy brim",
           "printful": [
             "Navy/Khaki"
           ],
