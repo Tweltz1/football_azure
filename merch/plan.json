@@ -3177,6 +3177,86 @@
       }
     ]
   },
+  "wild-stone": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Stone",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7859,
+        "size": "One size"
+      }
+    ]
+  },
+  "wild-khaki": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7855,
+        "size": "One size"
+      }
+    ]
+  },
+  "wild-white": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7853,
+        "size": "One size"
+      }
+    ]
+  },
+  "wild-spruce": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Spruce",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8745,
+        "size": "One size"
+      }
+    ]
+  },
+  "wild-black": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7854,
+        "size": "One size"
+      }
+    ]
+  },
   "woodscord-brown": {
     "product_id": 662,
     "product": "Vintage Corduroy Cap | Big Accessories BA703",
