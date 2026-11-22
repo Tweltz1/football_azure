@@ -836,7 +836,11 @@ export default {
       try { return await customerSite(request, env, url); } catch (e) { return new Response('Something went wrong. Try again in a minute.', { status: 500 }); }
     }
     if (url.pathname === '/api/live/domains') {
-      try { return await liveDomains(request, env); } catch (e) { return json(502, { error: 'Domain search is busy. Try again in a minute.' }); }
+      try { return await liveDomains(request, env); } catch (e) {
+        // 401/403 = the Cloudflare token can't use Registrar yet (Tyler adds the permission).
+        if (/domain-check 40[13]/.test(e.message)) return json(503, { error: 'Picking a web address online isn\'t switched on yet. Tap "Send us a message" below and we\'ll set up your domain with you.' });
+        return json(502, { error: 'Domain search is busy. Try again in a minute.' });
+      }
     }
     if (url.pathname === '/api/live/checkout') {
       try { return await liveCheckout(request, env); } catch (e) { return json(502, { error: 'Checkout is not available right now. Try again in a minute.' }); }
