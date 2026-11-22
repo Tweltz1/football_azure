@@ -62,7 +62,7 @@
    "name": "Mascot"
   },
   "h1": {
-   "name": "Gold script"
+   "name": "Rope script"
   },
   "h3": {
    "name": "Northwoods"
@@ -142,42 +142,23 @@
    ]
   },
   {
-   "key": "script",
-   "name": "Script Dad Hat",
+   "key": "wild",
+   "name": "Wild W Dad Hat",
    "type": "hat",
-   "price": 26,
+   "price": 32,
    "sizes": null,
    "logos": [
-    "v2"
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6"
    ],
    "colors": [
     {
      "key": "stone",
      "name": "Stone"
-    },
-    {
-     "key": "navy",
-     "name": "Navy"
-    },
-    {
-     "key": "black",
-     "name": "Black"
-    },
-    {
-     "key": "lightblue",
-     "name": "Light Blue"
-    },
-    {
-     "key": "spruce",
-     "name": "Spruce"
-    },
-    {
-     "key": "pink",
-     "name": "Pink"
-    },
-    {
-     "key": "cranberry",
-     "name": "Cranberry"
     },
     {
      "key": "khaki",
@@ -186,6 +167,14 @@
     {
      "key": "white",
      "name": "White"
+    },
+    {
+     "key": "spruce",
+     "name": "Spruce"
+    },
+    {
+     "key": "black",
+     "name": "Black"
     }
    ]
   },
@@ -280,13 +269,18 @@
    ]
   },
   {
-   "key": "cord",
-   "name": "Corduroy Cap",
+   "key": "wildcord",
+   "name": "Wild W Corduroy Cap",
    "type": "hat",
-   "price": 30,
+   "price": 34,
    "sizes": null,
    "logos": [
-    "v9"
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6"
    ],
    "colors": [
     {
@@ -312,46 +306,50 @@
    ]
   },
   {
-   "key": "beanie",
-   "name": "Stripe Beanie",
-   "type": "beanie",
-   "price": 24,
+   "key": "woods",
+   "name": "Northwoods Dad Hat",
+   "type": "hat",
+   "price": 28,
    "sizes": null,
    "logos": [
-    "v8"
+    "h3"
    ],
    "colors": [
     {
-     "key": "black",
-     "name": "Black"
+     "key": "white",
+     "name": "White"
+    },
+    {
+     "key": "stone",
+     "name": "Stone"
+    },
+    {
+     "key": "khaki",
+     "name": "Khaki"
+    },
+    {
+     "key": "lightblue",
+     "name": "Light Blue"
     },
     {
      "key": "navy",
      "name": "Navy"
     },
     {
-     "key": "heathergrey",
-     "name": "Heather Grey"
+     "key": "black",
+     "name": "Black"
     },
     {
-     "key": "spruce",
-     "name": "Spruce"
-    },
-    {
-     "key": "olive",
-     "name": "Olive"
-    },
-    {
-     "key": "brown",
-     "name": "Brown"
+     "key": "cranberry",
+     "name": "Cranberry"
     },
     {
      "key": "darkgrey",
      "name": "Dark Grey"
     },
     {
-     "key": "white",
-     "name": "White"
+     "key": "spruce",
+     "name": "Spruce"
     }
    ]
   },
@@ -415,42 +413,30 @@
    ]
   },
   {
-   "key": "trucker",
-   "name": "Patch Trucker",
+   "key": "woodscord",
+   "name": "Northwoods Corduroy Cap",
    "type": "hat",
-   "price": 26,
+   "price": 30,
    "sizes": null,
    "logos": [
-    "v4"
+    "h3"
    ],
    "colors": [
     {
-     "key": "navywhite",
-     "name": "Navy + White"
+     "key": "brown",
+     "name": "Brown"
     },
     {
-     "key": "blackwhite",
-     "name": "Black + White"
-    },
-    {
-     "key": "mosskhaki",
-     "name": "Moss + Khaki"
-    },
-    {
-     "key": "heathergreywhite",
-     "name": "Heather Grey + White"
-    },
-    {
-     "key": "brownkhaki",
-     "name": "Brown + Khaki"
-    },
-    {
-     "key": "charcoalblack",
-     "name": "Charcoal + Black"
+     "key": "olive",
+     "name": "Olive"
     },
     {
      "key": "navy",
      "name": "Navy"
+    },
+    {
+     "key": "burgundy",
+     "name": "Burgundy"
     },
     {
      "key": "black",
@@ -459,42 +445,34 @@
    ]
   },
   {
-   "key": "puff",
-   "name": "Bright W Beanie",
-   "type": "beanie",
-   "price": 24,
+   "key": "woodstwo",
+   "name": "Northwoods Two-Tone Cap",
+   "type": "hat",
+   "price": 30,
    "sizes": null,
    "logos": [
-    "m2"
+    "h3"
    ],
    "colors": [
     {
-     "key": "black",
-     "name": "Black"
+     "key": "greenkhaki",
+     "name": "Khaki + Green brim"
     },
     {
-     "key": "babypink",
-     "name": "Baby Pink"
+     "key": "navykhaki",
+     "name": "Khaki + Navy brim"
     },
     {
-     "key": "white",
-     "name": "White"
+     "key": "dustyrose",
+     "name": "Dusty Rose"
     },
     {
-     "key": "heathergrey",
-     "name": "Heather Grey"
+     "key": "gray",
+     "name": "Gray"
     },
     {
-     "key": "navy",
-     "name": "Navy"
-    },
-    {
-     "key": "royal",
-     "name": "Royal"
-    },
-    {
-     "key": "darkgrey",
-     "name": "Dark Grey"
+     "key": "maroon",
+     "name": "Maroon"
     }
    ]
   },
@@ -643,19 +621,15 @@
    ]
   },
   {
-   "key": "pixelhat",
-   "name": "Pixel Dad Hat",
+   "key": "script",
+   "name": "Script Dad Hat",
    "type": "hat",
    "price": 26,
    "sizes": null,
    "logos": [
-    "m7"
+    "v2"
    ],
    "colors": [
-    {
-     "key": "black",
-     "name": "Black"
-    },
     {
      "key": "stone",
      "name": "Stone"
@@ -665,20 +639,28 @@
      "name": "Navy"
     },
     {
-     "key": "spruce",
-     "name": "Spruce"
+     "key": "black",
+     "name": "Black"
     },
     {
      "key": "lightblue",
      "name": "Light Blue"
     },
     {
+     "key": "spruce",
+     "name": "Spruce"
+    },
+    {
      "key": "pink",
      "name": "Pink"
     },
     {
-     "key": "darkgrey",
-     "name": "Dark Grey"
+     "key": "cranberry",
+     "name": "Cranberry"
+    },
+    {
+     "key": "khaki",
+     "name": "Khaki"
     },
     {
      "key": "white",
@@ -781,188 +763,192 @@
    ]
   },
   {
-   "key": "woods",
-   "name": "Northwoods Dad Hat",
+   "key": "cord",
+   "name": "Corduroy Cap",
    "type": "hat",
-   "price": 28,
+   "price": 30,
    "sizes": null,
    "logos": [
-    "h3"
+    "v9"
    ],
    "colors": [
     {
-     "key": "white",
-     "name": "White"
+     "key": "brown",
+     "name": "Brown"
+    },
+    {
+     "key": "olive",
+     "name": "Olive"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "burgundy",
+     "name": "Burgundy"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    }
+   ]
+  },
+  {
+   "key": "trucker",
+   "name": "Patch Trucker",
+   "type": "hat",
+   "price": 26,
+   "sizes": null,
+   "logos": [
+    "v4"
+   ],
+   "colors": [
+    {
+     "key": "navywhite",
+     "name": "Navy + White"
+    },
+    {
+     "key": "blackwhite",
+     "name": "Black + White"
+    },
+    {
+     "key": "mosskhaki",
+     "name": "Moss + Khaki"
+    },
+    {
+     "key": "heathergreywhite",
+     "name": "Heather Grey + White"
+    },
+    {
+     "key": "brownkhaki",
+     "name": "Brown + Khaki"
+    },
+    {
+     "key": "charcoalblack",
+     "name": "Charcoal + Black"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    }
+   ]
+  },
+  {
+   "key": "pixelhat",
+   "name": "Pixel Dad Hat",
+   "type": "hat",
+   "price": 26,
+   "sizes": null,
+   "logos": [
+    "m7"
+   ],
+   "colors": [
+    {
+     "key": "black",
+     "name": "Black"
     },
     {
      "key": "stone",
      "name": "Stone"
     },
     {
-     "key": "khaki",
-     "name": "Khaki"
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "spruce",
+     "name": "Spruce"
     },
     {
      "key": "lightblue",
      "name": "Light Blue"
     },
     {
-     "key": "navy",
-     "name": "Navy"
-    },
-    {
-     "key": "black",
-     "name": "Black"
-    },
-    {
-     "key": "cranberry",
-     "name": "Cranberry"
+     "key": "pink",
+     "name": "Pink"
     },
     {
      "key": "darkgrey",
      "name": "Dark Grey"
     },
     {
-     "key": "spruce",
-     "name": "Spruce"
+     "key": "white",
+     "name": "White"
     }
    ]
   },
   {
-   "key": "wild",
-   "name": "Wild W Dad Hat",
+   "key": "hat",
+   "name": "Dad Hat",
    "type": "hat",
-   "price": 32,
+   "price": 26,
    "sizes": null,
    "logos": [
-    "a1",
-    "a2",
-    "a3",
-    "a4",
-    "a5",
-    "a6"
+    "42",
+    "43",
+    "44",
+    "55",
+    "58",
+    "59",
+    "60"
    ],
    "colors": [
     {
-     "key": "stone",
-     "name": "Stone"
+     "key": "navy",
+     "name": "Navy"
     },
     {
-     "key": "khaki",
-     "name": "Khaki"
+     "key": "stone",
+     "name": "Stone"
+    }
+   ]
+  },
+  {
+   "key": "beanie",
+   "name": "Stripe Beanie",
+   "type": "beanie",
+   "price": 24,
+   "sizes": null,
+   "logos": [
+    "v8"
+   ],
+   "colors": [
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "heathergrey",
+     "name": "Heather Grey"
+    },
+    {
+     "key": "spruce",
+     "name": "Spruce"
+    },
+    {
+     "key": "olive",
+     "name": "Olive"
+    },
+    {
+     "key": "brown",
+     "name": "Brown"
+    },
+    {
+     "key": "darkgrey",
+     "name": "Dark Grey"
     },
     {
      "key": "white",
      "name": "White"
-    },
-    {
-     "key": "spruce",
-     "name": "Spruce"
-    },
-    {
-     "key": "black",
-     "name": "Black"
-    }
-   ]
-  },
-  {
-   "key": "wildcord",
-   "name": "Wild W Corduroy Cap",
-   "type": "hat",
-   "price": 34,
-   "sizes": null,
-   "logos": [
-    "a1",
-    "a2",
-    "a3",
-    "a4",
-    "a5",
-    "a6"
-   ],
-   "colors": [
-    {
-     "key": "brown",
-     "name": "Brown"
-    },
-    {
-     "key": "olive",
-     "name": "Olive"
-    },
-    {
-     "key": "navy",
-     "name": "Navy"
-    },
-    {
-     "key": "burgundy",
-     "name": "Burgundy"
-    },
-    {
-     "key": "black",
-     "name": "Black"
-    }
-   ]
-  },
-  {
-   "key": "woodscord",
-   "name": "Northwoods Corduroy Cap",
-   "type": "hat",
-   "price": 30,
-   "sizes": null,
-   "logos": [
-    "h3"
-   ],
-   "colors": [
-    {
-     "key": "brown",
-     "name": "Brown"
-    },
-    {
-     "key": "olive",
-     "name": "Olive"
-    },
-    {
-     "key": "navy",
-     "name": "Navy"
-    },
-    {
-     "key": "burgundy",
-     "name": "Burgundy"
-    },
-    {
-     "key": "black",
-     "name": "Black"
-    }
-   ]
-  },
-  {
-   "key": "woodstwo",
-   "name": "Northwoods Two-Tone Cap",
-   "type": "hat",
-   "price": 30,
-   "sizes": null,
-   "logos": [
-    "h3"
-   ],
-   "colors": [
-    {
-     "key": "greenkhaki",
-     "name": "Khaki + Green brim"
-    },
-    {
-     "key": "navykhaki",
-     "name": "Khaki + Navy brim"
-    },
-    {
-     "key": "dustyrose",
-     "name": "Dusty Rose"
-    },
-    {
-     "key": "gray",
-     "name": "Gray"
-    },
-    {
-     "key": "maroon",
-     "name": "Maroon"
     }
    ]
   },
@@ -1033,28 +1019,42 @@
    ]
   },
   {
-   "key": "hat",
-   "name": "Dad Hat",
-   "type": "hat",
-   "price": 26,
+   "key": "puff",
+   "name": "Bright W Beanie",
+   "type": "beanie",
+   "price": 24,
    "sizes": null,
    "logos": [
-    "42",
-    "43",
-    "44",
-    "55",
-    "58",
-    "59",
-    "60"
+    "m2"
    ],
    "colors": [
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "babypink",
+     "name": "Baby Pink"
+    },
+    {
+     "key": "white",
+     "name": "White"
+    },
+    {
+     "key": "heathergrey",
+     "name": "Heather Grey"
+    },
     {
      "key": "navy",
      "name": "Navy"
     },
     {
-     "key": "stone",
-     "name": "Stone"
+     "key": "royal",
+     "name": "Royal"
+    },
+    {
+     "key": "darkgrey",
+     "name": "Dark Grey"
     }
    ]
   },

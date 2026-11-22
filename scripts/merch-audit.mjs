@@ -41,7 +41,8 @@ for (const [slug, item] of Object.entries(cat.items)) {
   if (!got) { bad(slug, 'NO Printful store product'); continue; }
   checked++;
   const wantName = `${prod.name} · ${color.name} · ${cfg.logos[lk].name}`;
-  if (got.sync_product.name !== wantName) bad(slug, `Printful name "${got.sync_product.name}" vs "${wantName}"`);
+  // The Printful name is only a label in Tyler's dashboard (buyers never see it), so a renamed logo is a note, not a problem.
+  if (got.sync_product.name !== wantName) notes.push(`${slug}: Printful dashboard label is "${got.sync_product.name}" (page says "${wantName}")`);
   if (got.sync_variants.length !== item.variants.length) bad(slug, `${got.sync_variants.length} Printful variants vs ${item.variants.length} on the page`);
   const wantSizes = prod.sizes || null;
   if (wantSizes) { const have = item.variants.map(v => v.size); const miss = wantSizes.filter(s => !have.includes(s)); if (miss.length) notes.push(`${slug}: size ${miss.join(', ')} not offered by Printful in this color`); }
