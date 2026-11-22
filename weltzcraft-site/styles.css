@@ -107,6 +107,7 @@ h2{font-size:clamp(30px,4vw,44px);font-weight:800}
 .mail{display:flex;align-items:center;gap:10px;margin-top:24px;flex-wrap:wrap}
 .mail a{font:700 22px/1.2 var(--f-display);color:var(--ember);text-decoration:none;word-break:break-all}
 .mail a:hover{text-decoration:underline}
+.contact-alt{margin-top:14px}.contact-alt a{color:var(--ember);font-weight:700}
 .copy{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font:500 13px var(--f-body);color:var(--ink);cursor:pointer}
 .brief{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:26px;box-shadow:var(--shadow);display:grid;gap:16px}
 .brief label{display:grid;gap:6px;font-weight:600;font-size:14px}

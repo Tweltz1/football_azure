@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Build a free sample website · Weltzcraft Studios</title>
-<meta name="description" content="Answer 8 quick questions and watch Weltzcraft Studios build a sample website for your business. Free, no sign-up.">
+<meta name="description" content="Answer a few quick questions and watch Weltzcraft Studios build a sample website for your business. Free. We email you the link.">
 <link rel="canonical" href="https://weltzcraft.com/build">
 <meta property="og:title" content="Build a free sample website in 60 seconds">
 <meta property="og:description" content="Answer 8 quick questions and watch Weltzcraft build a site for your business.">
@@ -62,7 +62,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
 .or{display:flex;align-items:center;gap:12px;color:var(--ph);font-size:13px;margin:4px 0 -4px}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 .fb label{display:block;color:var(--mut);font-size:15px;margin-bottom:10px}
-.fbrow{display:flex;gap:10px}
+.fbrow{display:flex;gap:10px}.fbrow+.fbrow{margin-top:10px}
 .fbrow .txt{font-size:16px;padding:14px;min-width:0}
 .go.alt{background:rgba(255,138,60,.14);color:var(--warm);box-shadow:none;border:1.5px solid var(--em);white-space:nowrap;font-size:15px;padding:14px 16px}
 .fberr{color:#ff8f7a;font-size:14px;margin:8px 0 0}
@@ -78,7 +78,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
 <body>
 <header class="top"><a class="brand" href="/"><i>W</i>Weltzcraft</a><a class="home" href="/">← Back to weltzcraft.com</a></header>
 <main><div class="card" id="card" aria-live="polite"></div></main>
-<p class="foot">Free sample, no sign-up. The real site is built by a real person, from $500.</p>
+<p class="foot">Free sample, no account to set up. The real site is built by a real person, from $500.</p>
 <script src="/hit.js?v=2"></script>
 <script>
 (function () {
@@ -101,23 +101,26 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     { k: 'cta', q: 'What should customers do first?', kind: 'pick', opts: function () { var d = type()[4]; return [[d, '⭐', d]].concat([['Book online', '📅', 'Book online'], ['Order ahead', '🛍️', 'Order ahead'], ['Get a quote', '💬', 'Get a quote'], ['Call us', '📞', 'Call us']].filter(function (o) { return o[0] !== d; })).slice(0, 4); } },
     { k: 'h', q: 'Which days are you open?', kind: 'days' },
     { k: 's', q: 'What should your site show?', kind: 'multi', opts: function () { return [['list', '🏷️', 'Prices'], ['steps', '🪜', 'How it works'], ['pics', '📸', 'Photos'], ['review', '⭐', 'Reviews'], ['faq', '❓', 'Questions'], ['areas', '🚐', 'Service area'], ['map', '📍', 'Map']]; } },
-    { k: 'c', q: 'Pick your color', kind: 'color' }
+    { k: 'c', q: 'Pick your color', kind: 'color' },
+    { k: 'em', q: 'Where should we send your website?', kind: 'email' }
   ];
-  var a = { type: 'coffee', what: '', name: '', town: '', tag: '', more: '', links: '', cta: '', h: 'Mon to Fri', days: [1, 2, 3, 4, 5], appt: false, s: ['list', 'steps', 'pics', 'review', 'faq', 'areas', 'map'], c: COLORS[0][1] };
+  var a = { type: 'coffee', what: '', name: '', town: '', tag: '', more: '', links: '', cta: '', em: '', h: 'Mon to Fri', days: [1, 2, 3, 4, 5], appt: false, s: ['list', 'steps', 'pics', 'review', 'faq', 'areas', 'map'], c: COLORS[0][1] };
   var step = -1, card = document.getElementById('card');
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function intro() {
     card.innerHTML = '<div class="step"><div class="big-w">W</div><h1>See your website before you pay a thing.</h1><p class="sub">Answer a few quick questions about any kind of business and watch Weltzcraft design and write a site made for it, with online booking and a contact form built in. You get your own link to share for 30 days.</p>' +
-      '<ul class="perks"><li>About 60 seconds</li><li>Free</li><li>No sign-up</li></ul><button class="go" data-go>Let\'s build it →</button>' +
+      '<ul class="perks"><li>About 60 seconds</li><li>Free</li><li>No password</li></ul><button class="go" data-go>Let\'s build it →</button>' +
       '<div class="or"><span>or skip the questions</span></div>' +
       '<form class="fb" id="fb"><label for="src">Already on Facebook? Paste your page and we\'ll build from what\'s public about your business.</label>' +
-      '<div class="fbrow"><input class="txt" id="src" maxlength="200" placeholder="facebook.com/yourbusiness, or name and town" autocomplete="off" enterkeyhint="go"><button class="go alt" type="submit">Build from this</button></div><p class="fberr" id="fberr" role="alert"></p></form></div>';
-    document.getElementById('fb').addEventListener('submit', function (e) { e.preventDefault(); lookup(document.getElementById('src').value.trim()); });
+      '<div class="fbrow"><input class="txt" id="src" maxlength="200" placeholder="facebook.com/yourbusiness, or name and town" autocomplete="off" enterkeyhint="next"></div><div class="fbrow"><input class="txt" id="fbem" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="Your email, for your link" aria-label="Your email" enterkeyhint="go"><button class="go alt" type="submit">Build from this</button></div><p class="fberr" id="fberr" role="alert"></p></form></div>';
+    document.getElementById('fb').addEventListener('submit', function (e) { e.preventDefault(); lookup(document.getElementById('src').value.trim(), document.getElementById('fbem').value.trim()); });
   }
   // "Build it from my Facebook page": the server looks the business up online, writes the site and saves it.
-  function lookup(src) {
+  function lookup(src, em) {
     var err = document.getElementById('fberr');
     if (src.length < 4) { err.textContent = 'Paste the link to the Facebook page, or type the business name and town.'; return; }
+    if (!okEmail(em)) { err.textContent = 'Add your email so we can send you the link to your website.'; return; }
+    a.em = em; keep(em);
     if (window.wcHit) window.wcHit('fb_import');
     var lines = ['Finding your business…', 'Reading what\'s public about it…', 'Checking hours, address and phone…', 'Listing what you offer…', 'Picking a style that fits…', 'Writing your words…', 'Adding online booking…', 'Almost there…'], i = 0;
     card.innerHTML = '<div class="step"><div class="big-w pulse">W</div><h2>Building from your page</h2><p class="sub" id="look">' + lines[0] + '</p><div class="bar"><i id="lookbar" style="width:6%"></i></div><p class="sub" style="font-size:14px">This takes about 30 seconds. We search the web for your business, so the preview starts with your real details.</p></div>';
@@ -126,7 +129,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
       clearInterval(tick);
       card.innerHTML = '<div class="step"><div class="big-w">W</div><h2>Let\'s do it the quick way</h2><p class="sub">' + esc(msg) + '</p><button class="go" data-go>Answer the questions →</button><div class="row"><button class="back" data-home>← Try another link</button><span></span></div></div>';
     }
-    fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ src: src }) })
+    fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ src: src, em: em }) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (!j.ok || !j.slug) return fail(j.error || 'We couldn\'t build from that link.');
@@ -145,19 +148,22 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
       '<button class="opt appt' + (a.appt ? ' on' : '') + '" data-appt aria-pressed="' + a.appt + '"><span class="e">📅</span>By appointment only</button><p class="fberr" id="dayerr" role="alert"></p><button class="go" data-go>Next →</button>';
     if (q.kind === 'text') h += '<input class="txt" maxlength="40" value="' + esc(a[q.k]) + '" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '" enterkeyhint="next"><button class="go" data-go>' + (q.skip ? 'Next (or skip) →' : 'Next →') + '</button>';
     if (q.kind === 'area') h += '<textarea class="txt area" maxlength="' + (q.k === 'links' ? 600 : 300) + '" rows="4" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '">' + esc(a[q.k]) + '</textarea><button class="go" data-go>Next (or skip) →</button>';
-    if (q.kind === 'color') h += '<div class="colors">' + COLORS.map(function (c) { return '<button class="sw' + (a.c === c[1] ? ' on' : '') + '" data-c="' + c[1] + '" style="background:' + c[1] + '" aria-label="' + c[0] + '"></button>'; }).join('') + '</div><button class="go" data-go>Build my website ✨</button>';
+    if (q.kind === 'color') h += '<div class="colors">' + COLORS.map(function (c) { return '<button class="sw' + (a.c === c[1] ? ' on' : '') + '" data-c="' + c[1] + '" style="background:' + c[1] + '" aria-label="' + c[0] + '"></button>'; }).join('') + '</div><button class="go" data-go>Next →</button>';
+    if (q.kind === 'email') h += '<p class="hint">We email you a link to your site so you can come back, keep building and share it. We may check in once to see how it went.</p><input class="txt" type="email" inputmode="email" autocomplete="email" maxlength="120" value="' + esc(a.em) + '" placeholder="you@yourbusiness.com" aria-label="Your email" enterkeyhint="go"><p class="fberr" id="emerr" role="alert"></p><button class="go" data-go>Build my website ✨</button>';
     h += '<div class="row"><button class="back" data-back>← Back</button><span></span></div></div>';
     card.innerHTML = h;
     var inp = card.querySelector('input,textarea');
     if (inp) inp.focus({ preventScroll: true });
   }
   function shown(q) { return !q.when || q.when(); }
+  function okEmail(v) { return /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]{2,}$/.test(v); }
+  function keep(v) { try { sessionStorage.setItem('wc-em', v); } catch (e) {} }
   function save() { var inp = card.querySelector('input,textarea'); if (inp && step >= 0) a[Q[step].k] = inp.value.trim(); }
   function next() {
     save(); step++;
     while (step < Q.length && !shown(Q[step])) step++;
     if (step < Q.length) return ask();
-    var q = { ai: 1, t: a.type, what: a.type === 'other' ? a.what : '', more: a.more, links: a.links, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };
+    var q = { ai: 1, t: a.type, what: a.type === 'other' ? a.what : '', more: a.more, links: a.links, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };   // the email travels in the browser's session, not in the address
     if (window.wcHit) window.wcHit('build_done');
     location.href = '/sample?' + Object.keys(q).filter(function (k) { return q[k]; }).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
   }
@@ -176,6 +182,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     }
     else if (b.dataset.c) { a.c = b.dataset.c; [].forEach.call(card.querySelectorAll('.sw'), function (s) { s.classList.toggle('on', s === b); }); }
     else if (b.hasAttribute('data-go')) {
+      if (q && q.kind === 'email') { var em = card.querySelector('input').value.trim(); if (!okEmail(em)) { document.getElementById('emerr').textContent = 'Type your email so we can send you your website.'; return; } a.em = em; keep(em); }
       if (q && q.kind === 'days') {
         if (!a.days.length) { document.getElementById('dayerr').textContent = 'Tap at least one day.'; return; }
         a.h = 'Days:' + a.days.slice().sort().join(',') + (a.appt ? ' appt' : '');
@@ -185,7 +192,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     else if (b.hasAttribute('data-home')) { step = -1; intro(); }
     else if (b.hasAttribute('data-back')) { save(); step--; while (step >= 0 && !shown(Q[step])) step--; step < 0 ? intro() : ask(); }
   });
-  card.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); next(); } });
+  card.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); var g = card.querySelector('.step > [data-go]'); if (g) g.click(); else next(); } });
   intro();
 })();
 </script>

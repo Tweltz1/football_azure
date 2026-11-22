@@ -320,12 +320,16 @@
   if (saved) {
     ready = fetch('/api/preview/' + saved[1]).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (x) {
       if (!x.ok || !x.j.answers) return function () { gone(x.j.error || 'This preview has expired.'); };
-      var mk = ''; try { mk = localStorage.getItem('wck:' + saved[1]) || ''; } catch (e) {}
+      // The link we emailed carries the maker's key after the #, so they can keep building on any device.
+      var hk = /^#k=([0-9a-f]{32})$/.exec(location.hash);
+      if (hk) { try { localStorage.setItem('wck:' + saved[1], hk[1]); } catch (e) {} history.replaceState(null, '', location.pathname); }
+      var mk = hk ? hk[1] : ''; try { mk = mk || localStorage.getItem('wck:' + saved[1]) || ''; } catch (e) {}
       if (mk) { window.WC_EDIT = { mode: 'preview', slug: saved[1], key: mk }; loadEditor(); }
       return function () { render(x.j.answers, x.j.copy, saved[1]); };
     }, function () { return function () { gone('We couldn\'t load this preview. Try again in a minute.'); }; });
   } else if (P.get('ai') === '1' && A.n) {
-    ready = fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(A) })
+    var lead = ''; try { lead = sessionStorage.getItem('wc-em') || ''; } catch (e) {}
+    ready = fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ em: lead }, A)) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (x) {
         if (!x.ok || !x.j.slug) return function () { render(A, null, ''); };
