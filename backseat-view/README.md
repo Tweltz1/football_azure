@@ -1,36 +1,36 @@
-# Backseat View — separate CarPlay widget TestFlight experiment
+# Backseat View
 
-This is a **separate iPhone app** from Hood League FF. It lives in `backseat-view/` and uses its own GitHub Actions workflow. Existing fantasy app code and workflow remain unchanged.
+See and hear the back seat from the front seat, with a baby card on the CarPlay screen.
 
-**Purpose of first build:** confirm a *static, raster illustration* inside a small WidgetKit widget can appear on the actual vehicle's CarPlay widget screen. This does **not** provide a live baby camera on CarPlay or a five-second updated photo.
+## How it works (1.1)
+- **Two iPhones.** An old iPhone is the back-seat camera (mounted, plugged in, app open). The driver's
+  iPhone is the viewer. Each phone picks its role on first launch.
+- **Direct phone-to-phone link.** Network.framework with `includePeerToPeer` (Apple peer-to-peer Wi-Fi,
+  like AirDrop) and Bonjour `_backseatview._tcp`. No Wi-Fi network, cell signal or server needed.
+  The camera shows a 4-digit pairing code; the driver's phone must send it before getting anything.
+- **Camera phone** (`App/CameraStation.swift`): ~2 pictures/second (480 px JPEG), 16 kHz mono sound,
+  crying detection with Apple's built-in sound classifier (`baby_crying`, `crying_sobbing`), and a rough
+  movement check on a 32x24 brightness grid (overall brightness changes removed). Mood = Crying / Moving / Quiet.
+- **Driver phone** (`App/DriverStation.swift`): live picture, baby sound through the car speakers
+  (mixes with music and directions), and a Live Activity ("baby card"). Playing the sound
+  (background audio mode) is what keeps the app running while the phone is locked.
+- **Car screen**: iOS 26 CarPlay shows Live Activities on the Dashboard using the `.small` family
+  (`Widget/BabyLiveActivity.swift`). The card carries a tiny JPEG (<= 2.3 KB) inside its state because
+  ActivityKit caps the state at 4 KB; this avoids needing an App Group. Refresh about every 4 seconds,
+  immediately on a mood change, with a chime when crying starts.
 
-## Bundle identifiers to register in Apple Developer
-- App: `com.tweltz1.backseatview`
-- Widget extension: `com.tweltz1.backseatview.widget`
+## Why not live video on CarPlay?
+Apple doesn't allow apps to play video on the CarPlay screen while driving, and widgets refresh only a
+few times an hour. The Live Activity card is the fastest-updating thing an ordinary app can put there.
 
-**Apple App Store Connect:** Create a separate iOS app record titled `Backseat View`, using the first bundle ID. Create/register both identifiers in Certificates, Identifiers & Profiles and allow Xcode automatic cloud signing. Do not use the Hood League FF app record.
+## Build / TestFlight
+- `.github/workflows/backseat-view.yml` builds for the simulator on pushes that touch `backseat-view/`.
+- Put **[backseat-upload]** in a commit message (touching `backseat-view/`) to archive and upload to TestFlight.
+- Bundle IDs: `com.tweltz1.backseatview`, `com.tweltz1.backseatview.widget`. App Store Connect app id 6823795258.
 
-**GitHub secrets:** This build workflow reads the same repository-level `APPLE_TEAM_ID`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, and `APP_STORE_CONNECT_KEY` as Hood League FF. These stay in GitHub Actions Secrets and are NEVER pasted into chat or committed.
-
-## CI and uploading
-- On changes to this folder on `feature/backseat-view-carplay-widget`, GitHub Actions compiles the **iPhone Simulator** build only, no signing required.
-- To upload a TestFlight build after registering the Apple app and identifiers, push a commit to this branch with **[backseat-upload]** in its commit message, changing something under `backseat-view/`. This invokes the same workflow's release path and uses existing signing secrets.
-- The workflow also offers a manual `workflow_dispatch` input `upload` if GitHub lists it in Actions.
-- Check GitHub → Actions → **Backseat View iPhone** for simulator/compiler errors before attempting the TestFlight upload.
-- TestFlight app must use the bundle identifier `com.tweltz1.backseatview`.
-
-## CarPlay check
-1. Install the Backseat View TestFlight build on iPhone running iOS 26 or later.
-2. While parked, go to Settings → General → CarPlay → your vehicle → Widgets → Add Widgets.
-3. Look for **Backseat View Photo Test**; add it and check your car's Widgets screen.
-4. Report whether the *static illustration* displays. It is intentionally not live.
-
-## Camera preview (iPhone only)
-The app accepts direct `http(s)://camera/...jpg` endpoints and polls them at five-second intervals **while the app is in foreground**. This is not Bluetooth pairing, not background monitoring, not a baby-safety system, and not available on CarPlay. Some cameras will require proprietary SDKs; wireless CarPlay may interfere with camera hotspots.
-
-## Security / limitations
-This is a development-only prototype. HTTP support is enabled to test local cameras; a commercial version needs transport security, protected credentials, hardware testing, privacy disclosures, and App Store review. Secure any camera mounting so it isn't a projectile, and do not interact with a phone while driving.
-
-## Initial beta submission
-
-The first TestFlight upload is initiated after creation of the separate App Store Connect record. It is a static CarPlay widget proof-of-concept, not an in-motion video baby monitor.
+## Limits
+- The camera phone must stay in the foreground (iOS doesn't allow the camera in the background).
+- Wireless CarPlay also uses the driver phone's Wi-Fi; peer-to-peer Wi-Fi normally runs alongside it,
+  but test in the real car.
+- Movement detection is rough in a moving car (shadows, bumps). Crying detection is the reliable signal.
+- Not a medical or safety device.

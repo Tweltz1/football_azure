@@ -5,6 +5,7 @@ on:
     branches:
       - feature/backseat-view-carplay-widget
       - claude/project-thread-6lgsrr
+      - claude/project-thread-ujg0zh
     paths:
       - "backseat-view/**"
       - ".github/workflows/backseat-view.yml"
