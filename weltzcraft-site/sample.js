@@ -84,7 +84,7 @@
       : [['Monday to Friday', '8am to 5pm'], ['Saturday', '9am to 2pm'], ['Sunday', 'Closed']];
     if (live && live.hours) HOURS = [['Hours', live.hours]];
     else if (a.hrs && a.hrs.length) HOURS = a.hrs;
-    else if (live) HOURS = [];
+    else if (live || a.src) HOURS = [];   // a real business with no hours on record: show none rather than made-up ones
     var tel = real && real.phone ? 'tel:' + real.phone.replace(/[^\d+]/g, '') : '';
     var faq = t.faq || [['When are you open?', live && !HOURS.length ? 'Call or message us and we\'ll find a time that works.' : live && live.hours ? live.hours : HOURS.map(function (h) { return h[0] + ': ' + h[1]; }).join('. ') + '.'], ['Where are you?', 'Right here in ' + town + '. Find us on the map below or give us a call.'], ['How do I get started?', 'Tap "' + cta + '" and we\'ll take it from there. We answer every message the same day.']];
     var initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
