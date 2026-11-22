@@ -88,7 +88,13 @@
     function pimg(o, alt, eager) { return o ? '<img src="/img/x?u=' + encodeURIComponent(o.u) + '" alt="' + esc(alt) + '" loading="' + (eager ? 'eager' : 'lazy') + '" onerror="this.remove()">' : ''; }
     function img(slot, alt) { return PX ? pimg(pxSlot[slot], alt, !slot) : photo ? '<img src="/img/sample/' + photo + '-' + slot + '.webp" alt="' + esc(alt) + '" loading="' + (slot ? 'lazy' : 'eager') + '" onerror="this.remove()">' : ''; }
     function tile() { return (PX ? pxSlot[1] : photo) ? '' : '<div class="tile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>'; }
-    var HOURS = /weekday|mon to fri/i.test(hrs) ? [['Monday to Friday', '8am to 5pm'], ['Saturday', 'Closed'], ['Sunday', 'Closed']]
+    var HOURS = /^days:/i.test(hrs) ? (function () {
+        // Rows of days in a row that are open or closed, Monday first: [['Monday to Friday', '9am to 5pm'], ['Saturday and Sunday', 'Closed']].
+        var open = (hrs.match(/\d/g) || []).map(Number), N = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], rows = [], when = /appt/i.test(hrs) ? 'By appointment' : '9am to 5pm';
+        for (var i = 0; i < 7; i++) { var on = open.indexOf((i + 1) % 7) > -1, last = rows[rows.length - 1]; if (last && last.on === on) last.to = i; else rows.push({ on: on, from: i, to: i }); }
+        return rows.map(function (r) { return [r.from === r.to ? N[r.from] : N[r.from] + (r.to - r.from === 1 ? ' and ' : ' to ') + N[r.to], r.on ? when : 'Closed']; });
+      })()
+      : /weekday|mon to fri/i.test(hrs) ? [['Monday to Friday', '8am to 5pm'], ['Saturday', 'Closed'], ['Sunday', 'Closed']]
       : /every day/i.test(hrs) ? [['Monday to Friday', '7am to 7pm'], ['Saturday', '7am to 7pm'], ['Sunday', '7am to 7pm']]
       : /wed to sun/i.test(hrs) ? [['Monday and Tuesday', 'Closed'], ['Wednesday to Saturday', '9am to 3pm'], ['Sunday', '9am to 3pm']]
       : /appointment/i.test(hrs) ? [['Monday to Saturday', 'By appointment'], ['Sunday', 'Closed']]
@@ -96,6 +102,7 @@
     if (live && live.hours) HOURS = [['Hours', live.hours]];
     else if (a.hrs && a.hrs.length) HOURS = a.hrs;
     else if (live || a.src) HOURS = [];   // a real business with no hours on record: show none rather than made-up ones
+    var H1 = HOURS.filter(function (r) { return r[1] !== 'Closed'; })[0];   // the first open stretch, for the row of facts under the headline
     var tel = real && real.phone ? 'tel:' + real.phone.replace(/[^\d+]/g, '') : '';
     var faq = t.faq || [['When are you open?', live && !HOURS.length ? 'Call or message us and we\'ll find a time that works.' : live && live.hours ? live.hours : HOURS.map(function (h) { return h[0] + ': ' + h[1]; }).join('. ') + '.'], ['Where are you?', 'Right here in ' + town + '. Find us on the map below or give us a call.'], ['How do I get started?', 'Tap "' + cta + '" and we\'ll take it from there. We answer every message the same day.']];
     var initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
@@ -139,7 +146,7 @@
     var HERO =
       '<section class="hero" id="top">' + (img(0, name) || (hero === 'split' ? '<div class="htile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>' : '')) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(t.eyebrow || (town + '\'s favorite ' + t.noun)) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
         '<div class="cta"><a class="btn" href="' + go + '">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
-        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (HOURS.length && !(HOURS[0][1].length > 24) ? '<span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span>' : '') + '</div></div></section>';
+        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (H1 && !(H1[1].length > 24) ? '<span><b>' + esc(H1[1]) + '</b>' + esc(H1[0]) + '</span>' : '') + '</div></div></section>';
     var SEC = {};
     SEC.about = '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + tile() + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">' + esc(t.aboutTitle || ('More than a ' + t.noun + '. A neighbor.')) + '</h2><p>' + esc(t.about) + '</p>' +
         '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + esc(f[0]) + '</b><small>' + esc(f[1]) + '</small></div>'; }).join('') + '</div></div></div></section>';

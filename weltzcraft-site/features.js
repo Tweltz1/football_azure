@@ -16,7 +16,8 @@
   /** When the business takes bookings. Same rules as bookCfg in _worker.js. */
   function bookCfg(a, F) {
     var h = String(a.h || '');
-    var base = /every day/i.test(h) ? { days: [0, 1, 2, 3, 4, 5, 6], open: '09:00', close: '18:00' }
+    var base = /^days:/i.test(h) ? { days: (h.match(/\d/g) || []).map(Number).filter(function (d) { return d < 7; }), open: '09:00', close: '17:00' }
+      : /every day/i.test(h) ? { days: [0, 1, 2, 3, 4, 5, 6], open: '09:00', close: '18:00' }
       : /wed to sun/i.test(h) ? { days: [0, 3, 4, 5, 6], open: '09:00', close: '15:00' }
       : /appointment/i.test(h) ? { days: [1, 2, 3, 4, 5, 6], open: '09:00', close: '17:00' }
       : { days: [1, 2, 3, 4, 5], open: '08:00', close: '17:00' };

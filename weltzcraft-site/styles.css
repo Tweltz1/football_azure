@@ -393,7 +393,7 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent);transition:background .3s,border-color .3s,box-shadow .3s}
 .top.scrolled{box-shadow:0 1px 0 rgba(0,0,0,.02),0 8px 24px -12px rgba(40,30,10,.18)}
 /* Over the dark hero the bar takes the hero's palette, so the page opens as one piece */
-.top.over-dark{--bg:#12100c;--surface:#1d1a14;--ink:#f6efe2;--muted:#c4b9a5;--line:#353026;--ember:#f08a3c;--on-ember:#1b1209;color-scheme:dark;background:rgba(18,16,12,.97);border-bottom-color:rgba(255,240,215,.07);box-shadow:none}
+.top.over-dark:not(.open){--bg:#12100c;--surface:#1d1a14;--ink:#f6efe2;--muted:#c4b9a5;--line:#353026;--ember:#f08a3c;--on-ember:#1b1209;color-scheme:dark;background:rgba(18,16,12,.97);border-bottom-color:rgba(255,240,215,.07);box-shadow:none}
 .top-in{display:flex;align-items:center;gap:20px;height:68px;color:var(--ink)}
 .brand{display:flex;align-items:center;gap:11px;text-decoration:none;flex:none;margin-right:auto}
 .brand img{width:34px;height:34px;border-radius:9px;box-shadow:0 0 0 1px rgba(255,255,255,.06),0 2px 6px rgba(0,0,0,.18)}

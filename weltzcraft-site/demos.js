@@ -10,6 +10,7 @@
     var next = cur === 'dark' ? 'light' : 'dark';
     root.setAttribute('data-theme', next);
     try { localStorage.setItem('wc-theme', next); } catch (e) {}
+    try { document.cookie = 'wc-theme=' + next + '; path=/; max-age=31536000; SameSite=Lax'; } catch (e) {}
   }); });
 
   /* ---- demo tabs ---- */
