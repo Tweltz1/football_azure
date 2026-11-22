@@ -43,9 +43,10 @@ p.sub{color:var(--mut);margin:0;font-size:17px}
 .opt:active{transform:scale(.98)}
 .opt.on{border-color:var(--em);background:rgba(255,138,60,.14)}
 .opt .e{font-size:22px}
-input.txt{font:500 18px var(--fb);padding:16px;border-radius:16px;border:1.5px solid var(--line);background:rgba(255,240,215,.04);color:var(--ink);width:100%}
-input.txt:focus{outline:none;border-color:var(--em)}
-input.txt::placeholder{color:#7d7464}
+input.txt,textarea.txt{font:500 18px var(--fb);padding:16px;border-radius:16px;border:1.5px solid var(--line);background:rgba(255,240,215,.04);color:var(--ink);width:100%}
+input.txt:focus,textarea.txt:focus{outline:none;border-color:var(--em)}
+input.txt::placeholder,textarea.txt::placeholder{color:#7d7464}
+textarea.txt{resize:vertical;min-height:120px;line-height:1.45;font-size:16px}
 .go{border:0;border-radius:16px;padding:17px 22px;font:800 17px/1 var(--fd);background:linear-gradient(135deg,var(--em),var(--em2));color:#221502;cursor:pointer;box-shadow:0 14px 32px -12px rgba(255,138,60,.9)}
 .go:active{transform:scale(.98)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -68,44 +69,49 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
   var TYPES = [['coffee', '☕', 'Coffee shop', 'Maple Street Coffee', 'Order ahead'], ['barber', '💈', 'Barber', 'Main Street Barbers', 'Book online'],
     ['auto', '🔧', 'Auto repair', 'Riverside Auto', 'Get a quote'], ['lawn', '🌿', 'Landscaping', 'Greenline Lawn Care', 'Free estimate'],
     ['bakery', '🥐', 'Bakery', 'Sunrise Bakery', 'Order ahead'], ['fitness', '🏋️', 'Fitness studio', 'Ironwood Fitness', 'Book a class'],
-    ['boutique', '👗', 'Boutique', 'Willow & Thread', 'Shop online'], ['running', '👟', 'Running store', 'Mile Marker Running', 'Book a fitting']];
+    ['boutique', '👗', 'Boutique', 'Willow & Thread', 'Shop online'], ['running', '👟', 'Running store', 'Mile Marker Running', 'Book a fitting'], ['other', '✏️', 'Something else', 'Your Business Name', 'Contact us']];
   var TAGS = { coffee: 'Fresh coffee, made by neighbors', barber: 'Sharp cuts, no long waits', auto: 'Honest repairs, explained in plain English', lawn: 'A yard you are proud of, every week',
-    bakery: 'Baked from scratch before sunrise', fitness: 'Small classes, real coaching', boutique: 'Hand-picked styles you won\'t see everywhere', running: 'Shoes fitted by runners, for runners' };
+    bakery: 'Baked from scratch before sunrise', fitness: 'Small classes, real coaching', boutique: 'Hand-picked styles you won\'t see everywhere', running: 'Shoes fitted by runners, for runners', other: 'What customers love about you' };
   var COLORS = [['Ember', '#e0662a'], ['Forest', '#1f8a55'], ['Ocean', '#2563c9'], ['Plum', '#7a3fb8'], ['Rose', '#c2416b'], ['Charcoal', '#2b2925']];
   var type = function () { return TYPES.filter(function (t) { return t[0] === a.type; })[0]; };
   var Q = [
     { k: 'type', q: 'What kind of business is it?', kind: 'pick', opts: function () { return TYPES.map(function (t) { return [t[0], t[1], t[2]]; }); } },
+    { k: 'what', q: 'What kind of business is it?', kind: 'text', ph: function () { return 'Plumber, dog groomer, food truck…'; }, when: function () { return a.type === 'other'; } },
     { k: 'name', q: 'What is it called?', kind: 'text', ph: function () { return type()[3]; } },
     { k: 'town', q: 'Where are you located?', kind: 'text', ph: function () { return 'Springfield'; } },
     { k: 'tag', q: 'What makes you different?', kind: 'text', ph: function () { return TAGS[a.type]; }, skip: true },
+    { k: 'more', q: 'Tell us a little more', kind: 'area', ph: function () { return 'What you sell or do, rough prices, what customers always ask about…'; }, skip: true },
     { k: 'cta', q: 'What should customers do first?', kind: 'pick', opts: function () { var d = type()[4]; return [[d, '⭐', d]].concat([['Book online', '📅', 'Book online'], ['Order ahead', '🛍️', 'Order ahead'], ['Get a quote', '💬', 'Get a quote'], ['Call us', '📞', 'Call us']].filter(function (o) { return o[0] !== d; })).slice(0, 4); } },
     { k: 'h', q: 'When are you open?', kind: 'pick', opts: function () { return [['Mon to Fri', '🗓️', 'Weekdays'], ['Every day', '☀️', 'Every day'], ['Wed to Sun', '🌙', 'Wed to Sun'], ['By appointment', '📅', 'By appointment']]; } },
-    { k: 's', q: 'What should your site show?', kind: 'multi', opts: function () { return [['list', '🏷️', 'Prices'], ['pics', '📸', 'Photos'], ['review', '⭐', 'Reviews'], ['map', '📍', 'Map']]; } },
+    { k: 's', q: 'What should your site show?', kind: 'multi', opts: function () { return [['list', '🏷️', 'Prices'], ['pics', '📸', 'Photos'], ['review', '⭐', 'Reviews'], ['faq', '❓', 'Questions'], ['map', '📍', 'Map']]; } },
     { k: 'c', q: 'Pick your color', kind: 'color' }
   ];
-  var a = { type: 'coffee', name: '', town: '', tag: '', cta: '', h: 'Mon to Fri', s: ['list', 'pics', 'review', 'map'], c: COLORS[0][1] };
+  var a = { type: 'coffee', what: '', name: '', town: '', tag: '', more: '', cta: '', h: 'Mon to Fri', s: ['list', 'pics', 'review', 'faq', 'map'], c: COLORS[0][1] };
   var step = -1, card = document.getElementById('card');
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function intro() {
-    card.innerHTML = '<div class="step"><div class="big-w">W</div><h1>See your website before you pay a thing.</h1><p class="sub">Answer 8 quick questions and watch Weltzcraft build a real-looking site for your business, with photos, prices, reviews and a map.</p>' +
+    card.innerHTML = '<div class="step"><div class="big-w">W</div><h1>See your website before you pay a thing.</h1><p class="sub">Answer a few quick questions about any kind of business and watch Weltzcraft write and build a real-looking site for it. You get your own link to share for 30 days.</p>' +
       '<ul class="perks"><li>About 60 seconds</li><li>Free</li><li>No sign-up</li></ul><button class="go" data-go>Let\'s build it →</button></div>';
   }
   function ask() {
-    var q = Q[step], h = '<div class="step"><div class="bar"><i style="width:' + Math.round(step / Q.length * 100) + '%"></i></div><span class="n">QUESTION ' + (step + 1) + ' OF ' + Q.length + '</span><h2>' + q.q + '</h2>';
+    var q = Q[step], vis = Q.filter(shown), at = vis.indexOf(q), h = '<div class="step"><div class="bar"><i style="width:' + Math.round(at / vis.length * 100) + '%"></i></div><span class="n">QUESTION ' + (at + 1) + ' OF ' + vis.length + '</span><h2>' + q.q + '</h2>';
     if (q.kind === 'pick') h += '<div class="opts">' + q.opts().map(function (o) { return '<button class="opt' + (a[q.k] === o[0] ? ' on' : '') + '" data-v="' + esc(o[0]) + '"><span class="e">' + o[1] + '</span>' + esc(o[2]) + '</button>'; }).join('') + '</div>';
     if (q.kind === 'multi') h += '<div class="opts">' + q.opts().map(function (o) { var on = a.s.indexOf(o[0]) > -1; return '<button class="opt' + (on ? ' on' : '') + '" data-m="' + o[0] + '" aria-pressed="' + on + '"><span class="e">' + o[1] + '</span>' + o[2] + '</button>'; }).join('') + '</div><button class="go" data-go>Next →</button>';
     if (q.kind === 'text') h += '<input class="txt" maxlength="40" value="' + esc(a[q.k]) + '" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '" enterkeyhint="next"><button class="go" data-go>' + (q.skip ? 'Next (or skip) →' : 'Next →') + '</button>';
+    if (q.kind === 'area') h += '<textarea class="txt area" maxlength="300" rows="4" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '">' + esc(a[q.k]) + '</textarea><button class="go" data-go>Next (or skip) →</button>';
     if (q.kind === 'color') h += '<div class="colors">' + COLORS.map(function (c) { return '<button class="sw' + (a.c === c[1] ? ' on' : '') + '" data-c="' + c[1] + '" style="background:' + c[1] + '" aria-label="' + c[0] + '"></button>'; }).join('') + '</div><button class="go" data-go>Build my website ✨</button>';
     h += '<div class="row"><button class="back" data-back>← Back</button><span></span></div></div>';
     card.innerHTML = h;
-    var inp = card.querySelector('input');
+    var inp = card.querySelector('input,textarea');
     if (inp) inp.focus({ preventScroll: true });
   }
-  function save() { var inp = card.querySelector('input'); if (inp && step >= 0) a[Q[step].k] = inp.value.trim(); }
+  function shown(q) { return !q.when || q.when(); }
+  function save() { var inp = card.querySelector('input,textarea'); if (inp && step >= 0) a[Q[step].k] = inp.value.trim(); }
   function next() {
     save(); step++;
+    while (step < Q.length && !shown(Q[step])) step++;
     if (step < Q.length) return ask();
-    var q = { t: a.type, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };
+    var q = { ai: 1, t: a.type, what: a.type === 'other' ? a.what : '', more: a.more, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };
     if (window.wcHit) window.wcHit('build_done');
     location.href = '/sample?' + Object.keys(q).filter(function (k) { return q[k]; }).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
   }
@@ -116,7 +122,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     else if (b.dataset.m) { var i = a.s.indexOf(b.dataset.m); if (i > -1) a.s.splice(i, 1); else a.s.push(b.dataset.m); b.classList.toggle('on'); b.setAttribute('aria-pressed', i < 0); }
     else if (b.dataset.c) { a.c = b.dataset.c; [].forEach.call(card.querySelectorAll('.sw'), function (s) { s.classList.toggle('on', s === b); }); }
     else if (b.hasAttribute('data-go')) next();
-    else if (b.hasAttribute('data-back')) { save(); step--; step < 0 ? intro() : ask(); }
+    else if (b.hasAttribute('data-back')) { save(); step--; while (step >= 0 && !shown(Q[step])) step--; step < 0 ? intro() : ask(); }
   });
   card.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); next(); } });
   intro();

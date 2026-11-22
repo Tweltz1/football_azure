@@ -42,70 +42,136 @@
       about: 'We\'re runners first. We watch you run, measure your feet and help you find the shoe that feels right, then invite you to run with us on Thursdays.',
       facts: [['Free', 'gait analysis'], ['30 day', 'test-run returns'], ['Every Thu', 'group run']],
       items: [['Free gait analysis', 'Free', 'A quick video of your stride and a fit that works.'], ['Daily trainers', 'from $130', 'Top brands, fitted for your foot and your miles.'], ['Thursday group run', 'Free', '3 or 5 miles, every pace welcome. Coffee after.']],
-      reviews: [['They watched me run and found the first shoe that did not hurt my knees.', 'Sam K.'], ['The Thursday run got me ready for my first half marathon.', 'Leah P.'], ['Real runners giving real advice. Love this shop.', 'Victor A.']] }
+      reviews: [['They watched me run and found the first shoe that did not hurt my knees.', 'Sam K.'], ['The Thursday run got me ready for my first half marathon.', 'Leah P.'], ['Real runners giving real advice. Love this shop.', 'Victor A.']] },
+    other: { noun: 'local business', icon: '⭐', name: 'Your Business', tag: 'Friendly, local and easy to reach.', list: 'Services', listSub: 'What we do, and what it costs. No surprises.',
+      about: 'We\'re a local, owner-run business that treats every customer like a neighbor. Fair prices, clear answers and work we\'re proud to put our name on.',
+      facts: [['Local', 'owned and run'], ['Fast', 'replies, every time'], ['Free', 'quotes']],
+      items: [['Free consultation', 'Free', 'Tell us what you need and we\'ll tell you straight what it takes.'], ['Our most popular service', 'from $50', 'The thing most customers come to us for.'], ['Custom work', 'Quote', 'Something special? We\'ll price it before we start.']],
+      reviews: [['Easy to reach, fair price and great work. Highly recommend.', 'Karen B.'], ['They explained everything and finished when they said they would.', 'Mike D.'], ['Finally a local business that answers the phone.', 'Tina R.']] }
   };
-  var type = T[P.get('t')] ? P.get('t') : 'coffee', t = T[type];
-  var name = clip(P.get('n'), 40) || t.name, town = clip(P.get('town'), 40) || 'Springfield', tag = clip(P.get('tag'), 80) || t.tag;
-  var cta = clip(P.get('cta'), 24) || { coffee: 'Order ahead', bakery: 'Order ahead', barber: 'Book online', fitness: 'Book a class', auto: 'Get a quote', lawn: 'Free estimate', boutique: 'Shop online', running: 'Book a fitting' }[type], hrs = P.get('h') || '', show = (P.get('s') || 'list,pics,review,map').split(',');
-  var color = /^[0-9a-f]{6}$/i.test(P.get('c') || '') ? '#' + P.get('c') : '#e0662a';
-  var on = function (k) { return show.indexOf(k) > -1; };
-  function clip(s, n) { return (s || '').trim().slice(0, n); }
+  var PHOTO_TYPES = ['coffee', 'barber', 'auto', 'lawn', 'bakery', 'fitness', 'boutique', 'running'];
+  var CTA = { coffee: 'Order ahead', bakery: 'Order ahead', barber: 'Book online', fitness: 'Book a class', auto: 'Get a quote', lawn: 'Free estimate', boutique: 'Shop online', running: 'Book a fitting', other: 'Contact us' };
+  function clip(s, n) { return String(s || '').trim().slice(0, n); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function img(slot, alt) { return '<img src="/img/sample/' + type + '-' + slot + '.webp" alt="' + esc(alt) + '" loading="' + (slot ? 'lazy' : 'eager') + '" onerror="this.remove()">'; }
-  var HOURS = /weekday|mon to fri/i.test(hrs) ? [['Monday to Friday', '8am to 5pm'], ['Saturday', 'Closed'], ['Sunday', 'Closed']]
-    : /every day/i.test(hrs) ? [['Monday to Friday', '7am to 7pm'], ['Saturday', '7am to 7pm'], ['Sunday', '7am to 7pm']]
-    : /wed to sun/i.test(hrs) ? [['Monday and Tuesday', 'Closed'], ['Wednesday to Saturday', '9am to 3pm'], ['Sunday', '9am to 3pm']]
-    : /appointment/i.test(hrs) ? [['Monday to Saturday', 'By appointment'], ['Sunday', 'Closed']]
-    : [['Monday to Friday', '8am to 5pm'], ['Saturday', '9am to 2pm'], ['Sunday', 'Closed']];
-  var initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
-  var root = document.documentElement;
-  root.style.setProperty('--c', color);
-  if (t.serif) root.classList.add('serif');
-  document.title = name + ' · ' + town;
-  var brief = '/?site=' + encodeURIComponent(type) + '&sn=' + encodeURIComponent(name) + '&st=' + encodeURIComponent(town) + '#contact';
-  var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') ? [['gallery', 'Gallery']] : []).concat(on('review') ? [['reviews', 'Reviews']] : []).concat([['visit', 'Visit']]);
-  document.getElementById('site').innerHTML =
-    '<div class="wz"><div class="wrap"><span>✨ Sample site built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span><a class="back" href="/build">↺ Try another</a> <a href="' + brief + '" data-track="sample_mine">Make it mine</a></span></div></div>' +
-    '<header class="hd"><div class="wrap"><a class="logo" href="#top"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
-      navs.map(function (n) { return '<a href="#' + n[0] + '">' + n[1] + '</a>'; }).join('') + '</nav><a class="btn" href="#visit">' + esc(cta) + '</a></div></header>' +
-    '<section class="hero" id="top">' + img(0, name) + '<div class="wrap"><p class="eyebrow">' + t.icon + ' ' + esc(town) + '\'s favorite ' + t.noun + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
-      '<div class="cta"><a class="btn" href="#visit">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + t.list.toLowerCase() + '</a>' : '') + '</div>' +
-      '<div class="trust"><span><b>4.9 ★</b>200+ reviews</span><span><b>Local</b>owned in ' + esc(town) + '</span><span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span></div></div></section>' +
-    '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">More than a ' + t.noun + '. A neighbor.</h2><p>' + esc(t.about) + '</p>' +
-      '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + f[0] + '</b><small>' + f[1] + '</small></div>'; }).join('') + '</div></div></div></section>' +
-    (on('list') ? '<section id="menu" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">' + t.list + '</p><h2>' + t.listSub + '</h2></div><div class="items">' +
-      t.items.map(function (i) { return '<div class="item"><div class="top"><h3>' + i[0] + '</h3><span class="price">' + i[1] + '</span></div><p>' + i[2] + '</p></div>'; }).join('') + '</div></div></section>' : '') +
-    (on('pics') ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>Come see for yourself.</h2></div><div class="gal">' +
-      [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; }).join('') + '</div></div></section>' : '') +
-    (on('review') ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
-      t.reviews.map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + r[0] + '”</p><span class="who"><i>' + r[1][0] + '</i>' + r[1] + ' · Google</span></div>'; }).join('') + '</div></div></section>' : '') +
-    '<section id="visit"><div class="wrap visit"><div class="card"><p class="eyebrow">Visit us</p><h2 style="font-size:34px">Find us in ' + esc(town) + '</h2><p style="color:var(--mut);margin:10px 0 0">📍 120 Main Street, ' + esc(town) + '<br>📞 (555) 014-2026</p>' +
-      '<ul class="hours">' + HOURS.map(function (h) { return '<li><span>' + h[0] + '</span><b>' + h[1] + '</b></li>'; }).join('') + '</ul><a class="btn" style="margin-top:18px" href="' + brief + '">' + esc(cta) + '</a></div>' +
-      (on('map') ? '<div class="map" aria-label="Map"><svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice"><rect width="600" height="400" fill="#e9ece4"/><path d="M0 120h600M0 280h600M150 0v400M420 0v400" stroke="#fff" stroke-width="18"/><path d="M0 200h600M290 0v400" stroke="#fff" stroke-width="30"/><path d="M-20 360C120 300 200 330 330 250s220-60 300-120" stroke="#cfe1f2" stroke-width="26" fill="none"/><rect x="40" y="20" width="90" height="80" rx="8" fill="#d6e6cf"/><rect x="460" y="300" width="120" height="80" rx="8" fill="#d6e6cf"/></svg><div class="pin"><i></i><span>' + esc(name) + '</span></div></div>'
-        : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + '</div></div>') + '</div></section>' +
-    '<div class="band"><div class="wrap"><h2>' + esc(cta) + ' in under a minute.</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + brief + '">' + esc(cta) + '</a></div></div>' +
-    '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">Sample site by <a href="/">Weltzcraft Studios</a> · <span id="pc">Photos: Wikimedia Commons</span></span></div></footer>';
-  fetch('/img/sample/credits.json').then(function (r) { return r.json(); }).then(function (c) {
-    var list = [0, 1, 2, 3].map(function (i) { return c[type + '-' + i]; }).filter(Boolean);
-    if (!list.length) return;
-    document.getElementById('pc').innerHTML = 'Photos: ' + list.map(function (x) { return '<a href="' + esc(x.page || '#') + '" target="_blank" rel="noopener">' + esc((x.creator || 'Unknown').slice(0, 40)) + '</a> (' + esc(x.license || '') + ')'; }).join(', ') + ', via Wikimedia Commons';
-  }).catch(function () {});
 
-  // build intro
+  /** a = the builder's answers ({t, what, n, town, tag, more, cta, h, s, c}); copy = AI-written words or null; slug = saved preview id. */
+  function render(a, copy, slug) {
+    var type = T[a.t] ? a.t : 'other', t = {};
+    Object.keys(T[type]).forEach(function (k) { t[k] = T[type][k]; });
+    if (type === 'other' && a.what) t.noun = clip(a.what, 60).toLowerCase();
+    if (copy) Object.keys(copy).forEach(function (k) { var v = copy[k]; if (v !== '' && v !== null && !(Array.isArray(v) && !v.length)) t[k] = v; });
+    var photo = copy ? (PHOTO_TYPES.indexOf(copy.photo) > -1 ? copy.photo : (copy.photo === 'none' ? '' : (type !== 'other' ? type : ''))) : (type !== 'other' ? type : '');
+    var name = clip(a.n, 40) || t.name, town = clip(a.town, 40) || 'Springfield', tag = clip(a.tag, 90) || t.tag;
+    var cta = clip(a.cta, 24) || CTA[type], hrs = a.h || '', show = (a.s || 'list,pics,review,map').split(',');
+    var color = /^[0-9a-f]{6}$/i.test(a.c || '') ? '#' + a.c : '#e0662a';
+    var on = function (k) { return show.indexOf(k) > -1; };
+    function img(slot, alt) { return photo ? '<img src="/img/sample/' + photo + '-' + slot + '.webp" alt="' + esc(alt) + '" loading="' + (slot ? 'lazy' : 'eager') + '" onerror="this.remove()">' : ''; }
+    function tile() { return photo ? '' : '<div class="tile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>'; }
+    var HOURS = /weekday|mon to fri/i.test(hrs) ? [['Monday to Friday', '8am to 5pm'], ['Saturday', 'Closed'], ['Sunday', 'Closed']]
+      : /every day/i.test(hrs) ? [['Monday to Friday', '7am to 7pm'], ['Saturday', '7am to 7pm'], ['Sunday', '7am to 7pm']]
+      : /wed to sun/i.test(hrs) ? [['Monday and Tuesday', 'Closed'], ['Wednesday to Saturday', '9am to 3pm'], ['Sunday', '9am to 3pm']]
+      : /appointment/i.test(hrs) ? [['Monday to Saturday', 'By appointment'], ['Sunday', 'Closed']]
+      : [['Monday to Friday', '8am to 5pm'], ['Saturday', '9am to 2pm'], ['Sunday', 'Closed']];
+    var faq = t.faq || [['When are you open?', HOURS.map(function (h) { return h[0] + ': ' + h[1]; }).join('. ') + '.'], ['Where are you?', 'Right here in ' + town + '. Find us on the map below or give us a call.'], ['How do I get started?', 'Tap "' + cta + '" and we\'ll take it from there. We answer every message the same day.']];
+    var initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
+    var root = document.documentElement;
+    root.style.setProperty('--c', color);
+    root.classList.toggle('serif', !!t.serif);
+    root.classList.toggle('nophoto', !photo);
+    document.title = name + ' · ' + town;
+    var brief = '/?site=' + encodeURIComponent(type) + '&sn=' + encodeURIComponent(name) + '&st=' + encodeURIComponent(town) + '&sk=' + encodeURIComponent(t.noun) + (slug ? '&sp=' + encodeURIComponent(slug) : '') + '#contact';
+    var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(on('review') ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', 'Visit']]);
+    document.getElementById('site').innerHTML =
+      '<div class="wz"><div class="wrap"><span>✨ Sample site ' + (copy ? 'written and ' : '') + 'built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span>' +
+        (slug ? '<button class="share" type="button" id="share">🔗 Share link</button> ' : '') + '<a class="back" href="/build">↺ Try another</a> <a href="' + brief + '" data-track="sample_mine">Make it mine</a></span></div></div>' +
+      '<header class="hd"><div class="wrap"><a class="logo" href="#top"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
+        navs.map(function (n) { return '<a href="#' + n[0] + '">' + esc(n[1]) + '</a>'; }).join('') + '</nav><a class="btn" href="#visit">' + esc(cta) + '</a></div></header>' +
+      '<section class="hero" id="top">' + img(0, name) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(town) + '\'s favorite ' + esc(t.noun) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
+        '<div class="cta"><a class="btn" href="#visit">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
+        '<div class="trust"><span><b>4.9 ★</b>200+ reviews</span><span><b>Local</b>owned in ' + esc(town) + '</span><span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span></div></div></section>' +
+      '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + tile() + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">' + esc(t.aboutTitle || ('More than a ' + t.noun + '. A neighbor.')) + '</h2><p>' + esc(t.about) + '</p>' +
+        '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + esc(f[0]) + '</b><small>' + esc(f[1]) + '</small></div>'; }).join('') + '</div></div></div></section>' +
+      (on('list') ? '<section id="menu" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">' + esc(t.list) + '</p><h2>' + esc(t.listSub) + '</h2></div><div class="items">' +
+        t.items.map(function (i) { return '<div class="item"><div class="top"><h3>' + esc(i[0]) + '</h3><span class="price">' + esc(i[1]) + '</span></div><p>' + esc(i[2]) + '</p></div>'; }).join('') + '</div></div></section>' : '') +
+      (on('pics') && photo ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>Come see for yourself.</h2></div><div class="gal">' +
+        [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; }).join('') + '</div></div></section>' : '') +
+      (on('review') ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
+        t.reviews.map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + ' · Sample review</span></div>'; }).join('') + '</div></div></section>' : '') +
+      (on('faq') ? '<section id="faq"><div class="wrap"><div class="sec-h"><p class="eyebrow">Questions</p><h2>Good to know.</h2></div><div class="faq">' +
+        faq.map(function (f) { return '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>'; }).join('') + '</div></div></section>' : '') +
+      '<section id="visit"' + (on('faq') ? ' class="tint"' : '') + '><div class="wrap visit"><div class="card"><p class="eyebrow">Visit us</p><h2 style="font-size:34px">Find us in ' + esc(town) + '</h2><p style="color:var(--mut);margin:10px 0 0">📍 120 Main Street, ' + esc(town) + '<br>📞 (555) 014-2026</p>' +
+        '<ul class="hours">' + HOURS.map(function (h) { return '<li><span>' + h[0] + '</span><b>' + h[1] + '</b></li>'; }).join('') + '</ul><a class="btn" style="margin-top:18px" href="' + brief + '">' + esc(cta) + '</a></div>' +
+        (on('map') || !photo ? '<div class="map" aria-label="Map"><svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice"><rect width="600" height="400" fill="#e9ece4"/><path d="M0 120h600M0 280h600M150 0v400M420 0v400" stroke="#fff" stroke-width="18"/><path d="M0 200h600M290 0v400" stroke="#fff" stroke-width="30"/><path d="M-20 360C120 300 200 330 330 250s220-60 300-120" stroke="#cfe1f2" stroke-width="26" fill="none"/><rect x="40" y="20" width="90" height="80" rx="8" fill="#d6e6cf"/><rect x="460" y="300" width="120" height="80" rx="8" fill="#d6e6cf"/></svg><div class="pin"><i></i><span>' + esc(name) + '</span></div></div>'
+          : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + '</div></div>') + '</div></section>' +
+      '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + brief + '">' + esc(cta) + '</a></div></div>' +
+      '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">Sample site by <a href="/">Weltzcraft Studios</a>' + (photo ? ' · <span id="pc">Photos: Wikimedia Commons</span>' : '') + '</span></div></footer>';
+    var sh = document.getElementById('share');
+    if (sh) sh.addEventListener('click', function () {
+      var link = location.origin + '/preview/' + slug;
+      if (navigator.share) { navigator.share({ title: name, text: 'Here\'s a sample website for ' + name, url: link }).catch(function () {}); return; }
+      (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () { sh.textContent = '✓ Link copied'; }, function () { prompt('Copy this link', link); });
+    });
+    if (photo) fetch('/img/sample/credits.json').then(function (r) { return r.json(); }).then(function (c) {
+      var list = [0, 1, 2, 3].map(function (i) { return c[photo + '-' + i]; }).filter(Boolean);
+      if (!list.length) return;
+      document.getElementById('pc').innerHTML = 'Photos: ' + list.map(function (x) { return '<a href="' + esc(x.page || '#') + '" target="_blank" rel="noopener">' + esc((x.creator || 'Unknown').slice(0, 40)) + '</a> (' + esc(x.license || '') + ')'; }).join(', ') + ', via Wikimedia Commons';
+    }).catch(function () {});
+    if (location.hash && location.hash.length > 1) { var el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
+  }
+
+  function gone(msg) {
+    document.getElementById('site').innerHTML = '<div class="gone-box"><div class="tile" aria-hidden="true">W</div><h1>' + esc(msg) + '</h1><p>Free previews last 30 days. You can make a new one in about a minute.</p><a class="btn" href="/build">Build a free preview</a> <a class="btn ghost-d" href="/">Weltzcraft Studios</a></div>';
+    document.title = 'Preview not found · Weltzcraft Studios';
+  }
+
+  // Where the page's content comes from:
+  //   /preview/<slug>          a saved preview (load it)
+  //   /sample?ai=1&...         fresh answers from /build (save it, with AI-written words, then show it)
+  //   /sample?t=..&n=..        the old instant sample from the address (no saving)
+  var A = { t: P.get('t'), what: clip(P.get('what'), 60), n: clip(P.get('n'), 40), town: clip(P.get('town'), 40), tag: clip(P.get('tag'), 90), more: clip(P.get('more'), 300), cta: clip(P.get('cta'), 24), h: P.get('h') || '', s: P.get('s') || 'list,pics,review,map', c: P.get('c') || '' };
+  var saved = /^\/preview\/([a-z0-9-]{3,60})\/?$/.exec(location.pathname);
+  var ready;
+  if (saved) {
+    ready = fetch('/api/preview/' + saved[1]).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (x) {
+      if (!x.ok || !x.j.answers) return function () { gone(x.j.error || 'This preview has expired.'); };
+      return function () { render(x.j.answers, x.j.copy, saved[1]); };
+    }, function () { return function () { gone('We couldn\'t load this preview. Try again in a minute.'); }; });
+  } else if (P.get('ai') === '1' && A.n) {
+    ready = fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(A) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (!x.ok || !x.j.slug) return function () { render(A, null, ''); };
+        history.replaceState(null, '', '/preview/' + x.j.slug);
+        if (window.wcHit) window.wcHit('preview_saved');
+        return function () { render(x.j.answers, x.j.copy, x.j.slug); };
+      }, function () { return function () { render(A, null, ''); }; });
+  } else {
+    render(A, null, '');
+    ready = Promise.resolve(function () {});
+  }
+
+  // build intro (holds on its last line until the preview is ready)
   var intro = document.getElementById('intro');
   var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (P.get('intro') === '0') { intro.remove(); return; }
+  if (P.get('intro') === '0' && !saved && P.get('ai') !== '1') { intro.remove(); return; }
   document.body.style.overflow = 'hidden';
-  var lines = ['Building your website…', 'Coding the homepage…', 'Mixing your colors…', 'Adding your ' + t.list.toLowerCase() + '…', 'Placing your photos…', 'Making it fast on phones…', 'Publishing to the web…'];
-  var log = document.getElementById('in-log'), bar = document.getElementById('in-bar'), per = calm ? 120 : 480;
+  var tl = T[A.t] || T.other;
+  var lines = saved ? ['Opening your preview…', 'Loading your colors…', 'Placing your photos…']
+    : ['Building your website…', 'Writing your words…', 'Mixing your colors…', 'Adding your ' + tl.list.toLowerCase() + '…', 'Placing your photos…', 'Making it fast on phones…', 'Saving your link…'];
+  var log = document.getElementById('in-log'), bar = document.getElementById('in-bar'), per = calm ? 120 : (saved ? 260 : 480);
   lines.forEach(function (l, i) {
     setTimeout(function () {
       [].forEach.call(log.children, function (c) { c.className = 'd'; });
       var p = document.createElement('p'); p.innerHTML = '<b>›</b> ' + esc(l); log.appendChild(p);
-      bar.style.width = Math.round((i + 1) / lines.length * 100) + '%';
+      bar.style.width = Math.round((i + 1) / lines.length * 92) + '%';
     }, i * per);
   });
-  setTimeout(function () { intro.classList.add('pow'); }, lines.length * per + 150);
-  setTimeout(function () { intro.classList.add('gone'); document.body.style.overflow = ''; history.replaceState(null, '', location.pathname + location.search.replace(/([?&])intro=1(&|$)/, '$1').replace(/[?&]$/, '')); }, lines.length * per + (calm ? 700 : 2600));
-  setTimeout(function () { intro.remove(); }, lines.length * per + (calm ? 1600 : 3500));
+  var played = new Promise(function (res) { setTimeout(res, lines.length * per + 150); });
+  Promise.all([ready, played]).then(function (x) {
+    x[0]();
+    bar.style.width = '100%';
+    intro.classList.add('pow');
+    setTimeout(function () { intro.classList.add('gone'); document.body.style.overflow = ''; }, calm ? 550 : 2450);
+    setTimeout(function () { intro.remove(); }, calm ? 1450 : 3350);
+  });
 })();
