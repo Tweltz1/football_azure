@@ -28,6 +28,12 @@ final class DriverStation: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "cryAlerts"); objectWillChange.send() }
     }
 
+    /// Quarter turns applied to the camera's picture (the mini camera can be mounted any way up).
+    var turns: Int {
+        get { UserDefaults.standard.integer(forKey: "pictureTurns") }
+        set { UserDefaults.standard.set(newValue % 4, forKey: "pictureTurns"); objectWillChange.send() }
+    }
+
     var volume: Float {
         get { UserDefaults.standard.object(forKey: "babyVolume") as? Float ?? 0.6 }
         set { UserDefaults.standard.set(newValue, forKey: "babyVolume"); speaker.volume = newValue; objectWillChange.send() }
@@ -35,6 +41,12 @@ final class DriverStation: ObservableObject {
 
     private let speaker = BabySpeaker()
     private let card = CarCard()
+    private let watcher = BabyWatcher(format: BabySpeaker.format)
+    private var lastCry = Date.distantPast
+    private var lastMotion = Date.distantPast
+    private var motionStreak = 0
+    private var hotspotTries: [NWConnection] = []
+    private var lookingSince = Date()
     private var browser: NWBrowser?
     private var link: FramedConnection?
     private var linkEndpoint: NWEndpoint?
@@ -47,9 +59,26 @@ final class DriverStation: ObservableObject {
         self.code = code
         wrongCode.removeAll()
         running = true
-        status = "Looking for the camera phone..."
+        status = "Looking for the camera..."
         speaker.volume = volume
         speaker.start()
+        lastCry = .distantPast
+        lastMotion = .distantPast
+        lookingSince = Date()
+        watcher.onCry = { [weak self] score in
+            guard score > 0.5 else { return }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.lastCry = Date() } }
+        }
+        watcher.onPicture = { [weak self] motion, brightness in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.cameraTooDark = brightness < 0.06
+                    self.motionStreak = motion > 0.05 ? self.motionStreak + 1 : 0
+                    if self.motionStreak >= 2 { self.lastMotion = Date() }
+                }
+            }
+        }
         browse()
         ticker = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
@@ -100,23 +129,61 @@ final class DriverStation: ObservableObject {
     private func pickCamera(from results: Set<NWBrowser.Result>) {
         guard running, link == nil else { return }
         guard let result = results.first(where: { !wrongCode.contains($0.endpoint) }) else {
-            if !results.isEmpty { status = "Found a camera phone, but its code doesn't match. Check the code." }
+            tryHotspotAddresses()
+            if !results.isEmpty { status = "Found a camera, but its code doesn't match. Check the code." }
             return
         }
         connect(to: result.endpoint)
     }
 
+    /// iPhone Personal Hotspot hands out 172.20.10.2-14. If Bonjour doesn't find the mini camera
+    /// within a few seconds, knock on each of those addresses directly.
+    private func tryHotspotAddresses() {
+        guard running, link == nil, hotspotTries.isEmpty, Date().timeIntervalSince(lookingSince) > 4 else { return }
+        for last in 2...14 {
+            let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host("172.20.10.\(last)"), port: 8765)
+            let tcp = NWProtocolTCP.Options()
+            tcp.connectionTimeout = 3
+            let attempt = NWConnection(to: endpoint, using: NWParameters(tls: nil, tcp: tcp))
+            attempt.stateUpdateHandler = { [weak self, weak attempt] state in
+                MainActor.assumeIsolated {
+                    guard let self, let attempt else { return }
+                    switch state {
+                    case .ready:
+                        let found = self.link == nil && self.running
+                        self.hotspotTries.forEach { $0.cancel() }
+                        self.hotspotTries.removeAll()
+                        if found { self.connect(to: endpoint) }
+                    case .failed, .cancelled:
+                        self.hotspotTries.removeAll { $0 === attempt }
+                    case .waiting:
+                        attempt.cancel()
+                    default:
+                        break
+                    }
+                }
+            }
+            hotspotTries.append(attempt)
+            attempt.start(queue: .main)
+        }
+    }
+
     private func connect(to endpoint: NWEndpoint) {
-        status = "Connecting to the camera phone..."
+        status = "Connecting to the camera..."
         let link = FramedConnection(NWConnection(to: endpoint, using: BVLink.parameters()))
         self.link = link
         linkEndpoint = endpoint
         let speaker = self.speaker
+        let watcher = self.watcher
         link.onPacket = { [weak self] type, payload in
             if type == .audio {
-                speaker.play(payload)
+                if let sound = BabySpeaker.decode(payload) {
+                    speaker.play(sound)
+                    watcher.hear(sound)
+                }
                 return
             }
+            if type == .frame { watcher.look(at: payload) }
             MainActor.assumeIsolated { self?.handle(type, payload) }
         }
         link.onState = { [weak self, weak link] state in
@@ -143,22 +210,16 @@ final class DriverStation: ObservableObject {
             status = "Connected"
         case .denied:
             if let linkEndpoint { wrongCode.insert(linkEndpoint) }
-            status = "The camera phone shows a different code. Check the code."
+            status = "That camera wants a different code. Check the code on the camera iPhone or iPad."
             dropLink()
         case .frame:
             lastSeen = Date()
-            if let image = UIImage(data: payload) { picture = image }
+            if let image = UIImage(data: payload) { picture = turned(image) }
             pushCard()
         case .status:
             lastSeen = Date()
             guard let message = try? JSONDecoder().decode(StatusMessage.self, from: payload) else { return }
             cameraBattery = message.battery
-            cameraTooDark = message.dark
-            if message.mood != mood {
-                let startedCrying = message.mood == .crying
-                mood = message.mood
-                pushCard(force: true, alert: startedCrying && cryAlerts)
-            }
         default:
             break
         }
@@ -174,7 +235,7 @@ final class DriverStation: ObservableObject {
     private func lostCamera() {
         dropLink()
         guard running else { return }
-        if connected { status = "Lost the camera phone. Reconnecting..." }
+        if connected { status = "Lost the camera. Reconnecting..." }
         connected = false
         if mood != .offline {
             mood = .offline
@@ -193,6 +254,27 @@ final class DriverStation: ObservableObject {
         if connected, let lastSeen, Date().timeIntervalSince(lastSeen) > 8 {
             lostCamera()
         }
+        if running, link == nil, let browser { pickCamera(from: browser.browseResults) }
+        guard connected else { return }
+        let now = Date()
+        let newMood: BabyMood
+        if now.timeIntervalSince(lastCry) < 4 {
+            newMood = .crying
+        } else if now.timeIntervalSince(lastMotion) < 8 {
+            newMood = .moving
+        } else {
+            newMood = .quiet
+        }
+        if newMood != mood {
+            mood = newMood
+            pushCard(force: true, alert: newMood == .crying && cryAlerts)
+        }
+    }
+
+    private func turned(_ image: UIImage) -> UIImage {
+        guard let cg = image.cgImage else { return image }
+        let orientation: UIImage.Orientation = [.up, .right, .down, .left][turns % 4]
+        return UIImage(cgImage: cg, scale: 1, orientation: orientation)
     }
 
     private func pushCard(force: Bool = false, alert: Bool = false) {
@@ -206,7 +288,8 @@ final class DriverStation: ObservableObject {
 final class BabySpeaker {
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
-    private let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
+    static let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
+    private let format = BabySpeaker.format
     private let lock = NSLock()
     private var queued = 0
     private var observers: [NSObjectProtocol] = []
@@ -252,20 +335,24 @@ final class BabySpeaker {
         if !player.isPlaying { player.play() }
     }
 
-    /// 16 kHz mono 16-bit samples from the camera phone.
-    func play(_ pcm: Data) {
+    /// Turns the camera's 16 kHz mono 16-bit samples into a playable buffer.
+    static func decode(_ pcm: Data) -> AVAudioPCMBuffer? {
         let count = pcm.count / 2
-        guard count > 0 else { return }
-        lock.lock(); let backlog = queued; lock.unlock()
-        if backlog > 6 { return } // fell behind: skip to stay live
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)),
-              let out = buffer.floatChannelData?[0] else { return }
+        guard count > 0,
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(count)),
+              let out = buffer.floatChannelData?[0] else { return nil }
         buffer.frameLength = AVAudioFrameCount(count)
         pcm.withUnsafeBytes { raw in
             for i in 0..<count {
                 out[i] = Float(Int16(littleEndian: raw.loadUnaligned(fromByteOffset: i * 2, as: Int16.self))) / 32_768
             }
         }
+        return buffer
+    }
+
+    func play(_ buffer: AVAudioPCMBuffer) {
+        lock.lock(); let backlog = queued; lock.unlock()
+        if backlog > 6 { return } // fell behind: skip to stay live
         schedule(buffer)
     }
 

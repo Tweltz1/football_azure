@@ -3,68 +3,16 @@ import SwiftUI
 private let navy = Color(red: 0.06, green: 0.11, blue: 0.2)
 private let mint = Color(red: 0.51, green: 0.87, blue: 0.73)
 
-/// Each phone is either the back-seat camera or the driver's screen.
+/// Normally this is the driver's phone. An old iPhone or iPad can be switched to be the camera instead.
 struct ContentView: View {
     @AppStorage("role") private var role = ""
 
     var body: some View {
-        switch role {
-        case "camera": CameraScreen { role = "" }
-        case "driver": DriverScreen { role = "" }
-        default: RolePicker(role: $role)
+        if role == "camera" {
+            CameraScreen { role = "" }
+        } else {
+            DriverScreen { role = "camera" }
         }
-    }
-}
-
-struct RolePicker: View {
-    @Binding var role: String
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 12) {
-                    Image(systemName: "car.side.rear.open").font(.system(size: 34)).foregroundStyle(mint)
-                    VStack(alignment: .leading) {
-                        Text("Backseat View").font(.largeTitle.bold())
-                        Text("See and hear the back seat from the front").font(.subheadline).foregroundStyle(.secondary)
-                    }
-                }
-                Text("You need two iPhones: an old one that becomes the back-seat camera, and yours. They talk straight to each other, so no Wi-Fi or cell signal is needed.")
-                    .font(.callout)
-                RoleButton(symbol: "video.fill", title: "This phone is the back-seat camera",
-                           detail: "Mount it facing the baby and plug it in.") { role = "camera" }
-                RoleButton(symbol: "steeringwheel", title: "This phone is mine (front seat)",
-                           detail: "Shows the picture, plays the baby's sound in the car, and puts a baby card on your CarPlay screen.") { role = "driver" }
-                Text("Not a medical or safety device. Never leave a child alone in a car, and don't handle your phone while driving.")
-                    .font(.caption).foregroundStyle(.secondary)
-                StudioCredit().padding(.top, 8)
-            }
-            .padding()
-        }
-    }
-}
-
-struct RoleButton: View {
-    let symbol: String
-    let title: String
-    let detail: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: symbol).font(.title2).frame(width: 34).foregroundStyle(mint)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.headline).foregroundStyle(.primary)
-                    Text(detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").foregroundStyle(.tertiary)
-            }
-            .padding(16)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -111,7 +59,7 @@ struct CameraScreen: View {
                     }
                     Text("Keep Backseat View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
-                    Button("This isn't the camera phone") { station.stop(); onSwitch() }.font(.footnote)
+                    Button("Use this device as the viewer instead") { station.stop(); onSwitch() }.font(.footnote)
                 }
                 .padding()
             }
@@ -149,7 +97,7 @@ struct DriverScreen: View {
                 }
                 PicturePanel(image: station.connected ? station.picture : nil,
                              mood: station.running ? station.mood : nil,
-                             placeholder: station.running ? station.status : "Start the camera phone, then tap Watch Back Seat")
+                             placeholder: station.running ? station.status : "Switch the camera on, then tap Watch Back Seat")
                 if station.running {
                     Text(station.status).font(.footnote).foregroundStyle(.secondary)
                     if station.cameraTooDark && station.connected {
@@ -159,10 +107,16 @@ struct DriverScreen: View {
                         Text("The camera phone's battery is low. Plug it in.").font(.footnote).foregroundStyle(.orange)
                     }
                     if let problem = station.cardProblem { Text(problem).font(.footnote).foregroundStyle(.orange) }
-                    Button("Stop", role: .destructive) { station.stop() }.buttonStyle(.bordered)
+                    HStack {
+                        Button { station.turns += 1 } label: { Label("Rotate picture", systemImage: "rotate.right") }
+                        Button("Stop", role: .destructive) { station.stop() }
+                    }
+                    .buttonStyle(.bordered)
                 } else {
+                    Button { station.start(code: pairCode) } label: { Text("Watch Back Seat").frame(maxWidth: .infinity) }
+                        .buttonStyle(.borderedProminent).controlSize(.large)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Code from the camera phone").font(.caption).foregroundStyle(.secondary)
+                        Text("Camera code (only if the camera is an old iPhone or iPad)").font(.caption).foregroundStyle(.secondary)
                         TextField("4-digit code", text: $pairCode)
                             .keyboardType(.numberPad)
                             .font(.title2.monospacedDigit())
@@ -172,10 +126,18 @@ struct DriverScreen: View {
                                 if digits != value { pairCode = digits }
                             }
                     }
-                    Button { station.start(code: pairCode) } label: { Text("Watch Back Seat").frame(maxWidth: .infinity) }
-                        .buttonStyle(.borderedProminent).controlSize(.large)
-                        .disabled(pairCode.count != 4)
                 }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Mini camera setup", systemImage: "video.badge.checkmark").font(.headline)
+                    Text("1. On this phone: Settings > Personal Hotspot. Turn on Allow Others to Join and Maximize Compatibility.")
+                    Text("2. Once, on a computer with Chrome or Edge: open weltzcraft.com/backseatview/camera, plug the camera in by USB and click Install. Type this phone's hotspot name and password when asked.")
+                    Text("3. In the car: switch the camera on, keep your hotspot on, and tap Watch Back Seat.")
+                    Link("Open the setup page", destination: URL(string: "https://weltzcraft.com/backseatview/camera/")!)
+                }
+                .font(.subheadline)
+                .padding(16)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("In the car").font(.headline)
@@ -204,7 +166,7 @@ struct DriverScreen: View {
 
                 Text("Glance only, like a mirror. Not a medical or safety device. Never leave a child alone in a car.")
                     .font(.caption).foregroundStyle(.secondary)
-                Button("This isn't my phone, it's the camera") { station.stop(); onSwitch() }.font(.footnote)
+                Button("Use this old iPhone or iPad as the camera") { station.stop(); onSwitch() }.font(.footnote)
                 StudioCredit().padding(.top, 4)
             }
             .padding()
