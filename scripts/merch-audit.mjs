@@ -27,7 +27,7 @@ const threadOption = pl => pl === 'embroidery_front' ? 'thread_colors' : pl.repl
 const md5 = f => crypto.createHash('md5').update(fs.readFileSync(f)).digest('hex');
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 
-const problems = [], notes = [];
+const problems = [], notes = [], idFixes = {};
 const bad = (slug, msg) => { problems.push(`${slug}: ${msg}`); };
 let checked = 0, variantsChecked = 0;
 const catalogVariantCache = {};
@@ -50,8 +50,15 @@ for (const [slug, item] of Object.entries(cat.items)) {
   const localMd5 = fs.existsSync(placedFile) ? md5(placedFile) : null;
   if (!localMd5) bad(slug, 'no placed print file in the repo');
   for (const v of item.variants) {
-    const sv = got.sync_variants.find(x => x.id === v.id);
-    if (!sv) { bad(slug, `size ${v.size}: page variant id ${v.id} is not in the Printful product`); continue; }
+    let sv = got.sync_variants.find(x => x.id === v.id);
+    if (!sv) {
+      // The Printful product was re-made after the page's list was written: an order for it would be refused.
+      // Find the same size in the live product, keep checking it, and print the right id so the list can be corrected.
+      sv = got.sync_variants.find(x => String((p.variants.find(pv => pv.id === x.variant_id) || {}).size) === String(v.size));
+      bad(slug, `size ${v.size}: page variant id ${v.id} is not in the Printful product` + (sv ? ` (live id ${sv.id})` : ''));
+      if (!sv) continue;
+      (idFixes[slug] ||= []).push({ size: v.size, id: sv.id, price: Number(sv.retail_price) });
+    }
     variantsChecked++;
     const pv = p.variants.find(x => x.id === sv.variant_id);
     if (!pv) bad(slug, `size ${v.size}: Printful blank variant ${sv.variant_id} is not in the plan for ${pk}-${ck}`);
@@ -72,8 +79,8 @@ for (const [slug, item] of Object.entries(cat.items)) {
     if (Number(sv.retail_price) !== wantPrice || v.price !== wantPrice) bad(slug, `size ${v.size}: price page $${v.price} / Printful $${sv.retail_price} / should be $${wantPrice}`);
     if (sv.synced === false) bad(slug, `size ${v.size}: Printful marks the variant as not synced`);
     const files = (sv.files || []).filter(f => f.type !== 'preview');
-    // Printful files the main front print under the type 'default'.
-    const main = files.find(f => f.type === p.placement) || (p.placement === 'front' ? files.find(f => f.type === 'default') : null);
+    // Printful files the main front print or front embroidery under the type 'default'.
+    const main = files.find(f => f.type === p.placement) || (/^(front|embroidery_front)$/.test(p.placement) ? files.find(f => f.type === 'default') : null);
     if (!main) bad(slug, `size ${v.size}: no print file on "${p.placement}" (has ${files.map(f => f.type).join(', ') || 'none'})`);
     else {
       if (!String(main.filename || main.url || '').includes(`${slug}.png`)) bad(slug, `size ${v.size}: print file is "${main.filename}", expected ${slug}.png`);
@@ -107,3 +114,4 @@ const kinds = {}; for (const x of problems) { const k = x.replace(/^[^:]+: (size
 console.log('Problem kinds: ' + JSON.stringify(kinds, null, 1));
 console.log(`Notes: ${notes.length}`); [...new Set(notes)].forEach(x => console.log('  ' + x));
 console.log(`Printful products the page no longer sells: ${stale.length}`); stale.forEach(x => console.log('  ' + x));
+if (Object.keys(idFixes).length) console.log('IDFIX ' + JSON.stringify(idFixes));
