@@ -28,7 +28,7 @@ const md5 = f => crypto.createHash('md5').update(fs.readFileSync(f)).digest('hex
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 const problems = [], notes = [];
-const bad = (slug, msg) => { problems.push(`${slug}: ${msg}`); console.log(`✗ ${slug}: ${msg}`); };
+const bad = (slug, msg) => { problems.push(`${slug}: ${msg}`); };
 let checked = 0, variantsChecked = 0;
 const catalogVariantCache = {};
 async function catalogVariant(id) { return catalogVariantCache[id] ??= (await pf(`/products/variant/${id}`))?.result || null; }
@@ -72,7 +72,8 @@ for (const [slug, item] of Object.entries(cat.items)) {
     if (Number(sv.retail_price) !== wantPrice || v.price !== wantPrice) bad(slug, `size ${v.size}: price page $${v.price} / Printful $${sv.retail_price} / should be $${wantPrice}`);
     if (sv.synced === false) bad(slug, `size ${v.size}: Printful marks the variant as not synced`);
     const files = (sv.files || []).filter(f => f.type !== 'preview');
-    const main = files.find(f => f.type === p.placement);
+    // Printful files the main front print under the type 'default'.
+    const main = files.find(f => f.type === p.placement) || (p.placement === 'front' ? files.find(f => f.type === 'default') : null);
     if (!main) bad(slug, `size ${v.size}: no print file on "${p.placement}" (has ${files.map(f => f.type).join(', ') || 'none'})`);
     else {
       if (!String(main.filename || main.url || '').includes(`${slug}.png`)) bad(slug, `size ${v.size}: print file is "${main.filename}", expected ${slug}.png`);
@@ -101,6 +102,8 @@ for (let offset = 0; ; offset += 100) {
   if (offset + 100 >= (r.paging?.total || 0)) break;
 }
 console.log(`\n== Merch audit: ${checked}/${Object.keys(cat.items).length} items and ${variantsChecked} sizes checked against Printful ==`);
-console.log(`Problems: ${problems.length}`); problems.forEach(x => console.log('  ' + x));
+console.log(`Problems: ${problems.length}`); problems.slice(0, 60).forEach(x => console.log('  ' + x));
+const kinds = {}; for (const x of problems) { const k = x.replace(/^[^:]+: (size [^:]+: )?/, '').replace(/"[^"]*"|\d+/g, '#'); kinds[k] = (kinds[k] || 0) + 1; }
+console.log('Problem kinds: ' + JSON.stringify(kinds, null, 1));
 console.log(`Notes: ${notes.length}`); [...new Set(notes)].forEach(x => console.log('  ' + x));
 console.log(`Printful products the page no longer sells: ${stale.length}`); stale.forEach(x => console.log('  ' + x));
