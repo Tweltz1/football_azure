@@ -391,6 +391,10 @@
         b.label = val('label'); delete b.pg;
         if (act.value.indexOf('pg:') === 0) { b.act = 'page'; b.pg = act.value.slice(3); delete b.url; }
         else { b.act = act.value; b.url = val('url'); if (b.label && b.act === 'link' && !/\./.test(b.url)) return msg('Add the web link for the button.'); }
+        // A button must have somewhere to go: say so now, instead of the button quietly not showing to visitors.
+        var miss = { call: 'Your site has no phone number yet, so a Call button has nothing to dial. ', email: 'Your site has no email address yet, so an Email button has nowhere to send. ', directions: 'Your site has no street address yet, so a Directions button has nowhere to point. ',
+          book: 'Your page has no booking calendar yet. Press Add and choose Booking calendar first. ', order: 'Your page has no order form yet. Press Add and choose Order form first. ', message: 'Your page has no message form yet. Press Add and choose Message form first. ' }[b.act];
+        if (b.label && miss && page.can && !page.can[b.act]) return msg(miss + (/phone|email|street/.test(miss) ? (PORTAL ? 'Add it in your portal under Contact and hours, or pick something else.' : 'It is added when the site goes live. For now, pick something else.') : ''));
         if (!b.label) { delete b.act; delete b.url; delete b.pg; }
       }
       if ($('#ed-flip', d)) b.flip = $('#ed-flip', d).checked ? 1 : 0;

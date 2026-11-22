@@ -238,7 +238,7 @@
     var site = window.WC_SITE || {};
     if (window.wcFeatures) window.wcFeatures.mount({ a: a, copy: copy, t: t, slug: slug, live: !!(live && site.live), site: site.id || slug || '', name: name, town: town, cta: cta, F: F, d: { vibe: vibe, hero: hero, items: look }, photo: photo, show: show,
       rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); } });
-    window.wcPage = { a: a, copy: copy, slug: slug, live: live, order: ORDER, pg: cur ? cur.path : '', base: BASEP, has: SEC, F: F, show: show, rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); }, redraw: function (a2, copy2, live2) { var y = window.scrollY; render(a2, copy2, slug, live2); window.scrollTo(0, y); } };
+    window.wcPage = { a: a, copy: copy, slug: slug, live: live, order: ORDER, pg: cur ? cur.path : '', base: BASEP, can: { call: !!acts.call, email: !!acts.email, book: !!F.book, order: !!hasOrder, message: !!hasForm, directions: !!acts.directions }, has: SEC, F: F, show: show, rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); }, redraw: function (a2, copy2, live2) { var y = window.scrollY; render(a2, copy2, slug, live2); window.scrollTo(0, y); } };
     if (window.wcEditor) window.wcEditor.decorate(window.wcPage);
     if (VIEW && !render.told) { render.told = true; window.parent.postMessage({ wcviewReady: 1 }, location.origin); }
     if (!render.done && location.hash && location.hash.length > 1) { var el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
@@ -285,7 +285,7 @@
       [].forEach.call(box.querySelectorAll('.tab-b'), function (b, j) { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
       [].forEach.call(box.querySelectorAll('.tab-p'), function (b, j) { b.hidden = j !== i; }); }
   });
-  function loadEditor() { if (VIEW || document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=4'; document.body.appendChild(sc); }
+  function loadEditor() { if (VIEW || document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=5'; document.body.appendChild(sc); }
   if (EDIT) {
     document.getElementById('intro').remove();
     var auth = null;
