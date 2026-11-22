@@ -609,14 +609,14 @@ const PHOTO_HOSTS = /^(upload\.wikimedia\.org|[a-z0-9-]+\.staticflickr\.com)$/;
 const PHOTO_SKIP = /logo|map\b|diagram|poster|flag|coat of arms|\bsign\b|screenshot|chart|stamp|drawing|illustration|painting|engraving|\b1[5-9]\d\d\b|fortepan|bundesarchiv|\.svg|\.gif|\.tif/i;
 const licOk = (l) => /^(cc0|pdm|public domain|pd\b|cc[ -]by([ -]sa)?([ -][\d.]+)?( [a-z]{2,4})?$)/i.test(String(l || '').trim()) && !/nc|nd/i.test(l);
 const stripTags = (v) => String(v || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-async function getJson(u, ms) {
+async function getJson(u, ms, log) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
-  try { const r = await fetch(u, { signal: ctl.signal, headers: { 'User-Agent': PHOTO_UA, Accept: 'application/json' } }); return r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(timer); }
+  try { const r = await fetch(u, { signal: ctl.signal, headers: { 'User-Agent': PHOTO_UA, Accept: 'application/json' } }); if (log) log.push(new URL(u).hostname + ' ' + r.status); return r.ok ? await r.json() : null; } catch (e) { if (log) log.push(new URL(u).hostname + ' ' + e.name); return null; } finally { clearTimeout(timer); }
 }
-async function commonsPhotos(q) {
+async function commonsPhotos(q, log) {
   const j = await getJson('https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({ action: 'query', format: 'json', generator: 'search', gsrsearch: q + ' filetype:bitmap', gsrnamespace: '6', gsrlimit: '20',
-    prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiurlwidth: '1280', iiextmetadatafilter: 'LicenseShortName|Artist' }), 7000);
+    prop: 'imageinfo', iiprop: 'url|size|mime|extmetadata', iiurlwidth: '1280', iiextmetadatafilter: 'LicenseShortName|Artist' }), 7000, log);
   const pages = Object.values((j && j.query && j.query.pages) || {}).sort((a, b) => (a.index || 99) - (b.index || 99));
   const out = [];
   for (const pg of pages) {
@@ -626,8 +626,8 @@ async function commonsPhotos(q) {
   }
   return out;
 }
-async function openversePhotos(q) {
-  const j = await getJson('https://api.openverse.org/v1/images/?' + new URLSearchParams({ q, license: 'cc0,pdm,by,by-sa', source: 'flickr', page_size: '12', mature: 'false' }), 7000);
+async function openversePhotos(q, log) {
+  const j = await getJson('https://api.openverse.org/v1/images/?' + new URLSearchParams({ q, license: 'cc0,pdm,by,by-sa', source: 'flickr', page_size: '12', mature: 'false' }), 7000, log);
   const out = [];
   for (const r of (j && j.results) || []) {
     let host = ''; try { host = new URL(r.url).hostname; } catch (e) { continue; }
@@ -639,21 +639,23 @@ async function openversePhotos(q) {
 }
 const b64 = (buf) => { let s = ''; const a = new Uint8Array(buf); for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
 /** {hero, about, gal: [..]} of {u, by, lic, page, src}, or null when nothing good was found (the page then uses its built-in photo set). */
-async function previewPhotos(env, a, copy) {
+async function previewPhotos(env, a, copy, log) {
   const qs = (copy && copy.photoQs) || [];
   if (!env.GEMINI_API_KEY || qs.length < 2) return null;
-  const found = await Promise.all(qs.slice(0, 4).map((q) => Promise.all([commonsPhotos(q), openversePhotos(q)])));
+  const found = await Promise.all(qs.slice(0, 4).map((q) => Promise.all([commonsPhotos(q, log), openversePhotos(q, log)])));
   // Up to 3 candidates per search, Flickr and Commons taking turns, no photo twice.
   const seen = new Set(), cands = [];
   found.forEach(([c, o], qi) => {
     const mix = []; for (let i = 0; i < 6; i++) { if (o[i]) mix.push(o[i]); if (c[i]) mix.push(c[i]); }
     let n = 0; for (const x of mix) { if (n >= 3 || seen.has(x.u)) continue; seen.add(x.u); cands.push({ ...x, q: qs[qi] }); n++; }
   });
+  if (log) log.push('candidates ' + cands.length);
   if (cands.length < 2) return null;
   const thumbs = await Promise.all(cands.map(async (c) => {
     try { const r = await fetch(c.s, { headers: { 'User-Agent': PHOTO_UA } }); if (!r.ok || !/^image\/jpeg/.test(r.headers.get('Content-Type') || '')) return null; const buf = await r.arrayBuffer(); return buf.byteLength < 400000 ? b64(buf) : null; } catch (e) { return null; }
   }));
   const usable = cands.map((c, i) => ({ c, t: thumbs[i] })).filter((x) => x.t);
+  if (log) log.push('thumbs ' + usable.length);
   if (usable.length < 2) return null;
   const what = a.what || (copy && copy.noun) || 'small business';
   const parts = [{ text: 'These are ' + usable.length + ' numbered stock photos. Pick photos for the website of a small local business: ' + JSON.stringify(what) + '.\n' +
@@ -661,6 +663,7 @@ async function previewPhotos(env, a, copy) {
     'Return JSON: {"hero": number of the best wide scene to sit behind the page\'s headline (or -1), "about": number of the best photo of the work or product (or -1), "gallery": [up to 4 more numbers, best first]}. Never use a number twice. Use -1 or fewer gallery photos rather than a photo that does not fit.' }];
   usable.forEach((x, i) => { parts.push({ text: 'Photo ' + i + ' (searched: ' + x.c.q + ')' }); parts.push({ inline_data: { mime_type: 'image/jpeg', data: x.t } }); });
   const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } } }, 20000));
+  if (log) log.push('picked ' + JSON.stringify(g));
   if (!g) return null;
   const used = new Set();
   const take = (i) => { const x = Number.isInteger(i) && i >= 0 && !used.has(i) ? usable[i] : null; if (!x) return null; used.add(i); return { u: x.c.u, by: x.c.by, lic: x.c.lic, page: x.c.page, src: x.c.src }; };
@@ -719,8 +722,10 @@ async function previewCreate(request, env) {
   } : b);
   if (facts) { a.src = src; if (facts.state) a.state = facts.state; }
   const copy = all < PREVIEW_ALL_DAY ? await previewCopy(env, a, facts) : null;
+  // What the photo search did, returned to the maker's browser only (never saved): which sources answered and how many photos made it.
+  const plog = [];
   if (copy) {
-    const photos = await previewPhotos(env, a, copy).catch(() => null);
+    const photos = await previewPhotos(env, a, copy, plog).catch((e) => { plog.push('error ' + e.message); return null; });
     if (photos) copy.photos = photos;
     // A real business's preview gets a photo section only when real, fitting photos were found.
     if (facts && photos && photos.gal.length >= 2 && !a.s.split(',').includes('pics')) a.s += ',pics';
@@ -738,7 +743,7 @@ async function previewCreate(request, env) {
     let keyed = r.ok;
     // Before the edit_hash column exists (first deploy), save without it; the preview just can't be customized later.
     if (!r.ok && r.status !== 409) r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) });
-    if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '' });
+    if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '', photoLog: plog });
     if (r.status !== 409) return json(502, { error: 'Could not save the preview' });
   }
   return json(502, { error: 'Could not save the preview' });
