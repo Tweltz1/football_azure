@@ -1,8 +1,60 @@
 {
   "style": "Original artwork for an embroidered baseball cap front, in the style of a detailed vintage embroidered patch: realistic animal portrait with fine fur detail suggested by thread-like strokes, soft natural colors, sitting in front of a soft band of small pine trees. Centered composition, wide landscape format (about 2.5:1), the whole design fits inside the frame with margin. Plain pure white background, no shadow, no border, no text, no letters, no logos, no hat or mockup, just the flat artwork. Use at most 8 distinct colors so it can be stitched.",
   "items": [
-    { "key": "buck", "count": 3, "prompt": "A realistic white-tailed deer buck, front-facing head and shoulders, looking at the viewer. Its antlers clearly form the letter W: each antler is a V shape (main beam curving outward and up, a tall inner tine straight up), so the pair together reads as a W. Warm tan and brown fur with white throat patch and white muzzle, dark eyes and nose. Behind and around its chest a soft treeline of sage green and deep green pines." },
-    { "key": "bear", "count": 3, "prompt": "A realistic black bear, front-facing head and shoulders, calm and confident, looking at the viewer. Glossy black fur with subtle charcoal highlights, a tan brown muzzle, small rounded ears, dark eyes. Behind and around its chest a soft treeline of sage green and deep green pines." },
-    { "key": "tiger", "count": 3, "prompt": "A realistic white tiger (white Bengal tiger), front-facing head and shoulders, intense and cool, looking at the viewer with ice-blue eyes. White fur with bold black stripes, light grey shading, pink nose. Behind and around its chest a soft treeline of sage green and deep green pines." }
+    {
+      "key": "buck",
+      "count": 3,
+      "prompt": "A realistic white-tailed deer buck, front-facing head and shoulders, looking at the viewer. Its antlers clearly form the letter W: each antler is a V shape (main beam curving outward and up, a tall inner tine straight up), so the pair together reads as a W. Warm tan and brown fur with white throat patch and white muzzle, dark eyes and nose. Behind and around its chest a soft treeline of sage green and deep green pines."
+    },
+    {
+      "key": "bear",
+      "count": 3,
+      "prompt": "A realistic black bear, front-facing head and shoulders, calm and confident, looking at the viewer. Glossy black fur with subtle charcoal highlights, a tan brown muzzle, small rounded ears, dark eyes. Behind and around its chest a soft treeline of sage green and deep green pines."
+    },
+    {
+      "key": "tiger",
+      "count": 3,
+      "prompt": "A realistic white tiger (white Bengal tiger), front-facing head and shoulders, intense and cool, looking at the viewer with ice-blue eyes. White fur with bold black stripes, light grey shading, pink nose. Behind and around its chest a soft treeline of sage green and deep green pines."
+    },
+    {
+      "key": "buckw",
+      "count": 3,
+      "prompt": "A realistic white-tailed deer buck, front-facing head and shoulders, looking at the viewer. Its antler rack is shaped so the whole rack's outline reads as a W: the two main beams sweep up and outward to the far left and far right points, and each antler has one tall straight tine rising near the middle, with low dips between them, so the four upward points make a W silhouette. Only real antlers, nothing else between them, no letters. Warm tan and brown fur with white throat patch and white muzzle, dark eyes and nose. Behind and around its chest a soft treeline of sage green and deep green pines."
+    },
+    {
+      "key": "wshield",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. A bold vintage hat-badge logo: a thick, heavy slab-serif capital W in dark forest green with a thin tan outline is the base of the design. Rising from behind the W is a realistic white-tailed deer buck head with a full symmetrical rack, front-facing, warm tan and brown fur, white throat patch, dark eyes; the buck's neck sits behind the middle peak of the W and the antlers spread wide above it, so the buck and the W lock together as one compact emblem. Small band of pine trees tucked behind the lower W. Compact, about 1.6:1 wide, reads clearly at 4 inches."
+    },
+    {
+      "key": "wpeaks",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. A hat logo where a wide capital W is drawn as a mountain ridge: the W's three peaks are snowy mountain peaks with pine forest on the slopes, stitched in greens, greys and white. Standing in the center valley of the W, framed by it, is a realistic white-tailed deer buck head with a full symmetrical rack, front-facing, warm tan and brown fur, white throat patch, dark eyes, his antlers rising above the middle peak. One unified emblem, about 2:1 wide."
+    },
+    {
+      "key": "wcrest",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. A classic outdoor-brand hat crest: a realistic white-tailed deer buck head with a full symmetrical rack, front-facing, warm tan and brown fur, white throat patch, dark eyes sits centered, and a bold capital W in cream thread with a brown outline sits across the buck's lower neck and chest like a chest patch, partly overlapping it, with a few pine trees peeking out on both sides of the W. The W and buck clearly belong together as a single logo. About 1.8:1 wide."
+    },
+    {
+      "key": "bearw1",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. Ignore the pine-tree band from the style above unless asked for below. A bold hat-badge logo: a realistic black bear head and shoulders, front-facing, glossy black fur with charcoal highlights, tan muzzle, small rounded ears, dark calm eyes rises up out of the top of a thick, heavy slab-serif capital W in deep rust orange with a cream outline. Behind the bear's shoulders, a calm northwoods lake at sunset with a few birch trees and a rocky shoreline, tucked just above the W. The bear and the W lock together as one compact emblem, about 1.4:1, reads clearly at 4 inches."
+    },
+    {
+      "key": "bearw4",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. Ignore the pine-tree band from the style above unless asked for below. A hat logo where a wide, bold capital W outlined in dark brown is filled with a scene: rugged rocky mountains under a starry night sky with a glowing full moon and a dark pine forest, in navy, slate grey and deep green. a realistic black bear head and shoulders, front-facing, glossy black fur with charcoal highlights, tan muzzle, small rounded ears, dark calm eyes stands in the center valley of the W, framed by it, his head rising above the middle point. One unified emblem, about 2:1 wide."
+    },
+    {
+      "key": "tigerw1",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. Ignore the pine-tree band from the style above unless asked for below. A bold hat-badge logo: a realistic white Bengal tiger head and shoulders, front-facing, white fur with bold black stripes, light grey shading, ice-blue eyes, pink nose rises up out of the top of a thick, heavy slab-serif capital W in black with an icy light-blue outline. Behind the tiger's shoulders, frosted snowy peaks and falling snow, tucked just above the W. The tiger and the W lock together as one compact emblem, about 1.4:1, reads clearly at 4 inches."
+    },
+    {
+      "key": "tigerw4",
+      "count": 2,
+      "prompt": "Exception to the no-letters rule above: this design includes exactly one large capital letter W, as described, and no other text. Ignore the pine-tree band from the style above unless asked for below. A hat logo where a wide, bold capital W outlined in black is filled with a scene: a lush misty jungle with bamboo, broad leaves and a waterfall, in emerald and teal greens. a realistic white Bengal tiger head and shoulders, front-facing, white fur with bold black stripes, light grey shading, ice-blue eyes, pink nose stands in the center valley of the W, framed by it, its head rising above the middle point. One unified emblem, about 2:1 wide."
+    }
   ]
 }

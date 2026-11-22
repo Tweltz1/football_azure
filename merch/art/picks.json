@@ -1,0 +1,82 @@
+[
+ {
+  "id": "a1",
+  "art": "wshield-1",
+  "name": "Buck W",
+  "threads": [
+   "#FFFFFF",
+   "#000000",
+   "#A67843",
+   "#01784E",
+   "#7BA35A",
+   "#96A1A8"
+  ]
+ },
+ {
+  "id": "a2",
+  "art": "wpeaks-2",
+  "name": "Buck Mountain W",
+  "tol": 30,
+  "threads": [
+   "#FFFFFF",
+   "#000000",
+   "#A67843",
+   "#01784E",
+   "#96A1A8",
+   "#7BA35A"
+  ]
+ },
+ {
+  "id": "a3",
+  "art": "bearw1-2",
+  "name": "Bear Lake W",
+  "threads": [
+   "#000000",
+   "#FFFFFF",
+   "#E25C27",
+   "#A67843",
+   "#7BA35A",
+   "#96A1A8"
+  ],
+  "gamma": 1.3
+ },
+ {
+  "id": "a4",
+  "art": "bearw4-1",
+  "name": "Bear Night W",
+  "threads": [
+   "#000000",
+   "#333366",
+   "#FFFFFF",
+   "#96A1A8",
+   "#01784E",
+   "#A67843"
+  ]
+ },
+ {
+  "id": "a5",
+  "art": "tigerw1-1",
+  "name": "Snow Tiger W",
+  "threads": [
+   "#FFFFFF",
+   "#000000",
+   "#96A1A8",
+   "#3399FF",
+   "#333366",
+   "#CC3366"
+  ]
+ },
+ {
+  "id": "a6",
+  "art": "tigerw4-1",
+  "name": "Jungle Tiger W",
+  "threads": [
+   "#01784E",
+   "#7BA35A",
+   "#000000",
+   "#FFFFFF",
+   "#96A1A8",
+   "#3399FF"
+  ]
+ }
+]
