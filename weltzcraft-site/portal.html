@@ -132,6 +132,12 @@ details .in{padding:0 0 18px}
       <div class="prop" id="prop" hidden></div>
     </div>
 
+    <div class="card">
+      <h2>Page editor</h2>
+      <p class="hint">See your site and change it right on the page: drag sections into a new order, click text to rewrite it, and add text, pictures, buttons, boxes, videos, a booking calendar or forms.</p>
+      <a id="edlink" href="/portal/edit"><button type="button" class="go">Open the page editor</button></a>
+    </div>
+
     <div class="card" id="edit">
       <h2>Quick edits</h2>
       <p class="hint">Change anything here and tap Save. Your site updates in under a minute.</p>
@@ -337,6 +343,7 @@ details .in{padding:0 0 18px}
     $('reqhint').textContent = j.care ? 'For anything you can\'t do above: a logo, a new layout, something custom. It\'s included in your care plan, usually done within 2 business days.'
       : 'For anything you can\'t do above: a logo, a new layout, something custom. We reply within 2 business days, and if it\'s more than a quick fix we send a price first.';
     $('billcard').hidden = !j.billing;
+    $('edlink').href = '/portal/edit' + (j.demo ? '?demo=1' : '');
     fill(j.view); saved = JSON.stringify(read()); dirty(); reqList(j.requests);
   }
   function save(patch, ai) {

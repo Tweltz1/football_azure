@@ -114,7 +114,7 @@
     var reviews = realRev ? true : on('review') && !live;
     var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(hasOrder ? [['order', 'Order']] : []).concat(F.book ? [['book', 'Book']] : []).concat(reviews ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', hasForm ? 'Contact' : 'Visit']]);
     var steps = on('steps') && t.steps && t.steps.length ? t.steps : null, areas = on('areas') && t.areas && t.areas.length ? t.areas : null;
-    document.getElementById('site').innerHTML =
+    var TOP =
       (live ? (LIVEVIEW ? '<div class="wz"><div class="wrap"><span>👀 This is how the live site will look.</span></div></div>' : '') :
       '<div class="wz"><div class="wrap"><span>✨ Sample site ' + (copy ? 'written and ' : '') + 'built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span>' +
         (slug ? '<button class="share" type="button" id="share">🔗 Share link</button> ' : '') + '<a class="back" href="/build">↺ Try another</a> ' +
@@ -124,41 +124,65 @@
         navs.map(function (n) { return '<a href="#' + n[0] + '">' + esc(n[1]) + '</a>'; }).join('') + '</nav><a class="btn" href="' + go + '">' + esc(cta) + '</a></div></header>' +
       '<section class="hero" id="top">' + (img(0, name) || (hero === 'split' ? '<div class="htile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>' : '')) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(t.eyebrow || (town + '\'s favorite ' + t.noun)) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
         '<div class="cta"><a class="btn" href="' + go + '">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
-        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (HOURS.length && !(HOURS[0][1].length > 24) ? '<span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span>' : '') + '</div></div></section>' +
-      '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + tile() + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">' + esc(t.aboutTitle || ('More than a ' + t.noun + '. A neighbor.')) + '</h2><p>' + esc(t.about) + '</p>' +
-        '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + esc(f[0]) + '</b><small>' + esc(f[1]) + '</small></div>'; }).join('') + '</div></div></div></section>' +
-      (t.why && t.why.length ? '<section id="why"><div class="wrap"><div class="sec-h"><p class="eyebrow">Why ' + esc(name) + '</p><h2>What you can count on.</h2></div><div class="why">' +
-        t.why.map(function (x) { return '<div><span aria-hidden="true">' + esc(x[0] || '✓') + '</span><h3>' + esc(x[1]) + '</h3><p>' + esc(x[2]) + '</p></div>'; }).join('') + '</div></div></section>' : '') +
-      (on('list') ? '<section id="menu" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">' + esc(t.list) + '</p><h2>' + esc(t.listSub) + '</h2></div><div class="items">' +
-        t.items.map(function (i) { return '<div class="item"><div class="top"><h3>' + esc(i[0]) + '</h3><span class="price">' + esc(i[1]) + '</span></div><p>' + esc(i[2]) + '</p></div>'; }).join('') + '</div></div></section>' : '') +
-      (steps ? '<section id="steps"><div class="wrap"><div class="sec-h"><p class="eyebrow">How it works</p><h2>Getting started is easy.</h2></div><ol class="steps">' +
-        steps.map(function (x, i) { return '<li><i>' + (i + 1) + '</i><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></li>'; }).join('') + '</ol></div></section>' : '') +
-      (hasOrder ? '<section id="order"><div class="wrap"><div class="sec-h"><p class="eyebrow">Order</p><h2>' + (F.order ? 'Order ahead, skip the wait.' : 'Order online.') + '</h2>' +
+        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (HOURS.length && !(HOURS[0][1].length > 24) ? '<span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span>' : '') + '</div></div></section>';
+    var SEC = {};
+    SEC.about = '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + tile() + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">' + esc(t.aboutTitle || ('More than a ' + t.noun + '. A neighbor.')) + '</h2><p>' + esc(t.about) + '</p>' +
+        '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + esc(f[0]) + '</b><small>' + esc(f[1]) + '</small></div>'; }).join('') + '</div></div></div></section>';
+    SEC.why = (t.why && t.why.length ? '<section id="why"><div class="wrap"><div class="sec-h"><p class="eyebrow">Why ' + esc(name) + '</p><h2>What you can count on.</h2></div><div class="why">' +
+        t.why.map(function (x) { return '<div><span aria-hidden="true">' + esc(x[0] || '✓') + '</span><h3>' + esc(x[1]) + '</h3><p>' + esc(x[2]) + '</p></div>'; }).join('') + '</div></div></section>' : '');
+    SEC.menu = (on('list') ? '<section id="menu" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">' + esc(t.list) + '</p><h2>' + esc(t.listSub) + '</h2></div><div class="items">' +
+        t.items.map(function (i) { return '<div class="item"><div class="top"><h3>' + esc(i[0]) + '</h3><span class="price">' + esc(i[1]) + '</span></div><p>' + esc(i[2]) + '</p></div>'; }).join('') + '</div></div></section>' : '');
+    SEC.steps = (steps ? '<section id="steps"><div class="wrap"><div class="sec-h"><p class="eyebrow">How it works</p><h2>Getting started is easy.</h2></div><ol class="steps">' +
+        steps.map(function (x, i) { return '<li><i>' + (i + 1) + '</i><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></li>'; }).join('') + '</ol></div></section>' : '');
+    SEC.order = (hasOrder ? '<section id="order"><div class="wrap"><div class="sec-h"><p class="eyebrow">Order</p><h2>' + (F.order ? 'Order ahead, skip the wait.' : 'Order online.') + '</h2>' +
         (DELIVERY.length ? '<p>' + (F.order ? 'Want it delivered? Find us on:' : 'Pick how you\'d like to order:') + '</p></div><div class="deliv">' + DELIVERY.map(function (x) { return '<a class="btn dl-' + x[0] + '" href="' + esc(L[x[0]]) + '" target="_blank" rel="noopener">' + (x[0] === 'order' ? 'Order online' : 'Order on ' + x[1]) + ' →</a>'; }).join('') + '</div>' : '</div>') +
-        (F.order ? '<div id="wc-order"></div>' : '') + '</div></section>' : '') +
-      (F.book ? '<section id="book" class="tint"><div class="wrap" id="wc-book"></div></section>' : '') +
-      (on('pics') && (PX ? pxGal.length >= 3 : photo) ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>' + (a.src ? 'A closer look.' : 'Come see for yourself.') + '</h2></div><div class="gal' + (PX && pxGal.length === 3 ? ' g3' : '') + '">' +
-        (PX ? pxGal.map(function (o) { return '<div>' + pimg(o, name + ' photo') + '</div>'; }) : [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; })).join('') + '</div></div></section>' : '') +
-      (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
-        (realRev || t.reviews).map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + (realRev ? '' : ' · Sample review') + '</span></div>'; }).join('') + '</div></div></section>' : '') +
-      (on('faq') ? '<section id="faq"><div class="wrap"><div class="sec-h"><p class="eyebrow">Questions</p><h2>Good to know.</h2></div><div class="faq">' +
-        faq.map(function (f) { return '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>'; }).join('') + '</div></div></section>' : '') +
-      (areas ? '<section id="areas"><div class="wrap"><div class="sec-h"><p class="eyebrow">Where we work</p><h2>Proudly serving ' + esc(town) + ' and nearby.</h2></div><ul class="areas"><li>' + esc(town) + '</li>' +
-        areas.filter(function (x) { return x.toLowerCase() !== town.toLowerCase(); }).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></section>' : '') +
-      (t.extra && t.extra.length ? t.extra.map(function (x, i) { return '<section class="xtra' + (i % 2 ? '' : ' tint') + '"><div class="wrap"><div class="sec-h"><h2>' + esc(x[0]) + '</h2></div><p class="xp">' + esc(x[1]) + '</p></div></section>'; }).join('') : '') +
-      (hasForm ? '<section id="ask"><div class="wrap" id="wc-ask"></div></section>' : '') +
-      '<section id="visit"' + (on('faq') ? ' class="tint"' : '') + '><div class="wrap visit"><div class="card"><p class="eyebrow">Visit us</p><h2 style="font-size:34px">' + (live ? 'Get in touch' : 'Find us in ' + esc(town)) + '</h2><p style="color:var(--mut);margin:10px 0 0">' +
+        (F.order ? '<div id="wc-order"></div>' : '') + '</div></section>' : '');
+    SEC.book = (F.book ? '<section id="book" class="tint"><div class="wrap" id="wc-book"></div></section>' : '');
+    SEC.gallery = (on('pics') && (PX ? pxGal.length >= 3 : photo) ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>' + (a.src ? 'A closer look.' : 'Come see for yourself.') + '</h2></div><div class="gal' + (PX && pxGal.length === 3 ? ' g3' : '') + '">' +
+        (PX ? pxGal.map(function (o) { return '<div>' + pimg(o, name + ' photo') + '</div>'; }) : [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; })).join('') + '</div></div></section>' : '');
+    SEC.reviews = (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
+        (realRev || t.reviews).map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + (realRev ? '' : ' · Sample review') + '</span></div>'; }).join('') + '</div></div></section>' : '');
+    SEC.faq = (on('faq') ? '<section id="faq"><div class="wrap"><div class="sec-h"><p class="eyebrow">Questions</p><h2>Good to know.</h2></div><div class="faq">' +
+        faq.map(function (f) { return '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>'; }).join('') + '</div></div></section>' : '');
+    SEC.areas = (areas ? '<section id="areas"><div class="wrap"><div class="sec-h"><p class="eyebrow">Where we work</p><h2>Proudly serving ' + esc(town) + ' and nearby.</h2></div><ul class="areas"><li>' + esc(town) + '</li>' +
+        areas.filter(function (x) { return x.toLowerCase() !== town.toLowerCase(); }).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></section>' : '');
+    SEC.extra = (t.extra && t.extra.length ? t.extra.map(function (x, i) { return '<section class="xtra' + (i % 2 ? '' : ' tint') + '"><div class="wrap"><div class="sec-h"><h2>' + esc(x[0]) + '</h2></div><p class="xp">' + esc(x[1]) + '</p></div></section>'; }).join('') : '');
+    SEC.ask = (hasForm ? '<section id="ask"><div class="wrap" id="wc-ask"></div></section>' : '');
+    SEC.visit = '<section id="visit"' + (on('faq') ? ' class="tint"' : '') + '><div class="wrap visit"><div class="card"><p class="eyebrow">Visit us</p><h2 style="font-size:34px">' + (live ? 'Get in touch' : 'Find us in ' + esc(town)) + '</h2><p style="color:var(--mut);margin:10px 0 0">' +
         (real ? [real.address ? '📍 ' + esc(real.address) : '📍 ' + esc(town), real.phone ? '📞 <a href="' + tel + '">' + esc(real.phone) + '</a>' : '', real.email ? '✉️ <a href="mailto:' + esc(real.email) + '">' + esc(real.email) + '</a>' : ''].filter(Boolean).join('<br>')
           : '📍 120 Main Street, ' + esc(town) + '<br>📞 (555) 014-2026') + '</p>' +
         (HOURS.length ? '<ul class="hours">' + HOURS.map(function (h) { return '<li><span>' + esc(h[0]) + '</span><b>' + esc(h[1]) + '</b></li>'; }).join('') + '</ul>' : '') + social + '<a class="btn" style="margin-top:18px" href="' + act + '">' + esc(cta) + '</a></div>' +
         (real && real.address ? '<div class="map real"><iframe title="Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?output=embed&q=' + encodeURIComponent(real.address) + '"></iframe></div>'
         : (on('map') || !photo) && !live ? '<div class="map" aria-label="Map"><svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice"><rect width="600" height="400" fill="#e9ece4"/><path d="M0 120h600M0 280h600M150 0v400M420 0v400" stroke="#fff" stroke-width="18"/><path d="M0 200h600M290 0v400" stroke="#fff" stroke-width="30"/><path d="M-20 360C120 300 200 330 330 250s220-60 300-120" stroke="#cfe1f2" stroke-width="26" fill="none"/><rect x="40" y="20" width="90" height="80" rx="8" fill="#d6e6cf"/><rect x="460" y="300" width="120" height="80" rx="8" fill="#d6e6cf"/></svg><div class="pin"><i></i><span>' + esc(name) + '</span></div></div>'
-          : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + tile() + '</div></div>') + '</div></section>' +
-      '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + act + '">' + esc(cta) + '</a></div></div>' +
+          : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + tile() + '</div></div>') + '</div></section>';
+    var TAIL = '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + act + '">' + esc(cta) + '</a></div></div>' +
       '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">' + (live ? 'Website by <a href="https://weltzcraft.com">Weltzcraft Studios</a>' : 'Sample site by <a href="/">Weltzcraft Studios</a>') + (PX && pxAll.some(function (o) { return o.src !== 'own'; }) ? ' · <span>Photos: ' + pxAll.filter(function (o) { return o.src !== 'own'; }).map(function (o) { return (o.page ? '<a href="' + esc(o.page) + '" target="_blank" rel="noopener">' : '') + esc(o.by || o.src || 'Unknown') + (o.page ? '</a>' : '') + ' (' + esc(o.lic) + ')'; }).join(', ') + '</span>'
         : photo && !PX ? ' · <span id="pc">Photos: Wikimedia Commons</span>' : '') + '</span></div></footer>' +
       // Phones get a bar that stays at the bottom: call, directions and the main button.
       (tel || dir ? '<div class="mbar">' + (tel ? '<a href="' + tel + '">📞 Call</a>' : '') + (dir ? '<a href="' + dir + '" target="_blank" rel="noopener">📍 Directions</a>' : '') + '<a class="go" href="' + act + '">' + esc(cta) + '</a></div>' : '');
+    // Blocks the owner added in the page editor (a.blocks), each its own section, then everything in the owner's order (a.order).
+    var BL = Array.isArray(a.blocks) ? a.blocks : [];
+    var acts = { call: tel, email: real && real.email ? 'mailto:' + real.email : '', book: F.book ? '#book' : '', order: hasOrder ? '#order' : '', message: hasForm ? '#ask' : '', directions: dir };
+    BL.forEach(function (b, i) {
+      var k = 'b:' + b.id, pic = b.photo ? '<img src="/img/x?u=' + encodeURIComponent(b.photo.u) + '" alt="' + esc(b.cap || b.h || name) + '" loading="lazy">' : '', tint = i % 2 ? '' : ' tint';
+      var href = b.act === 'link' ? b.url : acts[b.act], blank = b.act === 'link' || b.act === 'directions' ? ' target="_blank" rel="noopener"' : '';
+      var btn = b.label && (href || window.wcEditor) ? '<a class="btn" href="' + esc(href || '#') + '"' + blank + '>' + esc(b.label) + '</a>' : '';
+      var h = b.h ? '<h2 data-f="h">' + esc(b.h) + '</h2>' : '', txt = b.p ? '<p class="xp" data-f="p">' + esc(b.p) + '</p>' : '';
+      SEC[k] = '<section class="blk blk-' + b.type + tint + '" id="b-' + b.id + '"><div class="wrap">' + (
+        b.type === 'text' ? (h ? '<div class="sec-h">' + h + '</div>' : '') + txt + (btn ? '<p class="blk-b">' + btn + '</p>' : '')
+        : b.type === 'image' ? '<figure>' + pic + (b.cap ? '<figcaption data-f="cap">' + esc(b.cap) + '</figcaption>' : '') + '</figure>'
+        : b.type === 'split' ? '<div class="about' + (b.flip ? ' flip' : '') + '"><div class="ph">' + pic + '</div><div>' + h + txt + (btn ? '<p class="blk-b">' + btn + '</p>' : '') + '</div></div>'
+        : b.type === 'button' ? '<div class="blk-c">' + h + (b.p ? '<p data-f="p">' + esc(b.p) + '</p>' : '') + btn + '</div>'
+        : b.type === 'boxes' ? (h ? '<div class="sec-h">' + h + '</div>' : '') + '<div class="why">' + (b.items || []).map(function (x) { return '<div><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></div>'; }).join('') + '</div>'
+        : b.type === 'video' && b.yt ? (h ? '<div class="sec-h">' + h + '</div>' : '') + '<div class="blk-v"><iframe title="Video" loading="lazy" allowfullscreen src="https://www.youtube-nocookie.com/embed/' + esc(b.yt) + '"></iframe></div>'
+        : '') + '</div></section>';
+    });
+    var hide = Array.isArray(a.hide) ? a.hide : [];
+    var BASE = ['about', 'why', 'menu', 'steps', 'order', 'book', 'gallery', 'reviews', 'faq', 'areas', 'extra'].concat(BL.map(function (b) { return 'b:' + b.id; })).concat(['ask', 'visit']);
+    var ORDER = (Array.isArray(a.order) ? a.order : []).filter(function (k, i, l) { return BASE.indexOf(k) > -1 && l.indexOf(k) === i; });
+    // Anything the saved order doesn't mention (a section switched on later) goes where it normally sits.
+    BASE.forEach(function (k, i) { if (ORDER.indexOf(k) < 0) { var after = -1; for (var j = i - 1; j >= 0 && after < 0; j--) after = ORDER.indexOf(BASE[j]); ORDER.splice(after + 1, 0, k); } });
+    document.getElementById('site').innerHTML = TOP + ORDER.map(function (k) { return hide.indexOf(k) > -1 ? '' : SEC[k] || ''; }).join('') + TAIL;
     root.classList.toggle('has-mbar', !!(tel || dir));
     // Search engines read this to show the business's name, phone, address and hours (live sites only).
     var ld = document.getElementById('wc-ld'); if (ld) ld.remove();
@@ -186,6 +210,8 @@
     var site = window.WC_SITE || {};
     if (window.wcFeatures) window.wcFeatures.mount({ a: a, copy: copy, t: t, slug: slug, live: !!(live && site.live), site: site.id || slug || '', name: name, town: town, cta: cta, F: F, d: { vibe: vibe, hero: hero, items: look }, photo: photo, show: show,
       rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); } });
+    window.wcPage = { a: a, copy: copy, slug: slug, live: live, order: ORDER, has: SEC, F: F, show: show, rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); }, redraw: function (a2, copy2, live2) { var y = window.scrollY; render(a2, copy2, slug, live2); window.scrollTo(0, y); } };
+    if (window.wcEditor) window.wcEditor.decorate(window.wcPage);
     if (!render.done && location.hash && location.hash.length > 1) { var el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
     render.done = true;
   }
@@ -204,6 +230,22 @@
   var OWN = !/(^|\.)weltzcraft\.com$|\.pages\.dev$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
   var LIVEVIEW = /^\/live\/view\/?$/.test(location.pathname);
   var ready;
+  var EDIT = /^\/portal\/edit\/?$/.test(location.pathname);
+  function loadEditor() { if (document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=1'; document.body.appendChild(sc); }
+  if (EDIT) {
+    document.getElementById('intro').remove();
+    var auth = null;
+    if (P.get('demo')) auth = { o: 'demo' }; else { try { auth = JSON.parse(localStorage.getItem('wcportal') || 'null'); } catch (e) {} }
+    if (!auth) { location.replace('/portal'); return; }
+    fetch('/api/portal/get', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ full: true }, auth)) }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j.site) { location.replace('/portal'); return; }
+      window.WC_SITE = { id: '', domain: j.domain, live: false, view: true };
+      window.WC_EDIT = { mode: 'portal', auth: auth, demo: !!j.demo, site: j.site, name: j.name };
+      render(j.site.answers, j.site.copy, '', j.site.contact || {});
+      loadEditor();
+    }, function () { location.replace('/portal'); });
+    return;
+  }
   if (OWN || LIVEVIEW) {
     // A real, live site: the customer's own domain, or Tyler's look at it before approving.
     document.getElementById('intro').remove();
@@ -217,6 +259,8 @@
   if (saved) {
     ready = fetch('/api/preview/' + saved[1]).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }).then(function (x) {
       if (!x.ok || !x.j.answers) return function () { gone(x.j.error || 'This preview has expired.'); };
+      var mk = ''; try { mk = localStorage.getItem('wck:' + saved[1]) || ''; } catch (e) {}
+      if (mk) { window.WC_EDIT = { mode: 'preview', slug: saved[1], key: mk }; loadEditor(); }
       return function () { render(x.j.answers, x.j.copy, saved[1]); };
     }, function () { return function () { gone('We couldn\'t load this preview. Try again in a minute.'); }; });
   } else if (P.get('ai') === '1' && A.n) {
@@ -226,6 +270,7 @@
         if (!x.ok || !x.j.slug) return function () { render(A, null, ''); };
         history.replaceState(null, '', '/preview/' + x.j.slug);
         try { if (x.j.key) localStorage.setItem('wck:' + x.j.slug, x.j.key); } catch (e) {}
+        if (x.j.key) { window.WC_EDIT = { mode: 'preview', slug: x.j.slug, key: x.j.key }; loadEditor(); }
         if (window.wcHit) window.wcHit('preview_saved');
         return function () { render(x.j.answers, x.j.copy, x.j.slug); };
       }, function () { return function () { render(A, null, ''); }; });
