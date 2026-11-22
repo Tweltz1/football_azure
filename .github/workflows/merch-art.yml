@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GEMINI_KEY: ${{ secrets.GEMINI_IMAGE_KEY || secrets.GEMINI_API_KEY }}
-      GEMINI_SRC: ${{ secrets.GEMINI_IMAGE_KEY != '' && 'GEMINI_IMAGE_KEY' || 'GEMINI_API_KEY' }}
+      GEMINI_KEY: ${{ secrets.GEMINI_IMAGE_KEY || secrets.GEMINI_TRAINING_KEY || secrets.GENINI_TRAINING_KEY || secrets.GEMINI_API_KEY }}
+      GEMINI_SRC: ${{ secrets.GEMINI_IMAGE_KEY != '' && 'GEMINI_IMAGE_KEY' || secrets.GEMINI_TRAINING_KEY != '' && 'GEMINI_TRAINING_KEY' || secrets.GENINI_TRAINING_KEY != '' && 'GENINI_TRAINING_KEY' || 'GEMINI_API_KEY' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
