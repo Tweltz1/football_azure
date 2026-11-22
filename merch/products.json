@@ -1,11 +1,11 @@
 {
-  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly). A product's 'logos' limits it to those logos; logos marked 'solo' are only used where a product lists them. A 'tint' logo is one-color art recolored to the color's 'ink' (or a default per tone); 'cx' moves the logo sideways (share of the print area, default centered); a logo's 'threads' limits its embroidery thread colors. 'extra' adds more print spots to a product (e.g. a sleeve): each has its own file, box, top and tint.",
+  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly). A product's 'logos' limits it to those logos; logos marked 'solo' are only used where a product lists them. A 'tint' logo is one-color art recolored to the color's 'ink' (or a default per tone); 'cx' moves the logo sideways (share of the print area, default centered); a logo's 'threads' limits its embroidery thread colors. 'extra' adds more print spots to a product (e.g. a sleeve): each has its own file, box, top and tint. A color's 'swap' replaces one embroidery thread color with another on that color only; its 'outline' adds a stitched outline in the given thread around the named logo.",
   "logos": {
     "42": {
       "name": "Tall monogram",
       "light": "logo-42-light.png",
       "dark": "logo-42-dark.png",
-      "scale": 1.0
+      "scale": 1
     },
     "43": {
       "name": "WS corners",
@@ -27,7 +27,7 @@
       "name": "Brass seal",
       "light": "logo-55-brass.png",
       "dark": "logo-55-darkbrass.png",
-      "scale": 1.0,
+      "scale": 1,
       "hat": {
         "light": "logo-55-brass-hat.png",
         "dark": "logo-55-darkbrass-hat.png"
@@ -37,19 +37,19 @@
       "name": "Three-stripe W",
       "light": "logo-58-light.png",
       "dark": "logo-58-dark.png",
-      "scale": 1.0
+      "scale": 1
     },
     "59": {
       "name": "Stripe ring",
       "light": "logo-59-light.png",
       "dark": "logo-59-dark.png",
-      "scale": 1.0
+      "scale": 1
     },
     "60": {
       "name": "Seal + stripes",
       "light": "logo-60-light.png",
       "dark": "logo-60-dark.png",
-      "scale": 1.0,
+      "scale": 1,
       "hat": {
         "light": "logo-60-light-hat.png",
         "dark": "logo-60-dark-hat.png"
@@ -206,7 +206,8 @@
         "#01784E",
         "#7BA35A",
         "#96A1A8"
-      ]
+      ],
+      "scale": 1.05
     },
     "a2": {
       "name": "Buck Mountain W",
@@ -433,7 +434,10 @@
           "printful": [
             "Black"
           ],
-          "tone": "light"
+          "tone": "light",
+          "outline": {
+            "a4": "#96A1A8"
+          }
         }
       ]
     },
@@ -550,8 +554,8 @@
         "v5"
       ],
       "box": [
-        0.42,
-        0.08
+        0.62,
+        0.12
       ],
       "top": 0.07,
       "colors": [
@@ -646,7 +650,10 @@
           "printful": [
             "Navy"
           ],
-          "tone": "light"
+          "tone": "light",
+          "outline": {
+            "a4": "#96A1A8"
+          }
         },
         {
           "key": "burgundy",
@@ -662,7 +669,10 @@
           "printful": [
             "Black"
           ],
-          "tone": "light"
+          "tone": "light",
+          "outline": {
+            "a4": "#96A1A8"
+          }
         }
       ]
     },
@@ -706,7 +716,10 @@
           "printful": [
             "Khaki"
           ],
-          "tone": "dark"
+          "tone": "dark",
+          "swap": {
+            "#A67843": "#000000"
+          }
         },
         {
           "key": "lightblue",
@@ -754,7 +767,10 @@
           "printful": [
             "Spruce"
           ],
-          "tone": "light"
+          "tone": "light",
+          "swap": {
+            "#01784E": "#FFFFFF"
+          }
         }
       ]
     },
@@ -938,7 +954,7 @@
     },
     {
       "key": "woodstwo",
-      "name": "Northwoods Two-Tone Cap",
+      "name": "Northwoods Washed Cap",
       "type": "hat",
       "price": 30,
       "match": "Otto Cap 18-772",
@@ -1016,8 +1032,8 @@
         "m3"
       ],
       "box": [
-        0.24,
-        0.05
+        0.34,
+        0.07
       ],
       "top": 0.08,
       "cx": 0.68,

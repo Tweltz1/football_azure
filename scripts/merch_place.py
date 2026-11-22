@@ -14,6 +14,10 @@ THREADS = ['#FFFFFF', '#000000', '#A67843', '#FFCC00', '#E25C27', '#333366', '#0
 TRGB = [tuple(int(t[i:i + 2], 16) for i in (1, 3, 5)) for t in THREADS]
 
 
+def hexrgb(t):
+    return tuple(int(t.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4))
+
+
 def nearest(c, allowed):
     def d(b):
         rm = (c[0] + b[0]) / 2
@@ -98,6 +102,30 @@ for prod in cfg['products']:
                 # Thicken thin lines a touch so small lettering still holds stitches, then use real thread colors.
                 img.putalpha(img.getchannel('A').filter(ImageFilter.MaxFilter(3)))
                 threads[slug] = snap(img, logo_cfg.get('threads'))
+                # A color can ask for a stitched outline around one logo (so dark art doesn't vanish into a dark hat).
+                edge = (color.get('outline') or {}).get(lk)
+                if edge:
+                    r = 12
+                    big = Image.new('RGBA', (w + 2 * r, h + 2 * r), (0, 0, 0, 0))
+                    big.paste(img, (r, r))
+                    halo = big.getchannel('A').filter(ImageFilter.MaxFilter(2 * r + 1))
+                    under = Image.new('RGBA', big.size, hexrgb(edge) + (0,))
+                    under.putalpha(halo)
+                    img = Image.alpha_composite(under, big)
+                    w, h = img.size
+                    if edge.upper() not in [t.upper() for t in threads[slug]]:
+                        threads[slug].append(edge)
+                # ...or swap one thread color for another (a tan deer on a khaki hat becomes a dark deer).
+                swap = {k.upper(): v.upper() for k, v in (color.get('swap') or {}).items()}
+                if swap:
+                    px = img.load()
+                    rgbmap = {hexrgb(k): hexrgb(v) for k, v in swap.items()}
+                    for y in range(h):
+                        for x in range(w):
+                            c = px[x, y]
+                            if c[3] and c[:3] in rgbmap:
+                                px[x, y] = rgbmap[c[:3]] + (255,)
+                    threads[slug] = list(dict.fromkeys(swap.get(t.upper(), t) for t in threads[slug]))
             canvas = Image.new('RGBA', (AW, AH), (0, 0, 0, 0))
             top = round(AH * prod['top']) if 'top' in prod else (AH - h) // 2
             for cx in slots:
