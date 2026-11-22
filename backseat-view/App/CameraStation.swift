@@ -238,8 +238,8 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             if session.canAddOutput(output) { session.addOutput(output) }
         }
         session.commitConfiguration()
-        let session = self.session
-        videoQueue.async { if !session.isRunning { session.startRunning() } }
+        let running = self.session
+        videoQueue.async { if !running.isRunning { running.startRunning() } }
     }
 
     func startAudio() throws {
@@ -294,8 +294,8 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     func stop() {
-        let session = self.session
-        videoQueue.async { if session.isRunning { session.stopRunning() } }
+        let running = self.session
+        videoQueue.async { if running.isRunning { running.stopRunning() } }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         analyzer?.removeAllRequests()
