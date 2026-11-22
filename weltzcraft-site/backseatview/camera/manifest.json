@@ -1,0 +1,16 @@
+{
+  "name": "Backseat View camera",
+  "version": "1.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "backseat-camera.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

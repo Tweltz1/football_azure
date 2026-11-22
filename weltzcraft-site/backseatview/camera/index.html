@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up the Backseat View camera | Weltzcraft Studios</title>
+<meta name="description" content="Set up the rechargeable Backseat View camera in five minutes.">
+<link rel="canonical" href="https://weltzcraft.com/backseatview/camera/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--fg:#1d1b16;--muted:#625d52;--line:#e4dccb;--accent:#b4441c}
+@media (prefers-color-scheme:dark){:root{--bg:#151410;--card:#1e1c17;--fg:#f1ece1;--muted:#a8a193;--line:#33302a;--accent:#f08a5d}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:28px 16px 56px}article{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 24px}
+h1{font-size:28px;line-height:1.2;margin:0 0 6px}h2{font-size:18px;margin:26px 0 8px}p,li{margin:0 0 10px}ul{padding-left:20px}a{color:var(--accent)}.muted{color:var(--muted);font-size:14px}
+
+.steps li{margin-bottom:12px}.box{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:16px;margin:16px 0}
+esp-web-install-button button{font:600 17px/1 system-ui,sans-serif;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:14px 22px;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:15px}td{padding:8px 4px;border-top:1px solid var(--line);vertical-align:top}td:last-child{text-align:right;white-space:nowrap}
+</style>
+</head>
+<body>
+<main>
+<a class="muted" href="/">&larr; Weltzcraft Studios</a>
+<article>
+<h1>Set up the Backseat View camera</h1>
+<p class="muted">A small rechargeable camera for the back seat. It sends the picture and the baby's sound to the Backseat View app on your iPhone, which puts a baby card on your CarPlay screen.</p>
+
+<h2>What to buy (about $50)</h2>
+<table>
+<tr><td><b>Seeed Studio XIAO ESP32S3 Sense</b><br><span class="muted">The camera. Get the <b>Sense</b> version (it comes with the camera and microphone board). Search Amazon or seeedstudio.com.</span></td><td>$15&ndash;25</td></tr>
+<tr><td><b>Small power bank with a built-in USB-C plug</b><br><span class="muted">For example the Anker Nano Power Bank (5,000 mAh). It plugs straight into the camera, so there's no cable and no soldering. That gives about 12&ndash;15 hours per charge.</span></td><td>$20&ndash;25</td></tr>
+<tr><td><b>Headrest mount or a strap</b><br><span class="muted">Anything that holds the camera and power bank on the back of the front seat, facing the baby. Velcro works too.</span></td><td>$5&ndash;10</td></tr>
+<tr><td><b>USB-C cable</b><br><span class="muted">Only for the one-time setup on a computer. It must be a data cable (most phone cables are).</span></td><td>&mdash;</td></tr>
+</table>
+<p class="muted">When it arrives, press the little camera board onto the back of the main board until it clicks. The gold connector goes on the B2B socket.</p>
+
+<h2>One-time setup (5 minutes)</h2>
+<ol class="steps">
+<li>On your iPhone, open <b>Settings &gt; Personal Hotspot</b>. Turn on <b>Allow Others to Join</b> and <b>Maximize Compatibility</b> (the camera needs that one). Note the Wi-Fi name and password shown there.</li>
+<li>On a Windows or Mac computer, open this page in <b>Chrome</b> or <b>Edge</b>.</li>
+<li>Plug the camera into the computer with the USB-C cable, then click <b>Install</b>. Pick the port that appears (often "USB JTAG/serial debug unit") and click Install again.</li>
+<li>When it asks for Wi-Fi, type your iPhone's hotspot name and password from step 1.</li>
+</ol>
+<div class="box">
+<esp-web-install-button manifest="manifest.json">
+  <span slot="unsupported">This browser can't install it. Open this page in Chrome or Edge on a computer.</span>
+  <span slot="not-allowed">Open this page from https://weltzcraft.com to install.</span>
+</esp-web-install-button>
+</div>
+<p class="muted">If the camera won't show up: hold the tiny <b>B</b> (boot) button, plug it in, let go, and try Install again.</p>
+
+<h2>Every drive</h2>
+<ol class="steps">
+<li>Plug the power bank into the camera. The orange light blinks while it looks for your hotspot and goes dark when it's ready.</li>
+<li>Open <b>Backseat View</b> on your iPhone and tap <b>Watch Back Seat</b>. Then lock your phone.</li>
+<li>The baby card shows on your CarPlay Dashboard. You'll hear the baby through the car speakers, and it chimes if the baby starts crying.</li>
+</ol>
+
+<h2>Changing the Wi-Fi later</h2>
+<p>For 3 minutes after switching the camera on, it also makes a Wi-Fi network called <b>Backseat Camera Setup</b>. Join it from your phone, open <b>http://192.168.4.1</b> and type the new network name and password. You can also run Install on this page again.</p>
+
+<p class="muted">Glance only, like a mirror. Not a medical or safety device. Never leave a child alone in a car. Mount the camera securely so it can't come loose.</p>
+<script type="module" src="https://unpkg.com/esp-web-tools@10.1.1/dist/web/install-button.js?module"></script>
+</article>
+<p class="muted" style="text-align:center;margin-top:18px">&copy; 2026 Weltzcraft Studios</p>
+</main>
+</body>
+</html>
