@@ -1,0 +1,27 @@
+name: Merch prune (remove retired Printful products)
+
+# Deletes Printful store products the merch page no longer sells (old concepts, retired products).
+# Nothing listed in weltzcraft-site/merch-catalog.json is ever touched. Leave "confirm" blank for a dry run.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type delete to really delete. Blank = just list.'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
+      PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+      CONFIRM: ${{ github.event.inputs.confirm }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node scripts/merch-prune.mjs
