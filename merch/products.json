@@ -160,7 +160,7 @@
       "solo": true
     },
     "h1": {
-      "name": "Gold script",
+      "name": "Rope script",
       "light": "logo-h1-gold.png",
       "dark": "logo-h1-navy.png",
       "solo": true,
@@ -373,21 +373,26 @@
       ]
     },
     {
-      "key": "script",
-      "name": "Script Dad Hat",
+      "key": "wild",
+      "name": "Wild W Dad Hat",
       "type": "hat",
-      "price": 26,
+      "price": 32,
       "match": "Yupoong 6245CM",
       "placements": [
         "embroidery_front_large",
         "embroidery_front"
       ],
       "logos": [
-        "v2"
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6"
       ],
       "box": [
-        0.8,
-        0.8
+        0.66,
+        0.95
       ],
       "colors": [
         {
@@ -397,54 +402,6 @@
             "Stone"
           ],
           "tone": "dark"
-        },
-        {
-          "key": "navy",
-          "name": "Navy",
-          "printful": [
-            "Navy"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "lightblue",
-          "name": "Light Blue",
-          "printful": [
-            "Light Blue"
-          ],
-          "tone": "dark"
-        },
-        {
-          "key": "spruce",
-          "name": "Spruce",
-          "printful": [
-            "Spruce"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "pink",
-          "name": "Pink",
-          "printful": [
-            "Pink"
-          ],
-          "tone": "dark"
-        },
-        {
-          "key": "cranberry",
-          "name": "Cranberry",
-          "printful": [
-            "Cranberry"
-          ],
-          "tone": "light"
         },
         {
           "key": "khaki",
@@ -461,6 +418,22 @@
             "White"
           ],
           "tone": "dark"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
         }
       ]
     },
@@ -512,7 +485,7 @@
           "printful": [
             "Sage"
           ],
-          "tone": "dark"
+          "tone": "light"
         },
         {
           "key": "butter",
@@ -630,20 +603,25 @@
       ]
     },
     {
-      "key": "cord",
-      "name": "Corduroy Cap",
+      "key": "wildcord",
+      "name": "Wild W Corduroy Cap",
       "type": "hat",
-      "price": 30,
+      "price": 34,
       "match": "Big Accessories BA703",
       "placements": [
         "embroidery_front"
       ],
       "logos": [
-        "v9"
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6"
       ],
       "box": [
-        0.6,
-        0.9
+        0.66,
+        0.95
       ],
       "colors": [
         {
@@ -652,8 +630,7 @@
           "printful": [
             "Brown"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         },
         {
           "key": "olive",
@@ -661,8 +638,7 @@
           "printful": [
             "Olive"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         },
         {
           "key": "navy",
@@ -670,8 +646,7 @@
           "printful": [
             "Navy"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         },
         {
           "key": "burgundy",
@@ -679,8 +654,7 @@
           "printful": [
             "Burgundy"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         },
         {
           "key": "black",
@@ -688,35 +662,59 @@
           "printful": [
             "Black"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         }
       ]
     },
     {
-      "key": "beanie",
-      "name": "Stripe Beanie",
-      "type": "beanie",
-      "price": 24,
-      "match": "Yupoong 1501KC",
+      "key": "woods",
+      "name": "Northwoods Dad Hat",
+      "type": "hat",
+      "price": 28,
+      "match": "Yupoong 6245CM",
       "placements": [
+        "embroidery_front_large",
         "embroidery_front"
       ],
       "logos": [
-        "v8"
+        "h3"
       ],
       "box": [
-        0.42,
-        0.9
+        0.62,
+        0.95
       ],
       "colors": [
         {
-          "key": "black",
-          "name": "Black",
+          "key": "white",
+          "name": "White",
           "printful": [
-            "Black"
+            "White"
           ],
-          "tone": "light"
+          "tone": "dark"
+        },
+        {
+          "key": "stone",
+          "name": "Stone",
+          "printful": [
+            "Stone"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "khaki",
+          "name": "Khaki",
+          "printful": [
+            "Khaki"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "lightblue",
+          "name": "Light Blue",
+          "printful": [
+            "Light Blue"
+          ],
+          "tone": "dark"
         },
         {
           "key": "navy",
@@ -727,34 +725,18 @@
           "tone": "light"
         },
         {
-          "key": "heathergrey",
-          "name": "Heather Grey",
+          "key": "black",
+          "name": "Black",
           "printful": [
-            "Heather Grey"
-          ],
-          "tone": "dark"
-        },
-        {
-          "key": "spruce",
-          "name": "Spruce",
-          "printful": [
-            "Spruce"
+            "Black"
           ],
           "tone": "light"
         },
         {
-          "key": "olive",
-          "name": "Olive",
+          "key": "cranberry",
+          "name": "Cranberry",
           "printful": [
-            "Olive"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "brown",
-          "name": "Brown",
-          "printful": [
-            "Brown"
+            "Cranberry"
           ],
           "tone": "light"
         },
@@ -767,12 +749,12 @@
           "tone": "light"
         },
         {
-          "key": "white",
-          "name": "White",
+          "key": "spruce",
+          "name": "Spruce",
           "printful": [
-            "White"
+            "Spruce"
           ],
-          "tone": "dark"
+          "tone": "light"
         }
       ]
     },
@@ -828,7 +810,7 @@
             "Military Green"
           ],
           "tone": "light",
-          "ink": "#727a58"
+          "ink": "#565f41"
         },
         {
           "key": "navy",
@@ -896,148 +878,37 @@
       ]
     },
     {
-      "key": "trucker",
-      "name": "Patch Trucker",
+      "key": "woodscord",
+      "name": "Northwoods Corduroy Cap",
       "type": "hat",
-      "price": 26,
-      "match": "Yupoong 6606",
-      "placements": [
-        "embroidery_front_large"
-      ],
-      "logos": [
-        "v4"
-      ],
-      "box": [
-        0.62,
-        0.85
-      ],
-      "colors": [
-        {
-          "key": "navywhite",
-          "name": "Navy + White",
-          "printful": [
-            "Navy/ White"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        },
-        {
-          "key": "blackwhite",
-          "name": "Black + White",
-          "printful": [
-            "Black/ White"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        },
-        {
-          "key": "mosskhaki",
-          "name": "Moss + Khaki",
-          "printful": [
-            "Moss/ Khaki"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        },
-        {
-          "key": "heathergreywhite",
-          "name": "Heather Grey + White",
-          "printful": [
-            "Heather Grey/White"
-          ],
-          "tone": "dark",
-          "ink": "#333366"
-        },
-        {
-          "key": "brownkhaki",
-          "name": "Brown + Khaki",
-          "printful": [
-            "Brown/ Khaki"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        },
-        {
-          "key": "charcoalblack",
-          "name": "Charcoal + Black",
-          "printful": [
-            "Charcoal/ Black"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        },
-        {
-          "key": "navy",
-          "name": "Navy",
-          "printful": [
-            "Navy"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        },
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        }
-      ]
-    },
-    {
-      "key": "puff",
-      "name": "Bright W Beanie",
-      "type": "beanie",
-      "price": 24,
-      "match": "Yupoong 1501KC",
+      "price": 30,
+      "match": "Big Accessories BA703",
       "placements": [
         "embroidery_front"
       ],
       "logos": [
-        "m2"
+        "h3"
       ],
       "box": [
-        0.3,
-        0.85
+        0.62,
+        0.95
       ],
       "colors": [
         {
-          "key": "black",
-          "name": "Black",
+          "key": "brown",
+          "name": "Brown",
           "printful": [
-            "Black"
+            "Brown"
           ],
-          "tone": "light",
-          "ink": "#3399FF"
+          "tone": "light"
         },
         {
-          "key": "babypink",
-          "name": "Baby Pink",
+          "key": "olive",
+          "name": "Olive",
           "printful": [
-            "Baby Pink"
+            "Olive"
           ],
-          "tone": "dark",
-          "ink": "#FFFFFF"
-        },
-        {
-          "key": "white",
-          "name": "White",
-          "printful": [
-            "White"
-          ],
-          "tone": "dark",
-          "ink": "#005397"
-        },
-        {
-          "key": "heathergrey",
-          "name": "Heather Grey",
-          "printful": [
-            "Heather Grey"
-          ],
-          "tone": "dark",
-          "ink": "#333366"
+          "tone": "light"
         },
         {
           "key": "navy",
@@ -1045,26 +916,82 @@
           "printful": [
             "Navy"
           ],
-          "tone": "light",
-          "ink": "#3399FF"
+          "tone": "light"
         },
         {
-          "key": "royal",
-          "name": "Royal",
+          "key": "burgundy",
+          "name": "Burgundy",
           "printful": [
-            "Royal"
+            "Burgundy"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         },
         {
-          "key": "darkgrey",
-          "name": "Dark Grey",
+          "key": "black",
+          "name": "Black",
           "printful": [
-            "Dark Grey"
+            "Black"
           ],
-          "tone": "light",
-          "ink": "#3399FF"
+          "tone": "light"
+        }
+      ]
+    },
+    {
+      "key": "woodstwo",
+      "name": "Northwoods Two-Tone Cap",
+      "type": "hat",
+      "price": 30,
+      "match": "Otto Cap 18-772",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "h3"
+      ],
+      "box": [
+        0.62,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "greenkhaki",
+          "name": "Khaki + Green brim",
+          "printful": [
+            "Dark Green/Khaki"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "navykhaki",
+          "name": "Khaki + Navy brim",
+          "printful": [
+            "Navy/Khaki"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "dustyrose",
+          "name": "Dusty Rose",
+          "printful": [
+            "Dusty Rose"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "gray",
+          "name": "Gray",
+          "printful": [
+            "Gray"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light"
         }
       ]
     },
@@ -1364,8 +1291,8 @@
       ]
     },
     {
-      "key": "pixelhat",
-      "name": "Pixel Dad Hat",
+      "key": "script",
+      "name": "Script Dad Hat",
       "type": "hat",
       "price": 26,
       "match": "Yupoong 6245CM",
@@ -1374,30 +1301,20 @@
         "embroidery_front"
       ],
       "logos": [
-        "m7"
+        "v2"
       ],
       "box": [
-        0.32,
-        0.7
+        0.8,
+        0.8
       ],
       "colors": [
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light",
-          "ink": "#FFFFFF"
-        },
         {
           "key": "stone",
           "name": "Stone",
           "printful": [
             "Stone"
           ],
-          "tone": "dark",
-          "ink": "#333366"
+          "tone": "dark"
         },
         {
           "key": "navy",
@@ -1405,17 +1322,15 @@
           "printful": [
             "Navy"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         },
         {
-          "key": "spruce",
-          "name": "Spruce",
+          "key": "black",
+          "name": "Black",
           "printful": [
-            "Spruce"
+            "Black"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
         },
         {
           "key": "lightblue",
@@ -1423,8 +1338,15 @@
           "printful": [
             "Light Blue"
           ],
-          "tone": "dark",
-          "ink": "#333366"
+          "tone": "dark"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light"
         },
         {
           "key": "pink",
@@ -1432,17 +1354,23 @@
           "printful": [
             "Pink"
           ],
-          "tone": "dark",
-          "ink": "#333366"
+          "tone": "dark"
         },
         {
-          "key": "darkgrey",
-          "name": "Dark Grey",
+          "key": "cranberry",
+          "name": "Cranberry",
           "printful": [
-            "Dark Grey"
+            "Cranberry"
           ],
-          "tone": "light",
-          "ink": "#FFFFFF"
+          "tone": "light"
+        },
+        {
+          "key": "khaki",
+          "name": "Khaki",
+          "printful": [
+            "Khaki"
+          ],
+          "tone": "dark"
         },
         {
           "key": "white",
@@ -1450,8 +1378,7 @@
           "printful": [
             "White"
           ],
-          "tone": "dark",
-          "ink": "#000000"
+          "tone": "dark"
         }
       ]
     },
@@ -1629,30 +1556,186 @@
       ]
     },
     {
-      "key": "woods",
-      "name": "Northwoods Dad Hat",
+      "key": "cord",
+      "name": "Corduroy Cap",
       "type": "hat",
-      "price": 28,
+      "price": 30,
+      "match": "Big Accessories BA703",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "v9"
+      ],
+      "box": [
+        0.6,
+        0.9
+      ],
+      "colors": [
+        {
+          "key": "brown",
+          "name": "Brown",
+          "printful": [
+            "Brown"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "olive",
+          "name": "Olive",
+          "printful": [
+            "Olive"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "burgundy",
+          "name": "Burgundy",
+          "printful": [
+            "Burgundy"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "key": "trucker",
+      "name": "Patch Trucker",
+      "type": "hat",
+      "price": 26,
+      "match": "Yupoong 6606",
+      "placements": [
+        "embroidery_front_large"
+      ],
+      "logos": [
+        "v4"
+      ],
+      "box": [
+        0.62,
+        0.85
+      ],
+      "colors": [
+        {
+          "key": "navywhite",
+          "name": "Navy + White",
+          "printful": [
+            "Navy/ White"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "blackwhite",
+          "name": "Black + White",
+          "printful": [
+            "Black/ White"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "mosskhaki",
+          "name": "Moss + Khaki",
+          "printful": [
+            "Moss/ Khaki"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "heathergreywhite",
+          "name": "Heather Grey + White",
+          "printful": [
+            "Heather Grey/White"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "brownkhaki",
+          "name": "Brown + Khaki",
+          "printful": [
+            "Brown/ Khaki"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "charcoalblack",
+          "name": "Charcoal + Black",
+          "printful": [
+            "Charcoal/ Black"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "key": "pixelhat",
+      "name": "Pixel Dad Hat",
+      "type": "hat",
+      "price": 26,
       "match": "Yupoong 6245CM",
       "placements": [
         "embroidery_front_large",
         "embroidery_front"
       ],
       "logos": [
-        "h3"
+        "m7"
       ],
       "box": [
-        0.62,
-        0.95
+        0.32,
+        0.7
       ],
       "colors": [
         {
-          "key": "white",
-          "name": "White",
+          "key": "black",
+          "name": "Black",
           "printful": [
-            "White"
+            "Black"
           ],
-          "tone": "dark"
+          "tone": "light",
+          "ink": "#FFFFFF"
         },
         {
           "key": "stone",
@@ -1660,15 +1743,26 @@
           "printful": [
             "Stone"
           ],
-          "tone": "dark"
+          "tone": "dark",
+          "ink": "#333366"
         },
         {
-          "key": "khaki",
-          "name": "Khaki",
+          "key": "navy",
+          "name": "Navy",
           "printful": [
-            "Khaki"
+            "Navy"
           ],
-          "tone": "dark"
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
         },
         {
           "key": "lightblue",
@@ -1676,7 +1770,96 @@
           "printful": [
             "Light Blue"
           ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "pink",
+          "name": "Pink",
+          "printful": [
+            "Pink"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "darkgrey",
+          "name": "Dark Grey",
+          "printful": [
+            "Dark Grey"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark",
+          "ink": "#000000"
+        }
+      ]
+    },
+    {
+      "key": "hat",
+      "name": "Dad Hat",
+      "type": "hat",
+      "price": 26,
+      "match": "Yupoong 6245CM",
+      "placements": [
+        "embroidery_front_large",
+        "embroidery_front"
+      ],
+      "colors": [
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "stone",
+          "name": "Stone",
+          "printful": [
+            "Stone",
+            "Khaki"
+          ],
           "tone": "dark"
+        }
+      ],
+      "box": [
+        0.72,
+        0.98
+      ]
+    },
+    {
+      "key": "beanie",
+      "name": "Stripe Beanie",
+      "type": "beanie",
+      "price": 24,
+      "match": "Yupoong 1501KC",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "v8"
+      ],
+      "box": [
+        0.42,
+        0.9
+      ],
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
         },
         {
           "key": "navy",
@@ -1687,18 +1870,34 @@
           "tone": "light"
         },
         {
-          "key": "black",
-          "name": "Black",
+          "key": "heathergrey",
+          "name": "Heather Grey",
           "printful": [
-            "Black"
+            "Heather Grey"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
           ],
           "tone": "light"
         },
         {
-          "key": "cranberry",
-          "name": "Cranberry",
+          "key": "olive",
+          "name": "Olive",
           "printful": [
-            "Cranberry"
+            "Olive"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "brown",
+          "name": "Brown",
+          "printful": [
+            "Brown"
           ],
           "tone": "light"
         },
@@ -1711,259 +1910,12 @@
           "tone": "light"
         },
         {
-          "key": "spruce",
-          "name": "Spruce",
-          "printful": [
-            "Spruce"
-          ],
-          "tone": "light"
-        }
-      ]
-    },
-    {
-      "key": "wild",
-      "name": "Wild W Dad Hat",
-      "type": "hat",
-      "price": 32,
-      "match": "Yupoong 6245CM",
-      "placements": [
-        "embroidery_front_large",
-        "embroidery_front"
-      ],
-      "logos": [
-        "a1",
-        "a2",
-        "a3",
-        "a4",
-        "a5",
-        "a6"
-      ],
-      "box": [
-        0.66,
-        0.95
-      ],
-      "colors": [
-        {
-          "key": "stone",
-          "name": "Stone",
-          "printful": [
-            "Stone"
-          ],
-          "tone": "dark"
-        },
-        {
-          "key": "khaki",
-          "name": "Khaki",
-          "printful": [
-            "Khaki"
-          ],
-          "tone": "dark"
-        },
-        {
           "key": "white",
           "name": "White",
           "printful": [
             "White"
           ],
           "tone": "dark"
-        },
-        {
-          "key": "spruce",
-          "name": "Spruce",
-          "printful": [
-            "Spruce"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light"
-        }
-      ]
-    },
-    {
-      "key": "wildcord",
-      "name": "Wild W Corduroy Cap",
-      "type": "hat",
-      "price": 34,
-      "match": "Big Accessories BA703",
-      "placements": [
-        "embroidery_front"
-      ],
-      "logos": [
-        "a1",
-        "a2",
-        "a3",
-        "a4",
-        "a5",
-        "a6"
-      ],
-      "box": [
-        0.66,
-        0.95
-      ],
-      "colors": [
-        {
-          "key": "brown",
-          "name": "Brown",
-          "printful": [
-            "Brown"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "olive",
-          "name": "Olive",
-          "printful": [
-            "Olive"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "navy",
-          "name": "Navy",
-          "printful": [
-            "Navy"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "burgundy",
-          "name": "Burgundy",
-          "printful": [
-            "Burgundy"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light"
-        }
-      ]
-    },
-    {
-      "key": "woodscord",
-      "name": "Northwoods Corduroy Cap",
-      "type": "hat",
-      "price": 30,
-      "match": "Big Accessories BA703",
-      "placements": [
-        "embroidery_front"
-      ],
-      "logos": [
-        "h3"
-      ],
-      "box": [
-        0.62,
-        0.95
-      ],
-      "colors": [
-        {
-          "key": "brown",
-          "name": "Brown",
-          "printful": [
-            "Brown"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "olive",
-          "name": "Olive",
-          "printful": [
-            "Olive"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "navy",
-          "name": "Navy",
-          "printful": [
-            "Navy"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "burgundy",
-          "name": "Burgundy",
-          "printful": [
-            "Burgundy"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light"
-        }
-      ]
-    },
-    {
-      "key": "woodstwo",
-      "name": "Northwoods Two-Tone Cap",
-      "type": "hat",
-      "price": 30,
-      "match": "Otto Cap 18-772",
-      "placements": [
-        "embroidery_front"
-      ],
-      "logos": [
-        "h3"
-      ],
-      "box": [
-        0.62,
-        0.95
-      ],
-      "colors": [
-        {
-          "key": "greenkhaki",
-          "name": "Khaki + Green brim",
-          "printful": [
-            "Dark Green/Khaki"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "navykhaki",
-          "name": "Khaki + Navy brim",
-          "printful": [
-            "Navy/Khaki"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "dustyrose",
-          "name": "Dusty Rose",
-          "printful": [
-            "Dusty Rose"
-          ],
-          "tone": "dark"
-        },
-        {
-          "key": "gray",
-          "name": "Gray",
-          "printful": [
-            "Gray"
-          ],
-          "tone": "dark"
-        },
-        {
-          "key": "maroon",
-          "name": "Maroon",
-          "printful": [
-            "Maroon"
-          ],
-          "tone": "light"
         }
       ]
     },
@@ -2052,37 +2004,85 @@
       "top": 0.06
     },
     {
-      "key": "hat",
-      "name": "Dad Hat",
-      "type": "hat",
-      "price": 26,
-      "match": "Yupoong 6245CM",
+      "key": "puff",
+      "name": "Bright W Beanie",
+      "type": "beanie",
+      "price": 24,
+      "match": "Yupoong 1501KC",
       "placements": [
-        "embroidery_front_large",
         "embroidery_front"
       ],
+      "logos": [
+        "m2"
+      ],
+      "box": [
+        0.3,
+        0.85
+      ],
       "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#3399FF"
+        },
+        {
+          "key": "babypink",
+          "name": "Baby Pink",
+          "printful": [
+            "Baby Pink"
+          ],
+          "tone": "dark",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark",
+          "ink": "#005397"
+        },
+        {
+          "key": "heathergrey",
+          "name": "Heather Grey",
+          "printful": [
+            "Heather Grey"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
         {
           "key": "navy",
           "name": "Navy",
           "printful": [
             "Navy"
           ],
-          "tone": "light"
+          "tone": "light",
+          "ink": "#3399FF"
         },
         {
-          "key": "stone",
-          "name": "Stone",
+          "key": "royal",
+          "name": "Royal",
           "printful": [
-            "Stone",
-            "Khaki"
+            "Royal"
           ],
-          "tone": "dark"
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "darkgrey",
+          "name": "Dark Grey",
+          "printful": [
+            "Dark Grey"
+          ],
+          "tone": "light",
+          "ink": "#3399FF"
         }
-      ],
-      "box": [
-        0.72,
-        0.98
       ]
     },
     {

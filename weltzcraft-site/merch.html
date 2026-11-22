@@ -35,7 +35,7 @@
 .m-slides{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;position:relative;z-index:1;overscroll-behavior-x:contain}
 .m-slides::-webkit-scrollbar{display:none}
 .m-slides img{flex:0 0 100%;scroll-snap-align:center}
-.m-dots{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:6px;z-index:2;pointer-events:none}
+.m-dots{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;display:flex;justify-content:center;gap:6px;z-index:2;pointer-events:none;padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.82)}
 .m-dots i{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.22)}.m-dots i.on{background:#111}
 .m-arr{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#111;box-shadow:0 2px 8px rgba(0,0,0,.18);cursor:pointer;font:700 18px/1 var(--f-body);display:flex;align-items:center;justify-content:center}
 .m-arr.prev{left:8px}.m-arr.next{right:8px}.m-arr[hidden],.m-dots[hidden]{display:none}
@@ -73,6 +73,7 @@
 .m-pills{display:flex;flex-wrap:wrap;gap:6px}
 .m-pills button{font:500 14px/1 var(--f-body);min-width:42px;padding:9px 12px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
 .m-pills button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.m-pills button:disabled{opacity:.38;text-decoration:line-through;cursor:not-allowed}
 .m-buy{display:flex;gap:8px;margin-top:auto;padding-top:4px}
 .m-buy select{font:500 15px var(--f-body);padding:0 10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
 .m-buy .btn{flex:1;padding:12px 18px;font-size:15px}
@@ -162,7 +163,7 @@
     <div class="section-head">
       <p class="eyebrow">The marks</p>
       <h2>Seven ways to wear the W.</h2>
-      <p class="sub">Monograms, a round seal and a three-stripe W, all drawn in house. Every one comes on every piece.</p>
+      <p class="sub">Monograms, a round seal and a three-stripe W, all drawn in house. Pick any of them on the classic tee, hoodie, dad hat, mug, tote and sticker.</p>
     </div>
     <div class="marks">
       <figure><img src="/img/merch/marks/42-light.webp" alt="Tall W over S monogram" width="180" height="180" loading="lazy"></figure>
@@ -181,7 +182,7 @@
     <div class="m-faq">
       <div><h3>Made to order</h3><p>Nothing sits in a warehouse. Our print partner makes each piece after you order it, so there's no waste and every size is always in stock.</p></div>
       <div><h3>Shipping</h3><p>$5.99 to anywhere in the US, plus $1.50 for each extra piece (never more than $14.99). Most orders are printed in 2 to 5 business days, then shipped, and you get tracking by email.</p></div>
-      <div><h3>Sizing</h3><p>Tees and hoodies are unisex and fit true to size. 2XL adds $2 and 3XL adds $3. Wrong size? Email us within 30 days.</p></div>
+      <div><h3>Sizing</h3><p>Tees and hoodies are unisex and fit true to size. 2XL adds $2 and 3XL adds $3 (a few pieces stop at 2XL). Wrong size? Email us within 30 days.</p></div>
       <div><h3>Questions</h3><p>Email <a href="mailto:hello@weltzcraft.com">hello@weltzcraft.com</a> about sizing, bulk orders for your team, or a custom piece.</p></div>
     </div>
   </div>
@@ -282,6 +283,12 @@
       function slug() { return p.key + '-' + st.color + '-' + st.logo; }
       function update() {
         var s = slug(), item = cat.items[s];
+        // A few colors don't come in every size (Printful has no 3XL in some): grey those out and never leave one picked.
+        if (p.sizes && item) {
+          var have = item.variants.map(function (v) { return v.size; });
+          if (have.indexOf(st.size) < 0) st.size = have.indexOf('M') >= 0 ? 'M' : have[0];
+          el.querySelectorAll('[data-size]').forEach(function (b) { var ok = have.indexOf(b.dataset.size) >= 0; b.disabled = !ok; b.title = ok ? '' : 'Not made in this color'; });
+        }
         var colorName = (p.colors.filter(function (c) { return c.key === st.color; })[0] || {}).name;
         var src = '/img/merch/' + s + '.webp' + (item && item.hash ? '?v=' + item.hash : '');
         if (img.getAttribute('src') !== src) show(src);
