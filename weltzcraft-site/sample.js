@@ -110,7 +110,8 @@
     var act = F.book || hasForm || hasOrder ? go : brief;
     var social = SOCIAL.length ? '<p class="social">' + SOCIAL.map(function (x) { return '<a href="' + esc(L[x[0]]) + '" target="_blank" rel="noopener">' + x[1] + '</a>'; }).join('') + '</p>' : '';
     var dir = real && real.address ? 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(real.address) : '';
-    var reviews = on('review') && !live;
+    var realRev = t.liveReviews && t.liveReviews.length ? t.liveReviews : null;   // the owner's own reviews, typed in their portal
+    var reviews = realRev ? true : on('review') && !live;
     var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(hasOrder ? [['order', 'Order']] : []).concat(F.book ? [['book', 'Book']] : []).concat(reviews ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', hasForm ? 'Contact' : 'Visit']]);
     var steps = on('steps') && t.steps && t.steps.length ? t.steps : null, areas = on('areas') && t.areas && t.areas.length ? t.areas : null;
     document.getElementById('site').innerHTML =
@@ -139,11 +140,12 @@
       (on('pics') && (PX ? pxGal.length >= 3 : photo) ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>' + (a.src ? 'A closer look.' : 'Come see for yourself.') + '</h2></div><div class="gal' + (PX && pxGal.length === 3 ? ' g3' : '') + '">' +
         (PX ? pxGal.map(function (o) { return '<div>' + pimg(o, name + ' photo') + '</div>'; }) : [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; })).join('') + '</div></div></section>' : '') +
       (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
-        t.reviews.map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + ' · Sample review</span></div>'; }).join('') + '</div></div></section>' : '') +
+        (realRev || t.reviews).map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + (realRev ? '' : ' · Sample review') + '</span></div>'; }).join('') + '</div></div></section>' : '') +
       (on('faq') ? '<section id="faq"><div class="wrap"><div class="sec-h"><p class="eyebrow">Questions</p><h2>Good to know.</h2></div><div class="faq">' +
         faq.map(function (f) { return '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>'; }).join('') + '</div></div></section>' : '') +
       (areas ? '<section id="areas"><div class="wrap"><div class="sec-h"><p class="eyebrow">Where we work</p><h2>Proudly serving ' + esc(town) + ' and nearby.</h2></div><ul class="areas"><li>' + esc(town) + '</li>' +
         areas.filter(function (x) { return x.toLowerCase() !== town.toLowerCase(); }).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></section>' : '') +
+      (t.extra && t.extra.length ? t.extra.map(function (x, i) { return '<section class="xtra' + (i % 2 ? '' : ' tint') + '"><div class="wrap"><div class="sec-h"><h2>' + esc(x[0]) + '</h2></div><p class="xp">' + esc(x[1]) + '</p></div></section>'; }).join('') : '') +
       (hasForm ? '<section id="ask"><div class="wrap" id="wc-ask"></div></section>' : '') +
       '<section id="visit"' + (on('faq') ? ' class="tint"' : '') + '><div class="wrap visit"><div class="card"><p class="eyebrow">Visit us</p><h2 style="font-size:34px">' + (live ? 'Get in touch' : 'Find us in ' + esc(town)) + '</h2><p style="color:var(--mut);margin:10px 0 0">' +
         (real ? [real.address ? '📍 ' + esc(real.address) : '📍 ' + esc(town), real.phone ? '📞 <a href="' + tel + '">' + esc(real.phone) + '</a>' : '', real.email ? '✉️ <a href="mailto:' + esc(real.email) + '">' + esc(real.email) + '</a>' : ''].filter(Boolean).join('<br>')
@@ -153,8 +155,8 @@
         : (on('map') || !photo) && !live ? '<div class="map" aria-label="Map"><svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice"><rect width="600" height="400" fill="#e9ece4"/><path d="M0 120h600M0 280h600M150 0v400M420 0v400" stroke="#fff" stroke-width="18"/><path d="M0 200h600M290 0v400" stroke="#fff" stroke-width="30"/><path d="M-20 360C120 300 200 330 330 250s220-60 300-120" stroke="#cfe1f2" stroke-width="26" fill="none"/><rect x="40" y="20" width="90" height="80" rx="8" fill="#d6e6cf"/><rect x="460" y="300" width="120" height="80" rx="8" fill="#d6e6cf"/></svg><div class="pin"><i></i><span>' + esc(name) + '</span></div></div>'
           : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + tile() + '</div></div>') + '</div></section>' +
       '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + act + '">' + esc(cta) + '</a></div></div>' +
-      '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">' + (live ? 'Website by <a href="https://weltzcraft.com">Weltzcraft Studios</a>' : 'Sample site by <a href="/">Weltzcraft Studios</a>') + (PX ? ' · <span>Photos: ' + pxAll.map(function (o) { return (o.page ? '<a href="' + esc(o.page) + '" target="_blank" rel="noopener">' : '') + esc(o.by || o.src || 'Unknown') + (o.page ? '</a>' : '') + ' (' + esc(o.lic) + ')'; }).join(', ') + '</span>'
-        : photo ? ' · <span id="pc">Photos: Wikimedia Commons</span>' : '') + '</span></div></footer>' +
+      '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">' + (live ? 'Website by <a href="https://weltzcraft.com">Weltzcraft Studios</a>' : 'Sample site by <a href="/">Weltzcraft Studios</a>') + (PX && pxAll.some(function (o) { return o.src !== 'own'; }) ? ' · <span>Photos: ' + pxAll.filter(function (o) { return o.src !== 'own'; }).map(function (o) { return (o.page ? '<a href="' + esc(o.page) + '" target="_blank" rel="noopener">' : '') + esc(o.by || o.src || 'Unknown') + (o.page ? '</a>' : '') + ' (' + esc(o.lic) + ')'; }).join(', ') + '</span>'
+        : photo && !PX ? ' · <span id="pc">Photos: Wikimedia Commons</span>' : '') + '</span></div></footer>' +
       // Phones get a bar that stays at the bottom: call, directions and the main button.
       (tel || dir ? '<div class="mbar">' + (tel ? '<a href="' + tel + '">📞 Call</a>' : '') + (dir ? '<a href="' + dir + '" target="_blank" rel="noopener">📍 Directions</a>' : '') + '<a class="go" href="' + act + '">' + esc(cta) + '</a></div>' : '');
     root.classList.toggle('has-mbar', !!(tel || dir));

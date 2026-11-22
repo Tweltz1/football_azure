@@ -79,10 +79,26 @@ details .in{padding:0 0 18px}
 .bar.on{display:block}
 .bar div{max-width:728px;margin:0 auto;display:flex;gap:10px;align-items:center;justify-content:space-between}
 .bar span{color:var(--mut);font-size:14.5px}
+.bar span:last-child{display:flex;flex:none;gap:6px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#f6efe2;color:#1a1713;font-weight:600;padding:12px 18px;border-radius:14px;box-shadow:0 18px 40px -12px #000;z-index:6;display:none;max-width:calc(100vw - 32px);font-size:15px}
 .toast.on{display:flex;gap:12px;align-items:center}
 .toast button{background:#1a1713;color:#f6efe2;padding:7px 12px;font-size:14px}
 .demo{background:rgba(255,192,97,.12);border:1px solid rgba(255,192,97,.35);color:var(--em2);border-radius:14px;padding:12px 16px;margin:0 0 16px;font-size:15px}
+.it.two{grid-template-columns:1fr 1fr 40px}
+.it.two .d{grid-column:1/3}
+.it.why{grid-template-columns:58px 1fr 40px}
+.it.why .d{grid-column:1/3}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 6px}
+.slot{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:rgba(255,240,215,.05);border:1.5px dashed var(--line);display:grid;place-items:center;color:var(--mut);font-size:13px;text-align:center;padding:6px}
+.slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slot b{position:absolute;left:6px;top:6px;z-index:1;background:rgba(15,13,10,.8);color:var(--ink);font-size:11.5px;padding:2px 7px;border-radius:999px}
+.slot button{position:absolute;right:6px;top:6px;z-index:1;width:28px;height:28px;padding:0;border-radius:50%;background:rgba(15,13,10,.85);color:#fff;font-size:15px}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 0}
+.pick button{position:relative;padding:0;aspect-ratio:4/3;overflow:hidden;border-radius:10px;background:#2a2620}
+.pick img{width:100%;height:100%;object-fit:cover;display:block}
+.pick small{position:absolute;left:0;right:0;bottom:0;background:rgba(15,13,10,.72);color:#fff;font-size:10.5px;font-weight:500;padding:2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow{display:flex;gap:8px;flex-wrap:wrap}
+.prow input{flex:1;min-width:150px}
 [hidden]{display:none!important}
 @media (max-width:520px){.row2,.row3{grid-template-columns:1fr}.card{padding:18px;border-radius:18px}.it{grid-template-columns:1fr 78px 40px}}
 </style>
@@ -118,14 +134,26 @@ details .in{padding:0 0 18px}
 
     <div class="card" id="edit">
       <h2>Quick edits</h2>
-      <p class="hint">Change anything here and tap Save. Your site updates within a couple of minutes.</p>
+      <p class="hint">Change anything here and tap Save. Your site updates in under a minute.</p>
       <details><summary>Notice banner <small id="s-notice"></small></summary><div class="in">
         <label for="f-notice">A short line across the top of your site <small>(holiday hours, a special, "now hiring"). Leave empty for none.</small></label><input id="f-notice" maxlength="160" placeholder="Closed Thanksgiving Day. Back Friday at 7am.">
+      </div></details>
+      <details id="d-photos"><summary>Photos <small id="s-photos"></small></summary><div class="in">
+        <div class="slots" id="slots"></div>
+        <label for="pslot">Add a photo to</label><select id="pslot"><option value="hero">Top of the page</option><option value="about">About section</option><option value="gal">Gallery (up to 6)</option></select>
+        <label>Upload your own <small>(a photo you took or own)</small></label><input type="file" id="pfile" accept="image/*">
+        <label for="pq">Or find a free photo <small>(free to use for business, credit is added for you)</small></label>
+        <div class="prow"><input id="pq" maxlength="50" placeholder="pulled pork, lawn mower, hair salon…"><button type="button" id="pfind">Search</button></div>
+        <p class="msg" id="pmsg"></p><div class="pick" id="pick"></div>
       </div></details>
       <details><summary>Headline and about <small id="s-tag"></small></summary><div class="in">
         <label for="f-tag">Headline</label><input id="f-tag" maxlength="90">
         <label for="f-about">About your business</label><textarea id="f-about" maxlength="700" rows="5"></textarea>
         <label for="f-cta">Main button words</label><input id="f-cta" maxlength="24">
+        <label for="f-eyebrow">Small line above your name</label><input id="f-eyebrow" maxlength="60">
+        <label for="f-aboutTitle">About heading</label><input id="f-aboutTitle" maxlength="80">
+        <label for="f-band">Closing line <small>(above the last button)</small></label><input id="f-band" maxlength="80">
+        <label>Quick facts <small>(up to 3: big word, small label)</small></label><div id="facts"></div><button type="button" data-add="facts">+ Add a fact</button>
       </div></details>
       <details><summary>Contact and hours <small id="s-contact"></small></summary><div class="in">
         <div class="row2"><div><label for="f-phone">Phone</label><input id="f-phone" maxlength="30" inputmode="tel"></div><div><label for="f-email">Email</label><input id="f-email" maxlength="80" type="email"></div></div>
@@ -133,7 +161,7 @@ details .in{padding:0 0 18px}
         <label for="f-hours">Hours</label><input id="f-hours" maxlength="200" placeholder="Mon to Fri 8am to 5pm, Sat 9am to 1pm">
       </div></details>
       <details><summary><span id="l-items">Menu and prices</span> <small id="s-items"></small></summary><div class="in">
-        <label for="f-listTitle">Section title</label><input id="f-listTitle" maxlength="30">
+        <div class="row2"><div><label for="f-listTitle">Section title</label><input id="f-listTitle" maxlength="30"></div><div><label for="f-listSub">Heading</label><input id="f-listSub" maxlength="60"></div></div>
         <label>Items <small>(name, price, short description)</small></label><div id="items"></div>
         <button type="button" id="additem">+ Add an item</button>
       </div></details>
@@ -149,6 +177,15 @@ details .in{padding:0 0 18px}
       </div></details>
       <details><summary>Links <small id="s-links"></small></summary><div class="in" id="links"></div></details>
       <details><summary>Questions and answers <small id="s-faq"></small></summary><div class="in"><div id="faq"></div><button type="button" id="addfaq">+ Add a question</button></div></details>
+      <details><summary>Customer reviews <small id="s-reviews"></small></summary><div class="in">
+        <p class="hint">Real reviews from your customers, in their words. They show on your site with five stars.</p><div id="reviews"></div><button type="button" data-add="reviews">+ Add a review</button>
+      </div></details>
+      <details><summary>Why choose us <small id="s-why"></small></summary><div class="in"><div id="why"></div><button type="button" data-add="why">+ Add a reason</button></div></details>
+      <details><summary>How it works <small id="s-steps"></small></summary><div class="in"><p class="hint">Steps a new customer takes. Leave empty to hide this section.</p><div id="steps"></div><button type="button" data-add="steps">+ Add a step</button></div></details>
+      <details><summary>Areas served <small id="s-areas"></small></summary><div class="in"><label for="f-areas">Towns, with commas between <small>(leave empty to hide)</small></label><input id="f-areas" maxlength="500" placeholder="Eau Claire, Altoona, Chippewa Falls"></div></details>
+      <details><summary>Extra sections <small id="s-extra"></small></summary><div class="in">
+        <p class="hint">Add anything else: catering, about the owner, policies, an event. Each one gets its own section on your site.</p><div id="extra"></div><button type="button" data-add="extra">+ Add a section</button>
+      </div></details>
       <details><summary>Look <small id="s-look"></small></summary><div class="in">
         <div class="row2"><div><label for="f-c">Main color</label><input id="f-c" type="color"></div>
         <div><label for="f-vibe">Style</label><select id="f-vibe"><option value="warm">Warm</option><option value="clean">Clean</option><option value="bold">Bold</option><option value="classic">Classic</option><option value="playful">Playful</option><option value="rugged">Rugged</option></select></div></div>
@@ -161,7 +198,7 @@ details .in{padding:0 0 18px}
     <div class="card">
       <h2>Ask Weltzcraft for a change</h2>
       <p class="hint" id="reqhint"></p>
-      <textarea id="reqtext" maxlength="2000" placeholder="Example: Swap the top photo for one of our new storefront, and add a page about catering."></textarea>
+      <textarea id="reqtext" maxlength="2000" placeholder="Example: Add our logo to the top, and make the menu two columns."></textarea>
       <p style="margin:12px 0 0"><button id="reqbtn">Send request</button></p>
       <p class="msg" id="reqmsg"></p>
       <div id="reqs"></div>
@@ -184,9 +221,13 @@ details .in{padding:0 0 18px}
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var track = function (e) { try { navigator.sendBeacon('/api/hit/' + e); } catch (x) {} };
   var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  var SECS = [['list', 'Menu / services'], ['pics', 'Photo gallery'], ['map', 'Map'], ['faq', 'Questions'], ['steps', 'How it works'], ['areas', 'Areas served']];
+  var SECS = [['list', 'Menu / services'], ['pics', 'Photo gallery'], ['map', 'Map'], ['faq', 'Questions']];
   var LINKS = [['order', 'Your own online ordering page'], ['doordash', 'DoorDash'], ['ubereats', 'Uber Eats'], ['grubhub', 'Grubhub'], ['facebook', 'Facebook'], ['instagram', 'Instagram'], ['yelp', 'Yelp'], ['tiktok', 'TikTok']];
-  var TEXT = ['notice', 'tag', 'about', 'cta', 'phone', 'email', 'address', 'hours', 'listTitle'];
+  var TEXT = ['notice', 'tag', 'about', 'cta', 'phone', 'email', 'address', 'hours', 'listTitle', 'listSub', 'eyebrow', 'aboutTitle', 'band', 'areas'];
+  // Lists of short rows: [first box, second box (or a big text box)], how many, and what the boxes say.
+  var LISTS = { facts: { max: 3, a: ['Big word', 20], b: ['Small label', 24] }, reviews: { max: 6, a: ['Customer name', 40], b: ['What they said', 300], big: 1, swap: 1 }, steps: { max: 5, a: ['Step', 40], b: ['What happens', 160], big: 1 },
+    extra: { max: 4, a: ['Heading', 60], b: ['Text', 900], big: 1 }, why: { max: 4, a: ['Title', 40], b: ['One sentence', 160], big: 1, icon: 1 } };
+  var PH = { hero: null, about: null, gal: [] };
   var auth = null, S = null, saved = '';
 
   // Sign-in details arrive in the link (?o&x&k), are kept on this device, and are taken out of the address bar.
@@ -218,11 +259,39 @@ details .in{padding:0 0 18px}
     d.innerHTML = '<div class="it qa"><input class="n" maxlength="120" placeholder="Question" value="' + esc(r[0]) + '"><button type="button" class="x" aria-label="Remove">×</button><textarea class="d" maxlength="400" placeholder="Answer">' + esc(r[1]) + '</textarea></div>';
     return d;
   }
+  function listRow(k, r) {
+    var L = LISTS[k], d = document.createElement('div'); d.className = 'itw';
+    var a = L.icon ? r[1] : L.swap ? r[1] : r[0], b = L.icon ? r[2] : L.swap ? r[0] : r[1];
+    d.innerHTML = '<div class="it ' + (L.icon ? 'why' : L.big ? 'qa' : 'two') + '">' + (L.icon ? '<input class="e" maxlength="4" placeholder="✓" value="' + esc(r[0] || '') + '">' : '') +
+      '<input class="n" maxlength="' + L.a[1] + '" placeholder="' + L.a[0] + '" value="' + esc(a || '') + '">' + (L.big || L.icon ? '' : '<input class="d" style="grid-column:auto" maxlength="' + L.b[1] + '" placeholder="' + L.b[0] + '" value="' + esc(b || '') + '">') +
+      '<button type="button" class="x" aria-label="Remove">×</button>' + (L.big || L.icon ? '<textarea class="d" maxlength="' + L.b[1] + '" placeholder="' + L.b[0] + '">' + esc(b || '') + '</textarea>' : '') + '</div>';
+    return d;
+  }
+  function listRead(k) {
+    var L = LISTS[k];
+    return [].map.call($(k).querySelectorAll('.it'), function (r) { var a = r.querySelector('.n').value.trim(), b = r.querySelector('.d').value.trim(), e = r.querySelector('.e'); return L.icon ? [e.value.trim() || '✓', a, b] : L.swap ? [b, a] : [a, b]; })
+      .filter(function (r) { return L.icon ? r[1] && r[2] : r[0] && r[1]; });
+  }
+  function thumb(o) { return '/img/x?u=' + encodeURIComponent(o.s || o.u); }
+  function slots() {
+    var list = [['hero', 'Top', PH.hero], ['about', 'About', PH.about]].concat(PH.gal.map(function (o, i) { return ['gal' + i, 'Gallery', o]; }));
+    $('slots').innerHTML = list.map(function (x) { return '<div class="slot"><b>' + x[1] + '</b>' + (x[2] ? '<img src="' + esc(thumb(x[2])) + '" alt=""><button type="button" data-rm="' + x[0] + '" aria-label="Remove">×</button>' : 'Starter photo') + '</div>'; }).join('');
+    var n = [PH.hero, PH.about].filter(Boolean).length + PH.gal.length;
+    $('s-photos').textContent = n ? n + (n === 1 ? ' photo' : ' photos') + ' chosen' : 'Starter photos';
+  }
+  function place(o) {
+    var where = $('pslot').value;
+    if (where === 'gal') { if (PH.gal.length >= 6) return msg('pmsg', 'The gallery is full. Remove one first.'); PH.gal.push(o); } else PH[where] = o;
+    slots(); dirty(); msg('pmsg', 'Added. Tap Save to put it on your site.', true);
+  }
   /** Put the site's current values into the form. */
   function fill(v) {
     TEXT.forEach(function (k) { $('f-' + k).value = v[k] || ''; });
     $('items').innerHTML = ''; (v.items || []).forEach(function (r) { $('items').appendChild(itemRow(r)); });
     $('faq').innerHTML = ''; (v.faq || []).forEach(function (r) { $('faq').appendChild(faqRow(r)); });
+    Object.keys(LISTS).forEach(function (k) { $(k).innerHTML = ''; (v[k] || []).forEach(function (r) { $(k).appendChild(listRow(k, r)); }); if ($('s-' + k)) $('s-' + k).textContent = (v[k] || []).length || 'None'; });
+    $('s-areas').textContent = v.areas || 'None';
+    var ph = v.photos || {}; PH = { hero: ph.hero || null, about: ph.about || null, gal: (ph.gal || []).slice() }; slots(); $('pick').innerHTML = '';
     var f = v.f || {}, d = v.d || {};
     $('f-book').checked = !!f.book; $('f-order').checked = !!f.order; $('f-form').value = f.form || 'contact';
     $('f-open').value = f.open || '09:00'; $('f-close').value = f.close || '17:00'; $('f-len').value = String(f.len || 30);
@@ -247,11 +316,13 @@ details .in{padding:0 0 18px}
     p.faq = [].map.call($('faq').querySelectorAll('.it'), function (r) { return [r.querySelector('.n').value.trim(), r.querySelector('.d').value.trim()]; }).filter(function (r) { return r[0] && r[1]; });
     p.f = { book: $('f-book').checked ? 1 : 0, order: $('f-order').checked ? 1 : 0, form: $('f-form').value, len: Number($('f-len').value), open: $('f-open').value, close: $('f-close').value,
       days: [].map.call($('days').querySelectorAll('input:checked'), function (i) { return Number(i.value); }) };
+    Object.keys(LISTS).forEach(function (k) { p[k] = listRead(k); });
+    p.photos = { hero: PH.hero, about: PH.about, gal: PH.gal };
     p.links = {}; LINKS.forEach(function (l) { var v = $('l-' + l[0]).value.trim(); if (v) p.links[l[0]] = v; });
     p.c = $('f-c').value.replace('#', ''); p.d = { vibe: $('f-vibe').value, hero: $('f-hero').value, items: $('f-items').value };
     // Sections this page doesn't list (like reviews) stay as they are.
     var known = SECS.map(function (s) { return s[0]; });
-    p.s = (S.view.s || '').split(',').filter(function (x) { return x && known.indexOf(x) < 0; }).concat([].map.call($('secs').querySelectorAll('input:checked'), function (i) { return i.value; })).join(',');
+    p.s = (S.view.s || '').split(',').filter(function (x) { return x && known.indexOf(x) < 0 && x !== 'steps' && x !== 'areas'; }).concat(p.steps.length ? ['steps'] : []).concat(p.areas ? ['areas'] : []).concat([].map.call($('secs').querySelectorAll('input:checked'), function (i) { return i.value; })).join(',');
     return p;
   }
   function dirty() { $('bar').classList.toggle('on', !!S && JSON.stringify(read()) !== saved); $('bookopts').hidden = !$('f-book').checked; }
@@ -263,8 +334,8 @@ details .in{padding:0 0 18px}
     $('loading').hidden = true; $('signin').hidden = true; $('app').hidden = false; $('out').hidden = !!j.demo; $('demonote').hidden = !j.demo;
     $('nm').textContent = j.name; $('st').textContent = j.status === 'live' ? 'Live' : j.step; $('st').className = 'pill' + (j.status === 'live' ? '' : ' w'); $('cp').hidden = !j.care;
     $('dm').textContent = j.domain; if (!j.demo) $('dm').href = 'https://' + j.domain; else $('dm').removeAttribute('href');
-    $('reqhint').textContent = j.care ? 'For anything you can\'t do above: new photos, a new section, something custom. It\'s included in your care plan, usually done within 2 business days.'
-      : 'For anything you can\'t do above: new photos, a new section, something custom. We reply within 2 business days, and if it\'s more than a quick fix we send a price first.';
+    $('reqhint').textContent = j.care ? 'For anything you can\'t do above: a logo, a new layout, something custom. It\'s included in your care plan, usually done within 2 business days.'
+      : 'For anything you can\'t do above: a logo, a new layout, something custom. We reply within 2 business days, and if it\'s more than a quick fix we send a price first.';
     $('billcard').hidden = !j.billing;
     fill(j.view); saved = JSON.stringify(read()); dirty(); reqList(j.requests);
   }
@@ -275,18 +346,52 @@ details .in{padding:0 0 18px}
       if (j.status === 401) return signedOut();
       if (j.error) { toast(j.error); return false; }
       show(j); track('portal_save');
-      toast(j.demo ? 'Demo: that would be saved to your site.' : (j.changes || []).length ? 'Saved. Your site updates within 2 minutes.' : 'Nothing changed.', j.canUndo && (j.changes || []).length);
+      toast(j.demo ? 'Demo: that would be saved to your site.' : (j.changes || []).length ? 'Saved. Your site updates in under a minute.' : 'Nothing changed.', j.canUndo && (j.changes || []).length);
       return true;
     });
   }
 
   $('edit').addEventListener('input', dirty); $('edit').addEventListener('change', dirty);
   $('edit').addEventListener('click', function (e) { if (e.target.classList.contains('x')) { e.target.closest('.itw').remove(); dirty(); } });
+  $('edit').addEventListener('click', function (e) {
+    var k = e.target.getAttribute('data-add'), rm = e.target.getAttribute('data-rm');
+    if (k) { if ($(k).children.length >= LISTS[k].max) return; var r = listRow(k, []); $(k).appendChild(r); r.querySelector('input').focus(); }
+    if (rm) { if (rm.indexOf('gal') === 0) PH.gal.splice(Number(rm.slice(3)), 1); else PH[rm] = null; slots(); dirty(); }
+  });
+  $('pfind').onclick = function () {
+    var q = $('pq').value.trim(); if (q.length < 3) return msg('pmsg', 'Type what the photo should show.');
+    $('pfind').disabled = true; msg('pmsg', 'Searching…', true);
+    api('photos', { q: q }).then(function (j) {
+      $('pfind').disabled = false;
+      if (j.error) return msg('pmsg', j.error);
+      msg('pmsg', j.photos.length ? 'Tap a photo to add it.' : 'Nothing found. Try simpler words, like "bread" or "haircut".', j.photos.length > 0);
+      $('pick').innerHTML = j.photos.map(function (o, i) { return '<button type="button" data-i="' + i + '"><img src="' + esc(thumb(o)) + '" alt="" loading="lazy"><small>' + esc(o.by || o.src) + '</small></button>'; }).join('');
+      $('pick').onclick = function (e) { var b = e.target.closest('button'); if (b) place(j.photos[Number(b.getAttribute('data-i'))]); };
+    });
+  };
+  $('pq').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('pfind').click(); } });
+  // An uploaded photo is shrunk on this device to a web-sized JPEG before it is sent.
+  $('pfile').onchange = function () {
+    var f = $('pfile').files[0]; if (!f) return;
+    msg('pmsg', 'Uploading…', true);
+    var img = new Image(), url = URL.createObjectURL(f);
+    img.onerror = function () { msg('pmsg', 'That file isn\'t a photo we can use. Try a JPG or PNG.'); };
+    img.onload = function () {
+      var k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(function (blob) {
+        if (!blob) return msg('pmsg', 'That photo didn\'t work. Try another one.');
+        fetch('/api/portal/upload?' + new URLSearchParams({ o: auth.o, x: auth.x || 0, k: auth.k || '' }), { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob })
+          .then(function (r) { return r.json(); }).then(function (j) { $('pfile').value = ''; if (j.error) return msg('pmsg', j.error); place(j.photo); }, function () { msg('pmsg', 'No connection. Try again.'); });
+      }, 'image/jpeg', 0.84);
+    };
+    img.src = url;
+  };
   $('additem').onclick = function () { var r = itemRow(['', '', '']); $('items').appendChild(r); r.querySelector('input').focus(); };
   $('addfaq').onclick = function () { var r = faqRow(['', '']); $('faq').appendChild(r); r.querySelector('input').focus(); };
   $('save').onclick = function () { save(read()); };
   $('discard').onclick = function () { fill(S.view); dirty(); };
-  $('undo').onclick = function () { api('undo').then(function (j) { if (j.error) return toast(j.error); show(j); toast('Undone. Your site goes back within 2 minutes.'); }); };
+  $('undo').onclick = function () { api('undo').then(function (j) { if (j.error) return toast(j.error); show(j); toast('Undone. Your site goes back in under a minute.'); }); };
   $('out').onclick = signedOut;
   window.addEventListener('beforeunload', function (e) { if ($('bar').classList.contains('on')) { e.preventDefault(); e.returnValue = ''; } });
 
