@@ -6,9 +6,10 @@ const TOKEN = process.env.PRINTFUL_API_TOKEN, STORE = process.env.PRINTFUL_STORE
 const BRANCH = process.env.BRANCH || 'claude/project-thread-3fy47d';
 const RAW = `https://raw.githubusercontent.com/Tweltz1/football_azure/${BRANCH}/merch/scout`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const pf = async (p, opt = {}) => {
+const pf = async (p, opt = {}, tries = 0) => {
   const r = await fetch('https://api.printful.com' + p, { ...opt, headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json', ...(STORE ? { 'X-PB-Store-Id': STORE } : {}) } });
   const b = await r.json();
+  if (r.status === 429 && tries < 6) { const s = +((JSON.stringify(b).match(/after (\d+) sec/) || [])[1] || 60); console.log(`  wait ${s}s (rate limit)`); await sleep((s + 2) * 1000); return pf(p, opt, tries + 1); }
   if (!r.ok) throw new Error(p + ' ' + r.status + JSON.stringify(b).slice(0, 300));
   return b.result;
 };
@@ -35,6 +36,8 @@ for (const c of CANDS) {
     const places = Object.keys(vp.placements);
     const front = ['embroidery_front', 'front_dtf_hat', 'front', 'default'].find(p => places.includes(p)) || places[0];
     const area = p => { const f = pfiles.printfiles.find(x => x.printfile_id === vp.placements[p]); return { w: f.width, h: f.height }; };
+    const slug0 = `${c.key}-${color.toLowerCase().replace(/[^a-z]+/g, '')}`;
+    if (fs.existsSync(`merch/scout/photos/${slug0}~1.jpg`)) { console.log(`have ${slug0}`); continue; }
     const ink = LIGHT.test(color) ? 'navy' : 'white';
     const files = [{ placement: front, image_url: `${RAW}/m1-${ink}.png`, position: fit(area(front), 828 / 588, 0.6, 0.8) }];
     if (places.includes('embroidery_back')) files.push({ placement: 'embroidery_back', image_url: `${RAW}/back-${ink}.png`, position: fit(area('embroidery_back'), 2058 / 309, 0.95, 0.4) });
