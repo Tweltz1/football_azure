@@ -596,8 +596,8 @@ async function previewCreate(request, env) {
   const a = previewAnswers(facts ? {
     ...b, t: facts.t, what: facts.what, n: facts.n, town: facts.town, tag: facts.tag, more: '', cta: facts.cta, h: '',
     addr: facts.addr, phone: facts.phone, email: facts.email, hrs: facts.hrs,
-    // No made-up reviews on a real business's preview.
-    s: ['list', 'pics', 'faq', 'map', 'steps', 'areas'],
+    // No made-up reviews and no stock-photo "gallery" on a real business's preview.
+    s: ['list', 'faq', 'map', 'steps', 'areas'],
   } : b);
   if (facts) { a.src = src; if (facts.state) a.state = facts.state; }
   const copy = all < PREVIEW_ALL_DAY ? await previewCopy(env, a, facts) : null;
