@@ -494,3 +494,7 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .merch-pics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .merch-pics img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#fff;border:1px solid var(--line)}
 @media (max-width:720px){.merch-in{grid-template-columns:1fr;gap:24px}}
+
+/* Light mode: only the top banner stays dark; the other bands follow the chosen mode. */
+:root[data-theme="light"] .section.band-dark{--bg:#f6f1e7;--bg-2:#efe7d8;--surface:#fffdf8;--ink:#1b1a17;--muted:#5f5a50;--line:#e2d8c6;--ember:#d9681b;--ember-2:#f2a33a;--ember-soft:#fbe6d2;--on-ember:#fff;background:var(--bg-2);color:var(--ink)}:root[data-theme="light"] .section.band-dark::before{display:none}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .section.band-dark{--bg:#f6f1e7;--bg-2:#efe7d8;--surface:#fffdf8;--ink:#1b1a17;--muted:#5f5a50;--line:#e2d8c6;--ember:#d9681b;--ember-2:#f2a33a;--ember-soft:#fbe6d2;--on-ember:#fff;background:var(--bg-2);color:var(--ink)}:root:not([data-theme="dark"]) .section.band-dark::before{display:none}}

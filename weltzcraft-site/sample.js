@@ -292,7 +292,7 @@
       [].forEach.call(box.querySelectorAll('.tab-b'), function (b, j) { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
       [].forEach.call(box.querySelectorAll('.tab-p'), function (b, j) { b.hidden = j !== i; }); }
   });
-  function loadEditor() { if (VIEW || document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=5'; document.body.appendChild(sc); }
+  function loadEditor() { if (VIEW || document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=6'; document.body.appendChild(sc); }
   if (EDIT) {
     document.getElementById('intro').remove();
     var auth = null;
