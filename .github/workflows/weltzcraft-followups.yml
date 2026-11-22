@@ -1,0 +1,13 @@
+name: Weltzcraft sample site follow-ups
+# Once a day, asks the site to send its "how did your sample turn out?" emails. The site decides who is due:
+# people who built a free sample a few days ago, gave their email, and have not made it live. One email each, ever.
+on:
+  schedule:
+    - cron: '20 16 * * *'   # about 10:20 AM Central
+  workflow_dispatch:
+permissions: {}
+jobs:
+  nudge:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl --silent --show-error --max-time 60 -X POST https://weltzcraft.com/api/preview/followups

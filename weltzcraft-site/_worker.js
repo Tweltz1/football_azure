@@ -384,6 +384,12 @@ async function printfulWebhook(request, env) {
 // workflow). Pages secrets: GEMINI_API_KEY (from Tyler's paid GENINI_TRAINING_KEY), SUPABASE_URL, SUPABASE_SERVICE_KEY.
 // Without Gemini the preview still saves, using the built-in wording. Limits keep the AI bill tiny.
 const PREVIEW_DAYS = 30;
+// The follow-up ("how did it turn out?") is a marketing email, so by law it needs a real postal address in it.
+// Until Tyler gives one, follow-ups are not sent. The first email (their own link) is always sent.
+const MAIL_ADDRESS = '';
+const FOLLOWUP_AFTER_DAYS = 3;
+const okEmail = (v) => /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]{2,}$/.test(v || '');
+const unsubKey = async (env, email) => (await sha('wc-unsub:' + String(email).toLowerCase() + ':' + env.SUPABASE_SERVICE_KEY)).slice(0, 24);
 const PREVIEW_PER_IP_DAY = 12;
 const PREVIEW_ALL_DAY = 400;
 const PREVIEW_KINDS = ['coffee', 'barber', 'auto', 'lawn', 'bakery', 'fitness', 'boutique', 'running', 'other'];
@@ -839,20 +845,81 @@ async function previewCreate(request, env) {
   // Nobody picked a color for a looked-up business, so the AI's pick is used.
   if (facts && copy && copy.color && !/^[0-9a-f]{6}$/i.test(b.c || '')) a.c = copy.color;
   const expires = new Date(Date.now() + PREVIEW_DAYS * 864e5).toISOString();
+  const em = okEmail(oneLine(b.em, 120)) ? oneLine(b.em, 120).toLowerCase() : '';
   // The maker of a preview gets a key (kept in their browser) that lets them change its look and features later.
   const key = hex(crypto.getRandomValues(new Uint8Array(16)));
   const edit_hash = await sha('wc-edit:' + key);
   for (let i = 0; i < 3; i++) {
     const slug = slugify(a.n + (a.town ? ' ' + a.town : '')) + '-' + hex(crypto.getRandomValues(new Uint8Array(2)));
     const row = { slug, answers: a, copy, ip_hash: ip, expires_at: expires };
-    let r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...row, edit_hash }) });
+    let r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...row, edit_hash, ...(em ? { email: em } : {}) }) });
+    // Before the email column exists (first deploy), save without it.
+    if (!r.ok && r.status !== 409 && em) r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...row, edit_hash }) });
     let keyed = r.ok;
+    if (r.ok && em) await previewWelcome(env, new URL(request.url).origin, em, slug, key, a).catch(() => {});
     // Before the edit_hash column exists (first deploy), save without it; the preview just can't be customized later.
     if (!r.ok && r.status !== 409) r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) });
     if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '', photoLog: plog });
     if (r.status !== 409) return json(502, { error: 'Could not save the preview' });
   }
   return json(502, { error: 'Could not save the preview' });
+}
+
+/** The maker's own link (with their edit key) by email, and a note to sales@ about the new lead. */
+async function previewWelcome(env, base, em, slug, key, a) {
+  const name = a.n || 'your business', link = base + '/preview/' + slug;
+  await emailBuyer(env, em, 'Your sample website for ' + name, [
+    'Here is the sample website you just built for ' + name + ':', '',
+    link + '#k=' + key, '',
+    'Open that link on any phone or computer to see it and keep building: tap "Edit page" to change words, pictures, colors and sections. Keep this email, the link is your way back in.', '',
+    'To show it to someone else, send them this one (they can look but not change anything):', link, '',
+    'It stays up for ' + PREVIEW_DAYS + ' days. When you are ready for the real thing, tap "Make it live" on your site and pick your web address.', '',
+    'Questions? Just reply to this email.', '', 'Tyler', 'Weltzcraft Studios'].join('\n'));
+  await emailSales(env, 'New sample site: ' + name + (a.town ? ', ' + a.town : ''), [
+    em + ' built a sample website for ' + name + (a.town ? ' in ' + a.town : '') + '.', '', 'See it: ' + link, '',
+    MAIL_ADDRESS ? 'If they do not make it live, they get one "how did it turn out?" email after ' + FOLLOWUP_AFTER_DAYS + ' days.' : 'No automatic follow-up is sent yet (it needs a postal address in the email). You can reply to them yourself at ' + em + '.'].join('\n'));
+}
+
+// POST /api/preview/followups: one "how did it turn out?" email to each person whose sample is a few days old and not live.
+// Safe for anyone to call: it only sends what is already due, once per person, a few at a time.
+async function previewFollowups(request, env) {
+  if (request.method !== 'POST') return json(405, { error: 'POST only' });
+  if (!MAIL_ADDRESS) return json(200, { ok: true, sent: 0, waiting: 'postal address' });
+  const before = new Date(Date.now() - FOLLOWUP_AFTER_DAYS * 864e5).toISOString();
+  const r = await sb(env, 'weltzcraft_previews?select=slug,email,answers,expires_at&email=not.is.null&followup_at=is.null&no_mail=is.false&created_at=lt.' + before + '&expires_at=gt.' + new Date(Date.now() + 2 * 864e5).toISOString() + '&order=created_at.desc&limit=60');
+  if (!r.ok) return json(200, { ok: true, sent: 0, waiting: 'table' });
+  const rows = await r.json(), base = new URL(request.url).origin, seen = new Set();
+  const live = rows.length ? await sb(env, 'weltzcraft_live?select=preview_slug&preview_slug=in.(' + rows.map((x) => x.slug).join(',') + ')') : null;
+  const went = new Set(live && live.ok ? (await live.json()).map((x) => x.preview_slug) : []);
+  // Anyone who already got a follow-up for an earlier sample, or asked us to stop, is left alone.
+  const emails = [...new Set(rows.map((x) => String(x.email).toLowerCase()))].filter(okEmail);
+  const past = emails.length ? await sb(env, 'weltzcraft_previews?select=email,no_mail,followup_at&email=in.(' + emails.map((e) => '"' + encodeURIComponent(e) + '"').join(',') + ')&limit=1000') : null;
+  if (past && !past.ok) return json(200, { ok: true, sent: 0, waiting: 'table' });
+  for (const x of past ? await past.json() : []) if (x.no_mail || x.followup_at) seen.add(String(x.email).toLowerCase());
+  let sent = 0;
+  for (const row of rows) {
+    const em = String(row.email).toLowerCase(), first = !seen.has(em); seen.add(em);
+    // One email per person (their newest sample); every sample of theirs is marked so it never repeats.
+    if (first && !went.has(row.slug) && okEmail(em) && sent < 15) {
+      const name = (row.answers && row.answers.n) || 'your business', days = Math.max(1, Math.round((new Date(row.expires_at) - Date.now()) / 864e5));
+      await emailBuyer(env, em, 'How did your sample website for ' + name + ' turn out?', [
+        'Hi,', '', 'A few days ago you built a sample website for ' + name + ' at weltzcraft.com. It is still saved here for ' + days + ' more days:', '', base + '/preview/' + row.slug, '',
+        'If it missed the mark, I would like to know why. Just reply and tell me what you would change. I read every reply myself.', '',
+        'If you liked it, "Make it live" on that page puts it on your own web address.', '', 'Tyler', 'Weltzcraft Studios', MAIL_ADDRESS, '',
+        'This is the only follow-up you will get. To make sure, stop emails here: ' + base + '/api/preview/unsub?e=' + encodeURIComponent(em) + '&k=' + (await unsubKey(env, em))].join('\n'));
+      sent++;
+    } else if (first && sent >= 15) continue;
+    await sb(env, 'weltzcraft_previews?slug=eq.' + row.slug, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ followup_at: new Date().toISOString() }) });
+  }
+  return json(200, { ok: true, sent });
+}
+// GET /api/preview/unsub?e=<email>&k=<key>: no more emails to that address.
+async function previewUnsub(url, env) {
+  const em = String(url.searchParams.get('e') || '').toLowerCase();
+  const page = (t) => new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Weltzcraft</title><body style="font:17px/1.5 system-ui,sans-serif;max-width:520px;margin:15vh auto;padding:0 20px"><p>' + t + '</p><p><a href="/">weltzcraft.com</a></p>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  if (!okEmail(em) || url.searchParams.get('k') !== (await unsubKey(env, em))) return page('That link is not right. Reply to the email instead and we will take you off the list.');
+  await sb(env, 'weltzcraft_previews?email=eq.' + encodeURIComponent(em), { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ no_mail: true }) });
+  return page('Done. We will not email ' + em.replace(/[<>&"]/g, '') + ' again.');
 }
 
 async function previewGet(slug, env) {
@@ -1863,6 +1930,12 @@ export default {
     }
     if (url.pathname === '/api/preview') {
       try { return await previewCreate(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
+    }
+    if (url.pathname === '/api/preview/followups') {
+      try { return await previewFollowups(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
+    }
+    if (url.pathname === '/api/preview/unsub') {
+      try { return await previewUnsub(url, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
     if (url.pathname.startsWith('/api/preview/')) {
       try { return request.method === 'PATCH' ? await previewEdit(url.pathname.slice(13), request, env) : await previewGet(url.pathname.slice(13), env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
