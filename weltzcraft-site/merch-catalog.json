@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-21T22:10:49.043Z",
+ "updated": "2026-11-22T01:47:50.410Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -33,9 +33,6 @@
   },
   "v5": {
    "name": "Slab wordmark"
-  },
-  "v7": {
-   "name": "Peaks"
   },
   "v8": {
    "name": "Stripe W"
@@ -72,12 +69,16 @@
   },
   "h3": {
    "name": "Northwoods"
+  },
+  "v9": {
+   "name": "Vintage sunrise"
   }
  },
  "products": [
   {
    "key": "crew",
    "name": "Collegiate Crew",
+   "type": "crew",
    "price": 40,
    "sizes": [
     "S",
@@ -123,12 +124,12 @@
      "key": "carolinablue",
      "name": "Carolina Blue"
     }
-   ],
-   "type": "crew"
+   ]
   },
   {
    "key": "script",
    "name": "Script Dad Hat",
+   "type": "hat",
    "price": 26,
    "sizes": null,
    "logos": [
@@ -171,12 +172,12 @@
      "key": "white",
      "name": "White"
     }
-   ],
-   "type": "hat"
+   ]
   },
   {
    "key": "sunset",
    "name": "Sunset Tee",
+   "type": "tee",
    "price": 28,
    "sizes": [
     "S",
@@ -222,12 +223,12 @@
      "key": "brick",
      "name": "Brick"
     }
-   ],
-   "type": "tee"
+   ]
   },
   {
    "key": "ringer",
    "name": "Ringer Tee",
+   "type": "tee",
    "price": 28,
    "sizes": [
     "S",
@@ -261,16 +262,16 @@
      "key": "heathergrayblack",
      "name": "Heather Gray + Black"
     }
-   ],
-   "type": "tee"
+   ]
   },
   {
    "key": "cord",
    "name": "Corduroy Cap",
+   "type": "hat",
    "price": 30,
    "sizes": null,
    "logos": [
-    "v7"
+    "v9"
    ],
    "colors": [
     {
@@ -293,12 +294,12 @@
      "key": "black",
      "name": "Black"
     }
-   ],
-   "type": "hat"
+   ]
   },
   {
    "key": "beanie",
    "name": "Stripe Beanie",
+   "type": "beanie",
    "price": 24,
    "sizes": null,
    "logos": [
@@ -337,12 +338,12 @@
      "key": "white",
      "name": "White"
     }
-   ],
-   "type": "beanie"
+   ]
   },
   {
    "key": "tonal",
    "name": "Tonal Hoodie",
+   "type": "hoodie",
    "price": 46,
    "sizes": [
     "S",
@@ -396,12 +397,12 @@
      "key": "darkchocolate",
      "name": "Dark Chocolate"
     }
-   ],
-   "type": "hoodie"
+   ]
   },
   {
    "key": "trucker",
    "name": "Patch Trucker",
+   "type": "hat",
    "price": 26,
    "sizes": null,
    "logos": [
@@ -440,12 +441,12 @@
      "key": "black",
      "name": "Black"
     }
-   ],
-   "type": "hat"
+   ]
   },
   {
    "key": "varsity",
    "name": "Varsity Hoodie",
+   "type": "hoodie",
    "price": 46,
    "sizes": [
     "S",
@@ -487,12 +488,12 @@
      "key": "sand",
      "name": "Sand"
     }
-   ],
-   "type": "hoodie"
+   ]
   },
   {
    "key": "puff",
    "name": "Bright W Beanie",
+   "type": "beanie",
    "price": 24,
    "sizes": null,
    "logos": [
@@ -527,12 +528,12 @@
      "key": "darkgrey",
      "name": "Dark Grey"
     }
-   ],
-   "type": "beanie"
+   ]
   },
   {
    "key": "smalltee",
    "name": "Small Name Tee",
+   "type": "tee",
    "price": 24,
    "sizes": [
     "S",
@@ -578,12 +579,12 @@
      "key": "athleticheather",
      "name": "Athletic Heather"
     }
-   ],
-   "type": "tee"
+   ]
   },
   {
    "key": "pixells",
    "name": "Pixel Long Sleeve",
+   "type": "tee",
    "price": 30,
    "sizes": [
     "S",
@@ -620,12 +621,12 @@
      "key": "athleticheather",
      "name": "Athletic Heather"
     }
-   ],
-   "type": "tee"
+   ]
   },
   {
    "key": "wordcrew",
    "name": "Wordmark Crew",
+   "type": "crew",
    "price": 40,
    "sizes": [
     "S",
@@ -671,12 +672,12 @@
      "key": "maroon",
      "name": "Maroon"
     }
-   ],
-   "type": "crew"
+   ]
   },
   {
    "key": "pixelhat",
    "name": "Pixel Dad Hat",
+   "type": "hat",
    "price": 26,
    "sizes": null,
    "logos": [
@@ -715,12 +716,12 @@
      "key": "white",
      "name": "White"
     }
-   ],
-   "type": "hat"
+   ]
   },
   {
    "key": "mascot",
    "name": "Mascot Pocket Tee",
+   "type": "tee",
    "price": 28,
    "sizes": [
     "S",
@@ -765,12 +766,12 @@
      "key": "watermelon",
      "name": "Watermelon"
     }
-   ],
-   "type": "tee"
+   ]
   },
   {
    "key": "rope",
    "name": "Rope Cap",
+   "type": "hat",
    "price": 30,
    "sizes": null,
    "logos": [
@@ -809,12 +810,12 @@
      "key": "peachy",
      "name": "Peachy"
     }
-   ],
-   "type": "hat"
+   ]
   },
   {
    "key": "woods",
    "name": "Northwoods Dad Hat",
+   "type": "hat",
    "price": 28,
    "sizes": null,
    "logos": [
@@ -844,13 +845,89 @@
     {
      "key": "black",
      "name": "Black"
+    },
+    {
+     "key": "cranberry",
+     "name": "Cranberry"
+    },
+    {
+     "key": "darkgrey",
+     "name": "Dark Grey"
+    },
+    {
+     "key": "spruce",
+     "name": "Spruce"
     }
+   ]
+  },
+  {
+   "key": "woodscord",
+   "name": "Northwoods Corduroy Cap",
+   "type": "hat",
+   "price": 30,
+   "sizes": null,
+   "logos": [
+    "h3"
    ],
-   "type": "hat"
+   "colors": [
+    {
+     "key": "brown",
+     "name": "Brown"
+    },
+    {
+     "key": "olive",
+     "name": "Olive"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "burgundy",
+     "name": "Burgundy"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    }
+   ]
+  },
+  {
+   "key": "woodstwo",
+   "name": "Northwoods Two-Tone Cap",
+   "type": "hat",
+   "price": 30,
+   "sizes": null,
+   "logos": [
+    "h3"
+   ],
+   "colors": [
+    {
+     "key": "greenkhaki",
+     "name": "Green + Khaki brim"
+    },
+    {
+     "key": "navykhaki",
+     "name": "Navy + Khaki brim"
+    },
+    {
+     "key": "dustyrose",
+     "name": "Dusty Rose"
+    },
+    {
+     "key": "gray",
+     "name": "Gray"
+    },
+    {
+     "key": "maroon",
+     "name": "Maroon"
+    }
+   ]
   },
   {
    "key": "tee",
    "name": "Tee",
+   "type": "tee",
    "price": 24,
    "sizes": [
     "S",
@@ -878,12 +955,12 @@
      "key": "cream",
      "name": "Cream"
     }
-   ],
-   "type": "tee"
+   ]
   },
   {
    "key": "hoodie",
    "name": "Hoodie",
+   "type": "hoodie",
    "price": 46,
    "sizes": [
     "S",
@@ -911,12 +988,12 @@
      "key": "sand",
      "name": "Sand"
     }
-   ],
-   "type": "hoodie"
+   ]
   },
   {
    "key": "hat",
    "name": "Dad Hat",
+   "type": "hat",
    "price": 26,
    "sizes": null,
    "logos": [
@@ -937,12 +1014,12 @@
      "key": "stone",
      "name": "Stone"
     }
-   ],
-   "type": "hat"
+   ]
   },
   {
    "key": "mug",
    "name": "Mug",
+   "type": "mug",
    "price": 15,
    "sizes": null,
    "logos": [
@@ -959,12 +1036,12 @@
      "key": "black",
      "name": "Black, 11 oz"
     }
-   ],
-   "type": "mug"
+   ]
   },
   {
    "key": "tote",
    "name": "Tote",
+   "type": "tote",
    "price": 20,
    "sizes": null,
    "logos": [
@@ -981,12 +1058,12 @@
      "key": "black",
      "name": "Black canvas"
     }
-   ],
-   "type": "tote"
+   ]
   },
   {
    "key": "sticker",
    "name": "Sticker",
+   "type": "sticker",
    "price": 4,
    "sizes": null,
    "logos": [
@@ -1003,8 +1080,7 @@
      "key": "white",
      "name": "4 × 4 in"
     }
-   ],
-   "type": "sticker"
+   ]
   }
  ],
  "items": {
@@ -1042,7 +1118,8 @@
      "id": 5657301174,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "crew-navy-v1": {
    "hash": "89f3eb0ea1f5",
@@ -1078,7 +1155,8 @@
      "id": 5657301196,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "crew-forestgreen-v1": {
    "hash": "89f3eb0ea1f5",
@@ -1114,7 +1192,8 @@
      "id": 5657301206,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "crew-maroon-v1": {
    "hash": "89f3eb0ea1f5",
@@ -1145,7 +1224,8 @@
      "id": 5657301228,
      "price": 42
     }
-   ]
+   ],
+   "angles": 4
   },
   "crew-black-v1": {
    "hash": "89f3eb0ea1f5",
@@ -1181,7 +1261,8 @@
      "id": 5657301250,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "crew-sand-v1": {
    "hash": "da7f9db53f8a",
@@ -1217,7 +1298,8 @@
      "id": 5657301290,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "crew-lightblue-v1": {
    "hash": "da7f9db53f8a",
@@ -1253,7 +1335,8 @@
      "id": 5657302331,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "crew-carolinablue-v1": {
    "hash": "da7f9db53f8a",
@@ -1289,7 +1372,8 @@
      "id": 5657302349,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-stone-v2": {
    "hash": "e873eb8ded4c",
@@ -1300,7 +1384,8 @@
      "id": 5657302361,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-navy-v2": {
    "hash": "e2d5b20c0481",
@@ -1311,7 +1396,8 @@
      "id": 5657302371,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-black-v2": {
    "hash": "e2d5b20c0481",
@@ -1322,7 +1408,8 @@
      "id": 5657303722,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-lightblue-v2": {
    "hash": "e873eb8ded4c",
@@ -1333,7 +1420,8 @@
      "id": 5657303807,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-spruce-v2": {
    "hash": "e2d5b20c0481",
@@ -1344,7 +1432,8 @@
      "id": 5657303808,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-pink-v2": {
    "hash": "e873eb8ded4c",
@@ -1355,7 +1444,8 @@
      "id": 5657303855,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-cranberry-v2": {
    "hash": "e2d5b20c0481",
@@ -1366,7 +1456,8 @@
      "id": 5657303856,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-khaki-v2": {
    "hash": "e873eb8ded4c",
@@ -1377,7 +1468,8 @@
      "id": 5657303877,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "script-white-v2": {
    "hash": "e873eb8ded4c",
@@ -1388,7 +1480,8 @@
      "id": 5657303894,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-ivory-v3": {
    "hash": "3f6d007a49de",
@@ -1424,7 +1517,8 @@
      "id": 5657303940,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-pepper-v3": {
    "hash": "3f31d2f56ef2",
@@ -1460,7 +1554,8 @@
      "id": 5657303946,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-sage-v3": {
    "hash": "3f6d007a49de",
@@ -1496,7 +1591,8 @@
      "id": 5657304041,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-butter-v3": {
    "hash": "3f6d007a49de",
@@ -1532,7 +1628,8 @@
      "id": 5657305038,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-bluejean-v3": {
    "hash": "3f31d2f56ef2",
@@ -1568,7 +1665,8 @@
      "id": 5657305107,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-chalkymint-v3": {
    "hash": "3f6d007a49de",
@@ -1604,7 +1702,8 @@
      "id": 5657305157,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-black-v3": {
    "hash": "3f31d2f56ef2",
@@ -1640,7 +1739,8 @@
      "id": 5657305208,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "sunset-brick-v3": {
    "hash": "3f31d2f56ef2",
@@ -1676,7 +1776,8 @@
      "id": 5657305289,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "ringer-naturalmidnightnavy-v5": {
    "hash": "0597622a31b3",
@@ -1712,7 +1813,8 @@
      "id": 5657305300,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "ringer-naturalforestgreen-v5": {
    "hash": "d680c8e5e5d9",
@@ -1748,7 +1850,8 @@
      "id": 5657305314,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "ringer-naturalblack-v5": {
    "hash": "9b46b8367adb",
@@ -1784,7 +1887,8 @@
      "id": 5657305327,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "ringer-whiteblack-v5": {
    "hash": "9b46b8367adb",
@@ -1820,7 +1924,8 @@
      "id": 5657305339,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
   "ringer-heathergrayblack-v5": {
    "hash": "9b46b8367adb",
@@ -1856,62 +1961,68 @@
      "id": 5657305350,
      "price": 31
     }
-   ]
+   ],
+   "angles": 4
   },
-  "cord-brown-v7": {
-   "hash": "6ad9ce865f24",
+  "cord-brown-v9": {
+   "hash": "cc15a4241029",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5657325421,
+     "id": 5658039766,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
-  "cord-olive-v7": {
-   "hash": "6ad9ce865f24",
+  "cord-olive-v9": {
+   "hash": "cc15a4241029",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5657325445,
+     "id": 5658039786,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
-  "cord-navy-v7": {
-   "hash": "6ad9ce865f24",
+  "cord-navy-v9": {
+   "hash": "cc15a4241029",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5657325459,
+     "id": 5658039798,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
-  "cord-burgundy-v7": {
-   "hash": "6ad9ce865f24",
+  "cord-burgundy-v9": {
+   "hash": "cc15a4241029",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5657325473,
+     "id": 5658039822,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
-  "cord-black-v7": {
-   "hash": "6ad9ce865f24",
+  "cord-black-v9": {
+   "hash": "cc15a4241029",
    "price": 30,
    "variants": [
     {
      "size": "One size",
-     "id": 5657325496,
+     "id": 5658039836,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "beanie-black-v8": {
    "hash": "da82f4c8fe44",
@@ -2035,7 +2146,8 @@
      "id": 5657314850,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-sand-m1": {
    "hash": "50d508637327",
@@ -2071,7 +2183,8 @@
      "id": 5657314874,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-militarygreen-m1": {
    "hash": "836e11f8e5a8",
@@ -2107,7 +2220,8 @@
      "id": 5657314896,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-navy-m1": {
    "hash": "b7a5d7f21df0",
@@ -2143,7 +2257,8 @@
      "id": 5657314931,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-charcoal-m1": {
    "hash": "981d9cab429f",
@@ -2179,7 +2294,8 @@
      "id": 5657315676,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-maroon-m1": {
    "hash": "cc00afd1a3bd",
@@ -2215,7 +2331,8 @@
      "id": 5657315736,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-forestgreen-m1": {
    "hash": "489f06c55998",
@@ -2251,7 +2368,8 @@
      "id": 5657315742,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-sportgrey-m1": {
    "hash": "3142278181b7",
@@ -2287,7 +2405,8 @@
      "id": 5657315901,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-lightpink-m1": {
    "hash": "22e222c86d00",
@@ -2323,7 +2442,8 @@
      "id": 5657315973,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "tonal-darkchocolate-m1": {
    "hash": "598c4f79a1df",
@@ -2359,7 +2479,8 @@
      "id": 5657316026,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-navywhite-v4": {
    "hash": "2b5d8f808312",
@@ -2370,7 +2491,8 @@
      "id": 5657380725,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-blackwhite-v4": {
    "hash": "2b5d8f808312",
@@ -2381,7 +2503,8 @@
      "id": 5657380748,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-mosskhaki-v4": {
    "hash": "2b5d8f808312",
@@ -2392,7 +2515,8 @@
      "id": 5657380768,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-heathergreywhite-v4": {
    "hash": "e5d1a486d4b7",
@@ -2403,7 +2527,8 @@
      "id": 5657380801,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-brownkhaki-v4": {
    "hash": "2b5d8f808312",
@@ -2414,7 +2539,8 @@
      "id": 5657380873,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-charcoalblack-v4": {
    "hash": "2b5d8f808312",
@@ -2425,7 +2551,8 @@
      "id": 5657380884,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-navy-v4": {
    "hash": "2b5d8f808312",
@@ -2436,7 +2563,8 @@
      "id": 5657380972,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "trucker-black-v4": {
    "hash": "2b5d8f808312",
@@ -2447,7 +2575,8 @@
      "id": 5657380989,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "varsity-black-v6": {
    "hash": "58d60d9ad929",
@@ -2483,7 +2612,8 @@
      "id": 5657381001,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "varsity-maroon-v6": {
    "hash": "58d60d9ad929",
@@ -2519,7 +2649,8 @@
      "id": 5657381013,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "varsity-forestgreen-v6": {
    "hash": "58d60d9ad929",
@@ -2555,7 +2686,8 @@
      "id": 5657382279,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "varsity-navy-v6": {
    "hash": "58d60d9ad929",
@@ -2591,7 +2723,8 @@
      "id": 5657382295,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "varsity-charcoal-v6": {
    "hash": "58d60d9ad929",
@@ -2627,7 +2760,8 @@
      "id": 5657382348,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "varsity-sportgrey-v6": {
    "hash": "28476dd76acf",
@@ -2663,7 +2797,8 @@
      "id": 5657382356,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "varsity-sand-v6": {
    "hash": "28476dd76acf",
@@ -2699,7 +2834,8 @@
      "id": 5657382386,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "puff-black-m2": {
    "hash": "d8b6f1c91d90",
@@ -2812,7 +2948,8 @@
      "id": 5657385048,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "smalltee-white-m3": {
    "hash": "f16e0a4dce70",
@@ -2848,7 +2985,8 @@
      "id": 5657385103,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "smalltee-heatherdust-m3": {
    "hash": "f16e0a4dce70",
@@ -2884,7 +3022,8 @@
      "id": 5657385138,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "smalltee-navy-m3": {
    "hash": "8101e365495c",
@@ -2920,7 +3059,8 @@
      "id": 5657385183,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "smalltee-natural-m3": {
    "hash": "f16e0a4dce70",
@@ -2956,7 +3096,8 @@
      "id": 5657385213,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "smalltee-forest-m3": {
    "hash": "8101e365495c",
@@ -2992,7 +3133,8 @@
      "id": 5657385272,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "smalltee-maroon-m3": {
    "hash": "8101e365495c",
@@ -3028,7 +3170,8 @@
      "id": 5657385308,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "smalltee-athleticheather-m3": {
    "hash": "f16e0a4dce70",
@@ -3064,7 +3207,8 @@
      "id": 5657385330,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixells-white-m4": {
    "hash": "57e05bff4a0e",
@@ -3095,7 +3239,8 @@
      "id": 5657386710,
      "price": 32
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixells-black-m4": {
    "hash": "c9a6dc4b4ac4",
@@ -3126,7 +3271,8 @@
      "id": 5657386839,
      "price": 32
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixells-navy-m4": {
    "hash": "34c72fd5f04a",
@@ -3157,7 +3303,8 @@
      "id": 5657386993,
      "price": 32
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixells-militarygreen-m4": {
    "hash": "34c72fd5f04a",
@@ -3188,7 +3335,8 @@
      "id": 5657387058,
      "price": 32
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixells-maroon-m4": {
    "hash": "34c72fd5f04a",
@@ -3219,7 +3367,8 @@
      "id": 5657387135,
      "price": 32
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixells-athleticheather-m4": {
    "hash": "57e05bff4a0e",
@@ -3250,7 +3399,8 @@
      "id": 5657387152,
      "price": 32
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-sand-m6": {
    "hash": "7b1d6236ce27",
@@ -3286,7 +3436,8 @@
      "id": 5657389110,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-black-m6": {
    "hash": "eb2c540f4ce4",
@@ -3322,7 +3473,8 @@
      "id": 5657389118,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-lightblue-m6": {
    "hash": "7b1d6236ce27",
@@ -3358,7 +3510,8 @@
      "id": 5657389137,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-sportgrey-m6": {
    "hash": "7b1d6236ce27",
@@ -3394,7 +3547,8 @@
      "id": 5657389149,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-navy-m6": {
    "hash": "eb2c540f4ce4",
@@ -3430,7 +3584,8 @@
      "id": 5657389202,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-forestgreen-m6": {
    "hash": "eb2c540f4ce4",
@@ -3466,7 +3621,8 @@
      "id": 5657389208,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-lightpink-m6": {
    "hash": "7b1d6236ce27",
@@ -3502,7 +3658,8 @@
      "id": 5657389312,
      "price": 43
     }
-   ]
+   ],
+   "angles": 4
   },
   "wordcrew-maroon-m6": {
    "hash": "eb2c540f4ce4",
@@ -3533,7 +3690,8 @@
      "id": 5657389370,
      "price": 42
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-black-m7": {
    "hash": "ac390db22227",
@@ -3544,7 +3702,8 @@
      "id": 5657390266,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-stone-m7": {
    "hash": "aac158e0a5ff",
@@ -3555,7 +3714,8 @@
      "id": 5657390288,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-navy-m7": {
    "hash": "ac390db22227",
@@ -3566,7 +3726,8 @@
      "id": 5657390332,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-spruce-m7": {
    "hash": "ac390db22227",
@@ -3577,7 +3738,8 @@
      "id": 5657390334,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-lightblue-m7": {
    "hash": "aac158e0a5ff",
@@ -3588,7 +3750,8 @@
      "id": 5657390346,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-pink-m7": {
    "hash": "aac158e0a5ff",
@@ -3599,7 +3762,8 @@
      "id": 5657390348,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-darkgrey-m7": {
    "hash": "ac390db22227",
@@ -3610,7 +3774,8 @@
      "id": 5657390357,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "pixelhat-white-m7": {
    "hash": "7f96a11ef3c4",
@@ -3621,7 +3786,8 @@
      "id": 5657390376,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-white-m8": {
    "hash": "055aef7eb370",
@@ -3652,7 +3818,8 @@
      "id": 5657390386,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-black-m8": {
    "hash": "ed91ed4bf8c0",
@@ -3683,7 +3850,8 @@
      "id": 5657390474,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-butter-m8": {
    "hash": "055aef7eb370",
@@ -3714,7 +3882,8 @@
      "id": 5657392069,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-floblue-m8": {
    "hash": "055aef7eb370",
@@ -3745,7 +3914,8 @@
      "id": 5657392155,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-grey-m8": {
    "hash": "055aef7eb370",
@@ -3776,7 +3946,8 @@
      "id": 5657392173,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-truenavy-m8": {
    "hash": "ed91ed4bf8c0",
@@ -3807,7 +3978,8 @@
      "id": 5657392256,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-berry-m8": {
    "hash": "055aef7eb370",
@@ -3838,7 +4010,8 @@
      "id": 5657392267,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "mascot-watermelon-m8": {
    "hash": "055aef7eb370",
@@ -3869,7 +4042,8 @@
      "id": 5657392286,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-black-h1": {
    "hash": "25589c457d24",
@@ -3880,7 +4054,8 @@
      "id": 5657407764,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-espresso-h1": {
    "hash": "25589c457d24",
@@ -3891,7 +4066,8 @@
      "id": 5657407801,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-moss-h1": {
    "hash": "25589c457d24",
@@ -3902,7 +4078,8 @@
      "id": 5657407851,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-granite-h1": {
    "hash": "25589c457d24",
@@ -3913,7 +4090,8 @@
      "id": 5657407854,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-bluejean-h1": {
    "hash": "25589c457d24",
@@ -3924,7 +4102,8 @@
      "id": 5657407864,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-chambray-h1": {
    "hash": "05cfcb5a49de",
@@ -3935,7 +4114,8 @@
      "id": 5657407882,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-ivory-h1": {
    "hash": "05cfcb5a49de",
@@ -3946,7 +4126,8 @@
      "id": 5657407905,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "rope-peachy-h1": {
    "hash": "05cfcb5a49de",
@@ -3957,73 +4138,236 @@
      "id": 5657407918,
      "price": 30
     }
-   ]
+   ],
+   "angles": 4
   },
   "woods-white-h3": {
-   "hash": "d99ca2a1d66c",
+   "hash": "2d26f09f5ef9",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5657409147,
+     "id": 5658039917,
      "price": 28
     }
-   ]
+   ],
+   "angles": 4
   },
   "woods-stone-h3": {
-   "hash": "d99ca2a1d66c",
+   "hash": "2d26f09f5ef9",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5657409232,
+     "id": 5658039948,
      "price": 28
     }
-   ]
+   ],
+   "angles": 4
   },
   "woods-khaki-h3": {
-   "hash": "d99ca2a1d66c",
+   "hash": "2d26f09f5ef9",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5657409258,
+     "id": 5658039955,
      "price": 28
     }
-   ]
+   ],
+   "angles": 4
   },
   "woods-lightblue-h3": {
-   "hash": "d99ca2a1d66c",
+   "hash": "2d26f09f5ef9",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5657409267,
+     "id": 5658040182,
      "price": 28
     }
-   ]
+   ],
+   "angles": 4
   },
   "woods-navy-h3": {
-   "hash": "d99ca2a1d66c",
+   "hash": "2d26f09f5ef9",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5657409348,
+     "id": 5658040261,
      "price": 28
     }
-   ]
+   ],
+   "angles": 4
   },
   "woods-black-h3": {
-   "hash": "d99ca2a1d66c",
+   "hash": "2d26f09f5ef9",
    "price": 28,
    "variants": [
     {
      "size": "One size",
-     "id": 5657409353,
+     "id": 5658041016,
      "price": 28
     }
-   ]
+   ],
+   "angles": 4
+  },
+  "woods-cranberry-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041064,
+     "price": 28
+    }
+   ],
+   "angles": 4
+  },
+  "woods-darkgrey-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041067,
+     "price": 28
+    }
+   ],
+   "angles": 4
+  },
+  "woods-spruce-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041161,
+     "price": 28
+    }
+   ],
+   "angles": 4
+  },
+  "woodscord-brown-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041206,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodscord-olive-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041250,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodscord-navy-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041265,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodscord-burgundy-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041291,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodscord-black-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041321,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodstwo-greenkhaki-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658041329,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodstwo-navykhaki-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658042083,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodstwo-dustyrose-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658042113,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodstwo-gray-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658042230,
+     "price": 30
+    }
+   ],
+   "angles": 4
+  },
+  "woodstwo-maroon-h3": {
+   "hash": "2d26f09f5ef9",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5658042233,
+     "price": 30
+    }
+   ],
+   "angles": 4
   },
   "tee-black-42": {
    "hash": "8f9dbb0c5e27",
@@ -4059,7 +4403,8 @@
      "id": 5635387397,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-black-43": {
    "hash": "8584fc5c5427",
@@ -4095,7 +4440,8 @@
      "id": 5635387479,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-black-44": {
    "hash": "00a6607b07fe",
@@ -4131,7 +4477,8 @@
      "id": 5635387493,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-black-55": {
    "hash": "5dd5d9c869b3",
@@ -4167,7 +4514,8 @@
      "id": 5635387631,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-black-58": {
    "hash": "6a0c94d91453",
@@ -4203,7 +4551,8 @@
      "id": 5635387833,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-black-59": {
    "hash": "bc98bbb8c02e",
@@ -4239,7 +4588,8 @@
      "id": 5635387994,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-black-60": {
    "hash": "2ee0c8acb3a8",
@@ -4275,7 +4625,8 @@
      "id": 5635388069,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-cream-42": {
    "hash": "4b52e69d9860",
@@ -4311,7 +4662,8 @@
      "id": 5635388167,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-cream-43": {
    "hash": "9907e7ee231d",
@@ -4347,7 +4699,8 @@
      "id": 5635388373,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-cream-44": {
    "hash": "3382131d2a5c",
@@ -4383,7 +4736,8 @@
      "id": 5635388459,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-cream-55": {
    "hash": "0f3ec074a26b",
@@ -4419,7 +4773,8 @@
      "id": 5635389492,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-cream-58": {
    "hash": "5ccc681bf2cb",
@@ -4455,7 +4810,8 @@
      "id": 5635389578,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-cream-59": {
    "hash": "2915cce6667a",
@@ -4491,7 +4847,8 @@
      "id": 5635389601,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "tee-cream-60": {
    "hash": "1b3960a26355",
@@ -4527,7 +4884,8 @@
      "id": 5635389704,
      "price": 27
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-black-42": {
    "hash": "a2165420aa18",
@@ -4563,7 +4921,8 @@
      "id": 5635389774,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-black-43": {
    "hash": "f32c3d01ab9d",
@@ -4599,7 +4958,8 @@
      "id": 5635389798,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-black-44": {
    "hash": "a5a96a1cab48",
@@ -4635,7 +4995,8 @@
      "id": 5635389933,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-black-55": {
    "hash": "543dd2091767",
@@ -4671,7 +5032,8 @@
      "id": 5635389953,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-black-58": {
    "hash": "aeab3b36e490",
@@ -4707,7 +5069,8 @@
      "id": 5635390148,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-black-59": {
    "hash": "e36c117a387a",
@@ -4743,7 +5106,8 @@
      "id": 5635390219,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-black-60": {
    "hash": "e2046868d897",
@@ -4779,7 +5143,8 @@
      "id": 5635391831,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-sand-42": {
    "hash": "5c3f8e51126a",
@@ -4815,7 +5180,8 @@
      "id": 5635391885,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-sand-43": {
    "hash": "11fb38f1d7a5",
@@ -4851,7 +5217,8 @@
      "id": 5635392053,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-sand-44": {
    "hash": "37b1c2efd8db",
@@ -4887,7 +5254,8 @@
      "id": 5635392142,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-sand-55": {
    "hash": "b2208c368d0f",
@@ -4923,7 +5291,8 @@
      "id": 5635392224,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-sand-58": {
    "hash": "d42cf47cafdf",
@@ -4959,7 +5328,8 @@
      "id": 5635392269,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-sand-59": {
    "hash": "467ac5cee286",
@@ -4995,7 +5365,8 @@
      "id": 5635392397,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hoodie-sand-60": {
    "hash": "733d45af757d",
@@ -5031,7 +5402,8 @@
      "id": 5635392507,
      "price": 49
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-navy-42": {
    "hash": "fae3bdaf955c",
@@ -5042,7 +5414,8 @@
      "id": 5635392562,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-navy-43": {
    "hash": "c25785b8d8f0",
@@ -5053,7 +5426,8 @@
      "id": 5635392598,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-navy-44": {
    "hash": "c946dce20c41",
@@ -5064,7 +5438,8 @@
      "id": 5635408677,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-navy-55": {
    "hash": "b9d456e8889d",
@@ -5075,7 +5450,8 @@
      "id": 5635408686,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-navy-58": {
    "hash": "9d0f1691aafe",
@@ -5086,7 +5462,8 @@
      "id": 5635394078,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-navy-59": {
    "hash": "7d1708ee0d6f",
@@ -5097,7 +5474,8 @@
      "id": 5635394166,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-navy-60": {
    "hash": "9ea0fcaaef6e",
@@ -5108,7 +5486,8 @@
      "id": 5635408696,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-stone-42": {
    "hash": "bc27d8636466",
@@ -5119,7 +5498,8 @@
      "id": 5635394354,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-stone-43": {
    "hash": "e500128925d1",
@@ -5130,7 +5510,8 @@
      "id": 5635394470,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-stone-44": {
    "hash": "a05990bf04ed",
@@ -5141,7 +5522,8 @@
      "id": 5635408805,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-stone-55": {
    "hash": "0325ba606671",
@@ -5152,7 +5534,8 @@
      "id": 5635408855,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-stone-58": {
    "hash": "8a727e12da1e",
@@ -5163,7 +5546,8 @@
      "id": 5635394748,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-stone-59": {
    "hash": "4aa6db06469e",
@@ -5174,7 +5558,8 @@
      "id": 5635396112,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "hat-stone-60": {
    "hash": "84459cf66c81",
@@ -5185,7 +5570,8 @@
      "id": 5635408910,
      "price": 26
     }
-   ]
+   ],
+   "angles": 4
   },
   "mug-black-42": {
    "hash": "46adab7cfaa0",
@@ -5196,7 +5582,8 @@
      "id": 5635396617,
      "price": 15
     }
-   ]
+   ],
+   "angles": 3
   },
   "mug-black-43": {
    "hash": "2c661b1421a6",
@@ -5207,7 +5594,8 @@
      "id": 5635396673,
      "price": 15
     }
-   ]
+   ],
+   "angles": 3
   },
   "mug-black-44": {
    "hash": "39ee8b1ce014",
@@ -5218,7 +5606,8 @@
      "id": 5635396734,
      "price": 15
     }
-   ]
+   ],
+   "angles": 3
   },
   "mug-black-55": {
    "hash": "b4b979e4706b",
@@ -5229,7 +5618,8 @@
      "id": 5635396823,
      "price": 15
     }
-   ]
+   ],
+   "angles": 3
   },
   "mug-black-58": {
    "hash": "be9194865fd0",
@@ -5240,7 +5630,8 @@
      "id": 5635396914,
      "price": 15
     }
-   ]
+   ],
+   "angles": 3
   },
   "mug-black-59": {
    "hash": "ca8e23fce216",
@@ -5251,7 +5642,8 @@
      "id": 5635396999,
      "price": 15
     }
-   ]
+   ],
+   "angles": 3
   },
   "mug-black-60": {
    "hash": "7aab893b52a0",
@@ -5262,7 +5654,8 @@
      "id": 5635397053,
      "price": 15
     }
-   ]
+   ],
+   "angles": 3
   },
   "tote-black-42": {
    "hash": "59c0c88c2226",
