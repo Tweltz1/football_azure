@@ -1,0 +1,42 @@
+name: Talk Shops QA cleanup (one-off)
+
+# Removes the test shops and logins made by the 2026-11-22 review. Only touches three named test logins and
+# shops they own whose name ends in "(delete me)". Prints counts only. Delete this file after it has run.
+on:
+  push:
+    branches: [claude/project-thread-wleuri]
+    paths: [".github/workflows/talkshops-qa-cleanup.yml"]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Delete test data
+        run: |
+          sql() { CODE=$(curl -sS -o out.json -w '%{http_code}' -X POST -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$(jq -n --arg q "$1" '{query: $q}')" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query"); echo "HTTP $CODE"; jq -c '.' out.json | head -c 600; echo; }
+          EMAILS="('talkshops-qa-1122@weltzcraft.com','talkshops1+qalock1122@gmail.com','talkshops1+qatech1122@gmail.com')"
+          SHOPS="(select s.id from public.repair_shops s join auth.users u on u.id = s.owner_id where u.email in $EMAILS and s.name like '%(delete me)')"
+          echo "Before:"
+          sql "select (select count(*) from auth.users where email in $EMAILS) as logins, (select count(*) from $SHOPS x) as shops, (select count(*) from public.repair_jobs where shop_id in $SHOPS) as cars, (select count(*) from public.repair_shops) as all_shops"
+          echo "Delete:"
+          sql "begin;
+            create temp table qa_shops on commit drop as select id from $SHOPS x;
+            create temp table qa_users on commit drop as select id from auth.users where email in $EMAILS;
+            delete from public.talkshops_trial_phones where shop_id in (select id from qa_shops) or phone in ('email:talkshops-qa-1122@weltzcraft.com', '+17155550143', '+17155550144') or phone in (select 'user:' || id from qa_users);
+            delete from public.talkshops_howto_usage where shop_id in (select id from qa_shops);
+            delete from public.howto_tips where shop_id in (select id from qa_shops);
+            delete from public.talkshops_sessions where user_id in (select id from qa_users);
+            delete from public.talkshops_ended_sessions where user_id in (select id from qa_users);
+            delete from public.repair_shops where id in (select id from qa_shops);
+            delete from public.repair_shop_members where user_id in (select id from qa_users);
+            delete from auth.users where id in (select id from qa_users);
+            commit;"
+          echo "After:"
+          sql "select (select count(*) from auth.users where email in $EMAILS) as logins, (select count(*) from public.repair_shops where name like '%(delete me)') as delete_me_shops, (select count(*) from public.repair_shops) as all_shops, (select count(*) from public.talkshops_trial_phones where phone in ('+17155550143','+17155550144')) as test_trial_keys"
+          echo "Reminder timer calls so far:"
+          sql "select status_code, count(*) as calls, max(created) as latest from net._http_response group by status_code"
+          sql "select status, count(*) as runs, max(start_time) as latest from cron.job_run_details where jobid = (select jobid from cron.job where jobname = 'talkshops-reminders') group by status"
