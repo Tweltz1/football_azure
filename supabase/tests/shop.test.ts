@@ -1017,7 +1017,9 @@ test('appointment scheduling: open times, picked slot fills up, instant booking 
   assert.equal(job.data.followups?.[0].due, '2026-11-08T15:00:00.000Z');
   w.deps.store.cronShops = async () => [...w.shops.values()].map((x) => structuredClone(x));
   assert.equal((await runCron(w.deps, new Date('2026-11-08T14:30:00Z'), { info() {}, warn() {}, error() {} })).reminders, 0, 'not due yet');
-  assert.equal((await runCron(w.deps, new Date('2026-11-08T15:30:00Z'), { info() {}, warn() {}, error() {} })).reminders, 1);
+  // Automatic reminders wait for daytime (8am to 9pm shop time): 11pm in Chicago sends nothing, even when one is due.
+  assert.equal((await runCron(w.deps, new Date('2026-11-09T04:30:00Z'), { info() {}, warn() {}, error() {} })).reminders, 0, 'held overnight');
+  assert.equal((await runCron(w.deps, new Date('2026-11-09T14:10:00Z'), { info() {}, warn() {}, error() {} })).reminders, 1);
   assert.equal(w.texts.at(-1)!.body, 'Reminder: your appointment at Ridgeline is tomorrow, Mon, Nov 9 at 9:00 AM. To change it, call 715-555-0100. Reply STOP to opt out.');
 
   // Instant booking: the car lands on the Bay right away.

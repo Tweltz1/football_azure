@@ -579,6 +579,9 @@ async function sendDueFollowups(deps: ShopDeps, shop: Shop, now: Date, acc: Acce
   if (!store.dueFollowups || !store.claimFollowup) return 0;
   const iso = now.toISOString();
   let sent = 0;
+  // Reminders are automatic, so they only go out 8am to 9pm shop time. Anything due overnight waits for the morning run.
+  const { hour } = localClock(shop, now);
+  if (hour < 8 || hour >= 21) return 0;
   for (const job of await store.dueFollowups(shop.id, iso, 10)) {
     const at = nextFollowup(job);
     if (!at || at > iso || !await store.claimFollowup(job.id, at)) continue;
@@ -1842,6 +1845,8 @@ async function planOut(deps: ShopDeps, shop: Shop, now: Date) {
     textsUsed: p && p.textsPeriod === a.period ? p.textsUsed : 0,
     textLimit: a.textLimit ?? (p && p.plan !== 'trial' && p.plan ? PLANS[p.plan].texts : null),
     carsCreated: p?.carsCreated ?? 0, carLimit: a.carLimit,
+    // A phone, email or account that already had its trial starts a new shop with the trial over: say so instead of "has ended".
+    ...(a.state === 'trial_ended' && a.trialEndsAt && Math.abs(Date.parse(a.trialEndsAt) - Date.parse(shop.createdAt)) < 3_600_000 ? { trialUsed: true } : {}),
     smartReplies:canSmart(shop,now), trial, plans: PLANS, payments: !!deps.stripe, hasBilling: !!p?.stripeCustomerId, howTo: hasHowTo(p, a), pro: hasPro(p, a),
   };
 }
