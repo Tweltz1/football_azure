@@ -269,6 +269,17 @@ async function merchWebhook(request, env) {
   const event = JSON.parse(raw);
   const s = event.data && event.data.object || {};
   if (event.type === 'checkout.session.completed' && (s.metadata || {}).shop === 'weltzcraft-live') return liveWebhook(env, s, new URL(request.url).origin);
+  // A site owner's care plan or yearly domain payment ended: Tyler decides what happens to the domain.
+  if (event.type === 'customer.subscription.deleted' && /^[0-9a-f-]{36}$/.test((s.metadata || {}).order || '') && (s.metadata || {}).domain) {
+    const dom = oneLine(s.metadata.domain, 70), kind = s.metadata.kind === 'domain' ? 'yearly domain payment' : 'care plan';
+    const row = await liveRow(env, 'id=eq.' + s.metadata.order);
+    // Nothing to do when the domain was never bought (the order was turned down and refunded).
+    if (!row || !['registering', 'registered', 'live'].includes(row.status)) return json(200, { ignored: 'no domain bought' });
+    await emailSales(env, 'Ended: ' + kind + ' for ' + dom, ['The ' + kind + ' for ' + dom + ' has ended in Stripe (cancelled, or the card kept failing).', '',
+      'The domain is still set to renew by itself at Cloudflare, on your card. If they are not going to pay for it another way, turn off auto-renew for ' + dom + ' in Cloudflare (Domain Registration > Manage domains) so you are not charged for it next year.', '',
+      'Stripe: https://dashboard.stripe.com/subscriptions/' + s.id].join('\n'));
+    return json(200, { ok: true, ended: kind });
+  }
   if (event.type !== 'checkout.session.completed' || s.mode !== 'payment' || (s.metadata || {}).shop !== 'weltzcraft-merch') return json(200, { ignored: true });
   if (s.payment_status !== 'paid') return json(200, { ignored: 'unpaid' });
   const ship = s.shipping_details || (s.collected_information || {}).shipping_details || {};
@@ -1244,8 +1255,10 @@ async function liveCheckout(request, env) {
   const row = (await ins.json())[0];
   const base = new URL(request.url).origin;
   const name = site.answers.n || 'your business';
+  // The domain has to be paid for every year. With the care plan that is part of the $49 a month. Without it, the
+  // domain line is itself a yearly subscription: charged today for year one, then each year until the owner cancels.
   const form = {
-    mode: care ? 'subscription' : 'payment',
+    mode: 'subscription',
     success_url: base + '/live?p=' + slug + '&done=1',
     cancel_url: base + '/live?p=' + slug + '&d=' + encodeURIComponent(domain),
     billing_address_collection: 'required',
@@ -1261,8 +1274,9 @@ async function liveCheckout(request, env) {
     'line_items[1][quantity]': '1',
     'line_items[1][price_data][currency]': 'usd',
     'line_items[1][price_data][unit_amount]': String(d.price),
-    'line_items[1][price_data][product_data][name]': 'Domain: ' + domain + ' (1 year)',
-    'line_items[1][price_data][product_data][description]': 'Registered in your name. Private WHOIS.',
+    'line_items[1][price_data][product_data][name]': 'Domain: ' + domain + (care ? ' (1 year)' : ' (renews each year)'),
+    'line_items[1][price_data][product_data][description]': 'Registered in your name. Private WHOIS.' + (care ? ' Later years are part of your care plan.' : ' Renews every year at this price until you cancel.'),
+    'subscription_data[metadata][order]': row.id, 'subscription_data[metadata][domain]': domain, 'subscription_data[metadata][shop]': 'weltzcraft-live', 'subscription_data[metadata][kind]': care ? 'care' : 'domain',
   };
   if (care) Object.assign(form, {
     'line_items[2][quantity]': '1',
@@ -1271,9 +1285,8 @@ async function liveCheckout(request, env) {
     'line_items[2][price_data][recurring][interval]': 'month',
     'line_items[2][price_data][product_data][name]': 'Care plan for ' + domain,
     'line_items[2][price_data][product_data][description]': 'Hosting, domain renewal, updates and fixes. Cancel any time.',
-    'subscription_data[metadata][order]': row.id, 'subscription_data[metadata][domain]': domain,
   });
-  else Object.assign(form, { customer_creation: 'always', 'payment_intent_data[description]': 'Weltzcraft Starter site (first half) + ' + domain, 'payment_intent_data[metadata][order]': row.id });
+  else form['line_items[1][price_data][recurring][interval]'] = 'year';
   const s = await stripe(env, 'checkout/sessions', form);
   await liveUpdate(env, row.id, { stripe_session: s.id });
   return json(200, { url: s.url });
@@ -1295,14 +1308,14 @@ async function liveWebhook(env, s, base) {
   const site = row.site || {};
   await emailSales(env, 'Approve new website: ' + row.domain, [
     (site.answers && site.answers.n || 'A customer') + ' paid to make their preview live at ' + row.domain + '.', '',
-    'Paid: $' + ((s.amount_total || 0) / 100).toFixed(2) + (row.care ? ' (with the $49/mo care plan)' : ' (no care plan)'),
+    'Paid: $' + ((s.amount_total || 0) / 100).toFixed(2) + (row.care ? ' (with the $49/mo care plan, which covers the domain each year)' : ' (no care plan; the domain renews each year at $' + ((row.domain_cents || 0) / 100).toFixed(2) + ')'),
     'Owner on the domain: ' + [customer.name, customer.email, customer.phone].filter(Boolean).join(', '),
     'Address: ' + [customer.address.street, customer.address.city, customer.address.state, customer.address.postal_code].filter(Boolean).join(', '), '',
     'Look it over and approve (buys the domain in their name, then the site goes live):',
     base + '/live/approve?o=' + id + '&k=' + k, '',
     'Their site as it will look: ' + base + '/live/view?o=' + id + '&k=' + k,
     'Stripe: https://dashboard.stripe.com/' + (s.subscription ? 'subscriptions/' + s.subscription : 'payments/' + s.payment_intent),
-    '', 'Don\'t like it? Refund it in Stripe and reply to the customer. Nothing is bought until you press Approve.',
+    '', 'Don\'t like it? Refund it in Stripe, cancel the subscription there too (so they are not charged again), and reply to the customer. Nothing is bought until you press Approve.',
   ].join('\n'));
   await emailBuyer(env, customer.email, 'We got it! Your website is on its way', ['Hi ' + firstName(customer.name) + ',', '',
     'Thanks for choosing Weltzcraft Studios. We\'re checking over your site now, usually within 1 business day.', '',
@@ -1320,7 +1333,7 @@ async function liveAdvance(env, row) {
     const phone = String(cust.phone || '').replace(/[^\d+]/g, '');
     const e164 = /^\+1\d{10}$/.test(phone) ? '+1.' + phone.slice(2) : /^\+\d{8,15}$/.test(phone) ? phone.replace(/^\+(\d{1,3})/, '+$1.') : '';
     const r = await reg(env, '/registrations', { method: 'POST', body: JSON.stringify({
-      domain_name: row.domain, years: 1, auto_renew: !!row.care, privacy_mode: 'redaction',
+      domain_name: row.domain, years: 1, auto_renew: true, privacy_mode: 'redaction',
       contacts: { registrant: { email: cust.email, phone: e164, postal_info: { name: cust.name, organization: (row.site && row.site.answers && row.site.answers.n) || undefined, address: cust.address } } },
     }) });
     const w = r.result || {};
