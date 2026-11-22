@@ -475,7 +475,7 @@ function previewAnswers(b) {
 const str = (v, max) => oneLine(v, max);
 const rows = (v, n, cols) => (Array.isArray(v) ? v : []).slice(0, n).map((r) => (Array.isArray(r) ? r : [])).map((r) => cols.map((max, i) => str(r[i], max))).filter((r) => r[0]);
 
-async function gemini(env, body, ms) {
+async function gemini(env, body, ms, log) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
   try {
@@ -484,10 +484,11 @@ async function gemini(env, body, ms) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify(body),
     });
-    if (!r.ok) return null;
+    if (!r.ok) { if (log) log.push('gemini ' + r.status + ' ' + (await r.text()).slice(0, 300)); return null; }
     const out = await r.json();
+    if (log) log.push('gemini finish ' + ((out.candidates && out.candidates[0] && out.candidates[0].finishReason) || JSON.stringify(out.promptFeedback || {}).slice(0, 120)));
     return (out.candidates && out.candidates[0] && out.candidates[0].content && out.candidates[0].content.parts || []).map((p) => p.text || '').join('');
-  } catch (e) { return null; } finally { clearTimeout(timer); }
+  } catch (e) { if (log) log.push('gemini ' + e.name); return null; } finally { clearTimeout(timer); }
 }
 /** The first {...} JSON object in a model's answer (it may be wrapped in ``` or have words around it). */
 function jsonIn(text) {
@@ -605,6 +606,8 @@ async function previewCopy(env, a, facts) {
 // then Gemini looks at the candidates and picks the ones that fit and look good. The picks are saved in
 // copy.photos with their credit, and served through /img/x (photoProxy) so pages don't depend on the hosts.
 const PHOTO_UA = 'WeltzcraftPreview/1.0 (https://weltzcraft.com; hello@weltzcraft.com)';
+// Openverse (Flickr photos) doesn't answer Cloudflare's servers in time, so it is off; Wikimedia Commons is the source.
+const PHOTO_OPENVERSE = false;
 const PHOTO_HOSTS = /^(upload\.wikimedia\.org|[a-z0-9-]+\.staticflickr\.com)$/;
 const PHOTO_SKIP = /logo|map\b|diagram|poster|flag|coat of arms|\bsign\b|screenshot|chart|stamp|drawing|illustration|painting|engraving|\b1[5-9]\d\d\b|fortepan|bundesarchiv|\.svg|\.gif|\.tif/i;
 const licOk = (l) => /^(cc0|pdm|public domain|pd\b|cc[ -]by([ -]sa)?([ -][\d.]+)?( [a-z]{2,4})?$)/i.test(String(l || '').trim()) && !/nc|nd/i.test(l);
@@ -642,12 +645,12 @@ const b64 = (buf) => { let s = ''; const a = new Uint8Array(buf); for (let i = 0
 async function previewPhotos(env, a, copy, log) {
   const qs = (copy && copy.photoQs) || [];
   if (!env.GEMINI_API_KEY || qs.length < 2) return null;
-  const found = await Promise.all(qs.slice(0, 4).map((q) => Promise.all([commonsPhotos(q, log), openversePhotos(q, log)])));
-  // Up to 3 candidates per search, Flickr and Commons taking turns, no photo twice.
+  const found = await Promise.all(qs.slice(0, 4).map((q) => Promise.all([commonsPhotos(q, log), PHOTO_OPENVERSE ? openversePhotos(q, log) : []])));
+  // Up to 4 candidates per search, Flickr and Commons taking turns, no photo twice.
   const seen = new Set(), cands = [];
   found.forEach(([c, o], qi) => {
     const mix = []; for (let i = 0; i < 6; i++) { if (o[i]) mix.push(o[i]); if (c[i]) mix.push(c[i]); }
-    let n = 0; for (const x of mix) { if (n >= 3 || seen.has(x.u)) continue; seen.add(x.u); cands.push({ ...x, q: qs[qi] }); n++; }
+    let n = 0; for (const x of mix) { if (n >= 4 || seen.has(x.u)) continue; seen.add(x.u); cands.push({ ...x, q: qs[qi] }); n++; }
   });
   if (log) log.push('candidates ' + cands.length);
   if (cands.length < 2) return null;
@@ -662,7 +665,7 @@ async function previewPhotos(env, a, copy, log) {
     'Choose only photos that clearly fit this kind of business, look professional and inviting, and are modern color photos. Reject any photo with a watermark, a visible brand or another business\'s name or sign, lots of text, a close-up of a person\'s face, poor lighting or focus, or a subject that does not fit.\n' +
     'Return JSON: {"hero": number of the best wide scene to sit behind the page\'s headline (or -1), "about": number of the best photo of the work or product (or -1), "gallery": [up to 4 more numbers, best first]}. Never use a number twice. Use -1 or fewer gallery photos rather than a photo that does not fit.' }];
   usable.forEach((x, i) => { parts.push({ text: 'Photo ' + i + ' (searched: ' + x.c.q + ')' }); parts.push({ inline_data: { mime_type: 'image/jpeg', data: x.t } }); });
-  const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } } }, 20000));
+  const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } } }, 25000, log));
   if (log) log.push('picked ' + JSON.stringify(g));
   if (!g) return null;
   const used = new Set();
