@@ -2,11 +2,15 @@
 # drops the plain background, crops, and redraws every pixel in one of the logo's Printful thread colors.
 #   python3 scripts/merch_art_prep.py      (reads merch/art/picks.json)
 import json
+import os
 import numpy as np
 from PIL import Image, ImageFilter
 from scipy import ndimage
 
 PICKS = json.load(open('merch/art/picks.json'))
+ONLY = os.environ.get('ONLY')  # e.g. ONLY=h3 redoes just that logo
+if ONLY:
+    PICKS = [p for p in PICKS if p['id'] == ONLY]
 
 
 def rgb(h):
@@ -45,6 +49,11 @@ for pk in PICKS:
     sizes = ndimage.sum(fg, lbl, range(1, n + 1))
     fg = np.isin(lbl, [i + 1 for i, s in enumerate(sizes) if s > 2500])
     fg = ndimage.binary_fill_holes(fg) if pk.get('fill', True) else fg
+    if pk.get('gaps'):
+        # See-through gaps (between legs, inside antlers): bits of plain background the art fully encloses.
+        blbl, bn = ndimage.label(near)
+        bsz = ndimage.sum(near, blbl, range(1, bn + 1))
+        fg &= ~np.isin(blbl, [i + 1 for i, s in enumerate(bsz) if s > pk['gaps'] and (i + 1) not in edge])
     pal = [rgb(t) for t in pk['threads']]
     g = pk.get('gamma', 1)  # >1 pulls dark fur toward black instead of a dark blue or green thread
     idx = nearest_map(255 * (a / 255) ** g, pal)

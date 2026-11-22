@@ -13,6 +13,9 @@ on:
       only:
         description: 'Only slugs starting with this (e.g. tee-black). Blank = all.'
         required: false
+      photos_only:
+        description: 'Type yes to make print files and photos only, and leave the Printful store products alone (for previews on a side branch).'
+        required: false
 
 permissions:
   contents: write
@@ -57,6 +60,7 @@ jobs:
             for f in "${files[@]}"; do cwebp -quiet -q 82 -resize 900 0 "$f" -o "${f%.jpg}.webp" && rm -- "$f"; done
           fi
       - name: Printful store products
+        if: github.event.inputs.photos_only != 'yes'
         run: |
           [ -f merch/plan.json ] || exit 0
           node scripts/merch-build.mjs create
