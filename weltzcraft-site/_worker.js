@@ -751,7 +751,9 @@ async function previewPhotos(env, a, copy, log) {
     'Choose only photos that clearly fit this kind of business, look professional and inviting, and are modern color photos. Reject any photo with a watermark, a visible brand or another business\'s name or sign, lots of text, people whose faces can be recognized (hands at work or people seen from behind or far away are fine), a wedding or other private event, poor lighting or focus, or a subject that does not fit.\n' +
     'Return JSON: {"hero": number of the best wide scene to sit behind the page\'s headline (or -1), "about": number of the best photo of the work or product (or -1), "gallery": [up to 4 more numbers, best first]}. Never use a number twice. Prefer filling hero and about when any photo is a reasonable fit; use -1 only when nothing suits.' }];
   usable.forEach((x, i) => { parts.push({ text: 'Photo ' + i + ' (searched: ' + x.c.q + ')' }); parts.push({ inline_data: { mime_type: 'image/jpeg', data: x.t } }); });
-  const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 600, thinkingConfig: { thinkingBudget: 0 } } }, 30000, log));
+  // The answer is tiny, but the model sometimes runs on until it is cut off; give it room and ask once more if it fails.
+  const ask = () => gemini(env, { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 2500, thinkingConfig: { thinkingBudget: 0 } } }, 25000, log);
+  const g = jsonIn(await ask()) || jsonIn(await ask());
   if (log) log.push('picked ' + JSON.stringify(g));
   if (!g) return null;
   const used = new Set();

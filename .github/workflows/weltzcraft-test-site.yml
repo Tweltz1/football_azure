@@ -1,0 +1,54 @@
+name: Weltzcraft test customer site
+
+# Makes (or removes) a TEST customer site so the customer portal at weltzcraft.com/portal can be tried end to end
+# without buying a domain. It copies a free preview into weltzcraft_live with a made-up domain ending in
+# .weltzcraft.test (never registered, never served) and a sign-in email. Nothing is charged and nothing is bought.
+# Run by hand only.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'create or delete'
+        type: choice
+        options: [create, delete]
+        default: create
+      slug:
+        description: 'Preview to copy (the last part of weltzcraft.com/preview/...)'
+        type: string
+        required: true
+      email:
+        description: 'Email that may sign in to the portal'
+        type: string
+        default: 'portal-test@weltzcraft.com'
+
+jobs:
+  test-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or delete the test site
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_ID }}
+          ACTION: ${{ inputs.action }}
+          SLUG: ${{ inputs.slug }}
+          EMAIL: ${{ inputs.email }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$SLUG" | grep -Eq '^[a-z0-9-]{3,60}$'; then echo "::error::Bad slug"; exit 1; fi
+          if ! printf '%s' "$EMAIL" | grep -Eq '^[A-Za-z0-9._+-]{1,60}@[A-Za-z0-9.-]{3,60}$'; then echo "::error::Bad email"; exit 1; fi
+          domain="$SLUG.weltzcraft.test"
+          if [ "$ACTION" = "delete" ]; then
+            sql="delete from public.weltzcraft_site_requests where site in (select id::text from public.weltzcraft_live where domain = '$domain'); delete from public.weltzcraft_live where domain = '$domain' returning id;"
+          else
+            sql="delete from public.weltzcraft_live where domain = '$domain';
+            insert into public.weltzcraft_live (preview_slug, domain, care, status, site, customer, live_at)
+            select slug, '$domain', true, 'live',
+              jsonb_build_object('answers', answers, 'copy', copy, 'contact', jsonb_build_object('phone', coalesce(answers->>'phone', ''), 'email', '$EMAIL', 'address', coalesce(answers->>'addr', ''), 'hours', 'Mon to Fri 8am to 5pm')),
+              jsonb_build_object('email', '$EMAIL', 'name', 'Test Owner'), now()
+            from public.weltzcraft_previews where slug = '$SLUG' returning id, domain;"
+          fi
+          out=$(curl --silent --show-error -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg q "$sql" '{query:$q}')")
+          echo "$out" | head -c 400; echo
+          if [ "$ACTION" = "create" ] && ! echo "$out" | grep -q "$domain"; then echo "::error::The test site was not created (is the preview slug right?)"; exit 1; fi
