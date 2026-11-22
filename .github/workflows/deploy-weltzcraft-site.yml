@@ -163,6 +163,60 @@ jobs:
           printf '%s' "https://$REF.supabase.co" | put SUPABASE_URL
           printf '%s' "$key" | put SUPABASE_SERVICE_KEY
 
+      - name: Make it live (orders table + domain keys)
+        # /live: customers pick a domain and pay; Tyler approves; the site buys the domain in the customer's name
+        # (Cloudflare Registrar API) and serves their site on it. Orders live in Supabase table weltzcraft_live.
+        # The site's server uses CLOUDFLARE_API_TOKEN, which needs (Cloudflare > My Profile > API Tokens > edit):
+        # Account > Registrar: Domains > Edit, Zone > DNS > Edit for All zones, Account > Cloudflare Pages > Edit.
+        # Set the repo variable REGISTRAR_SANDBOX=1 to use Cloudflare's test registrar (nothing real is bought).
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SANDBOX: ${{ vars.REGISTRAR_SANDBOX }}
+        run: |
+          put() { CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages secret put "$1" --project-name "$PROJECT" >/dev/null && echo "set $1"; }
+          printf '%s' "$CF_TOKEN" | put CF_API_TOKEN
+          printf '%s' "$ACCOUNT" | put CF_ACCOUNT_ID
+          printf '%s' "${SANDBOX:-0}" | put REGISTRAR_SANDBOX
+          # Can the token use the Registrar API? (read-only check, buys nothing)
+          r=$(curl --silent -H "Authorization: Bearer $CF_TOKEN" -H 'Content-Type: application/json' -X POST \
+            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/registrar/domain-check" -d '{"domains":["weltzcraft-test-check-0001.com"]}')
+          echo "registrar check: $(echo "$r" | jq -c '{success, errors: [.errors[]?.message], result: .result.domains}')"
+          [ "$(echo "$r" | jq -r .success)" = "true" ] || echo "::warning::The Cloudflare token can't use Registrar yet. Add Account > Registrar: Domains > Edit (and Zone > DNS > Edit for All zones) to it."
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$REF" ]; then echo "::warning::No Supabase secrets"; exit 0; fi
+          sql=$(cat <<'SQL'
+          create table if not exists public.weltzcraft_live (
+            id uuid primary key default gen_random_uuid(),
+            preview_slug text not null,
+            domain text not null,
+            care boolean not null default false,
+            domain_cents int,
+            domain_cost text,
+            paid_cents int,
+            status text not null default 'checkout',
+            site jsonb not null,
+            customer jsonb,
+            stripe_session text,
+            stripe_customer text,
+            stripe_subscription text,
+            workflow jsonb,
+            error text,
+            created_at timestamptz not null default now(),
+            updated_at timestamptz not null default now(),
+            live_at timestamptz
+          );
+          create index if not exists weltzcraft_live_domain on public.weltzcraft_live (domain, status);
+          alter table public.weltzcraft_live enable row level security;
+          revoke all on public.weltzcraft_live from anon, authenticated;
+          delete from public.weltzcraft_live where status = 'checkout' and created_at < now() - interval '14 days';
+          SQL
+          )
+          curl --silent --show-error -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg q "$sql" '{query:$q}')" | head -c 300; echo
+
       - name: Upload the site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -219,6 +273,8 @@ jobs:
           [ "$code" = "404" ] || echo "::warning::Free previews are not saving yet (got $code)"
           code=$(curl -s -o /dev/null -w '%{http_code}' "https://$PROJECT.pages.dev/preview/no-such-preview-0000" || true)
           echo "preview page -> $code"
+          code=$(curl -s -o out.json -w '%{http_code}' "https://$PROJECT.pages.dev/api/live/domains?q=weltzcraft%20check" || true)
+          echo "live domain search -> $code $(head -c 400 out.json)"
           if [ "$TEST_BRIEF" = "true" ]; then
             code=$(curl -s -o out.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"name":"Deploy test","email":"sales@weltzcraft.com","org":"Test: brief form check","idea":"This is a test of the weltzcraft.com project brief form. No reply needed.","elapsed":9}' "$u" || true)
             echo "test brief -> $code $(cat out.json)"
