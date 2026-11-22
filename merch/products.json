@@ -1786,6 +1786,70 @@
       ]
     },
     {
+      "key": "wildcord",
+      "name": "Wild W Corduroy Cap",
+      "type": "hat",
+      "price": 34,
+      "match": "Big Accessories BA703",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "a1",
+        "a2",
+        "a3",
+        "a4",
+        "a5",
+        "a6"
+      ],
+      "box": [
+        0.66,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "brown",
+          "name": "Brown",
+          "printful": [
+            "Brown"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "olive",
+          "name": "Olive",
+          "printful": [
+            "Olive"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "burgundy",
+          "name": "Burgundy",
+          "printful": [
+            "Burgundy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        }
+      ]
+    },
+    {
       "key": "woodscord",
       "name": "Northwoods Corduroy Cap",
       "type": "hat",
