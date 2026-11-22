@@ -926,7 +926,8 @@ const dayName = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US'
 /** When a business takes bookings: {days: [0-6, Sunday = 0], open, close, len}. Same rules as bookCfg in features.js. */
 function bookCfg(a) {
   const h = String(a.h || ''), f = a.f || {};
-  const base = /every day/i.test(h) ? { days: [0, 1, 2, 3, 4, 5, 6], open: '09:00', close: '18:00' }
+  const base = /^days:/i.test(h) ? { days: (h.match(/\d/g) || []).map(Number).filter(function (d) { return d < 7; }), open: '09:00', close: '17:00' }
+    : /every day/i.test(h) ? { days: [0, 1, 2, 3, 4, 5, 6], open: '09:00', close: '18:00' }
     : /wed to sun/i.test(h) ? { days: [0, 3, 4, 5, 6], open: '09:00', close: '15:00' }
     : /appointment/i.test(h) ? { days: [1, 2, 3, 4, 5, 6], open: '09:00', close: '17:00' }
     : { days: [1, 2, 3, 4, 5], open: '08:00', close: '17:00' };
