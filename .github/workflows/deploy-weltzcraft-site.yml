@@ -229,6 +229,7 @@ jobs:
           if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$REF" ]; then echo "::warning::No Supabase secrets"; exit 0; fi
           sql=$(cat <<'SQL'
           alter table public.weltzcraft_previews add column if not exists edit_hash text;
+          alter table public.weltzcraft_live add column if not exists site_history jsonb;
           create table if not exists public.weltzcraft_site_requests (
             id bigint generated always as identity primary key,
             site text not null,
