@@ -113,6 +113,18 @@
     var realRev = t.liveReviews && t.liveReviews.length ? t.liveReviews : null;   // the owner's own reviews, typed in their portal
     var reviews = realRev ? true : on('review') && !live;
     var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(hasOrder ? [['order', 'Order']] : []).concat(F.book ? [['book', 'Book']] : []).concat(reviews ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', hasForm ? 'Contact' : 'Visit']]);
+    var PAGES = BASEP === null ? [] : (Array.isArray(a.pages) ? a.pages : []);
+    var cur = PG ? PAGES.filter(function (x) { return x.path === PG; })[0] || null : null;
+    var HOMEURL = (BASEP || '/') + KEEPQ;
+    function HL(h) { return cur && h && h.charAt(0) === '#' ? HOMEURL + h : h; }               // a link to a home-page section, from any page
+    function purl(x) { return BASEP + '/' + x.path + KEEPQ; }
+    var inMenu = PAGES.filter(function (x) { return x.menu !== 0; }), groups = [], navP = '', navM = '';
+    inMenu.forEach(function (x) { if (x.group && groups.indexOf(x.group) < 0) groups.push(x.group); });
+    function plink(x) { return '<a href="' + esc(purl(x)) + '"' + (cur === x ? ' class="cur" aria-current="page"' : '') + '>' + esc(x.title) + '</a>'; }
+    inMenu.filter(function (x) { return !x.group; }).forEach(function (x) { navP += plink(x); navM += plink(x); });
+    groups.forEach(function (g) { var links = inMenu.filter(function (x) { return x.group === g; }).map(plink).join('');
+      navP += '<span class="dd"><button type="button" class="dd-b" aria-expanded="false" aria-haspopup="true">' + esc(g) + ' <i aria-hidden="true">▾</i></button><span class="dd-m">' + links + '</span></span>';
+      navM += '<b>' + esc(g) + '</b>' + links; });
     var steps = on('steps') && t.steps && t.steps.length ? t.steps : null, areas = on('areas') && t.areas && t.areas.length ? t.areas : null;
     var TOP =
       (live ? (LIVEVIEW ? '<div class="wz"><div class="wrap"><span>👀 This is how the live site will look.</span></div></div>' : '') :
@@ -120,8 +132,11 @@
         (slug ? '<button class="share" type="button" id="share">🔗 Share link</button> ' : '') + '<a class="back" href="/build">↺ Try another</a> ' +
         (slug ? '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a>' : '<a href="' + brief + '" data-track="sample_mine">Make it mine</a>') + '</span></div></div>') +
       (t.notice ? '<div class="notice"><div class="wrap">' + esc(t.notice) + '</div></div>' : '') +
-      '<header class="hd"><div class="wrap"><a class="logo" href="#top"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
-        navs.map(function (n) { return '<a href="#' + n[0] + '">' + esc(n[1]) + '</a>'; }).join('') + '</nav><a class="btn" href="' + go + '">' + esc(cta) + '</a></div></header>' +
+      '<header class="hd"><div class="wrap"><a class="logo" href="' + (cur ? esc(HOMEURL) : '#top') + '"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
+        navs.slice(0, inMenu.length ? 5 : 99).map(function (n) { return '<a href="' + esc(HL('#' + n[0])) + '">' + esc(n[1]) + '</a>'; }).join('') + navP + '</nav><a class="btn" href="' + esc(HL(go)) + '">' + esc(cta) + '</a>' +
+        (inMenu.length ? '<button type="button" class="mnav" aria-label="Menu">☰</button>' : '') + '</div>' +
+        (inMenu.length ? '<div class="mpanel"><a href="' + esc(HOMEURL) + '">Home</a>' + navM + '</div>' : '') + '</header>';
+    var HERO =
       '<section class="hero" id="top">' + (img(0, name) || (hero === 'split' ? '<div class="htile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>' : '')) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(t.eyebrow || (town + '\'s favorite ' + t.noun)) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
         '<div class="cta"><a class="btn" href="' + go + '">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
         '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (HOURS.length && !(HOURS[0][1].length > 24) ? '<span><b>' + esc(HOURS[0][1]) + '</b>' + esc(HOURS[0][0]) + '</span>' : '') + '</div></div></section>';
@@ -155,34 +170,47 @@
         (real && real.address ? '<div class="map real"><iframe title="Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?output=embed&q=' + encodeURIComponent(real.address) + '"></iframe></div>'
         : (on('map') || !photo) && !live ? '<div class="map" aria-label="Map"><svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice"><rect width="600" height="400" fill="#e9ece4"/><path d="M0 120h600M0 280h600M150 0v400M420 0v400" stroke="#fff" stroke-width="18"/><path d="M0 200h600M290 0v400" stroke="#fff" stroke-width="30"/><path d="M-20 360C120 300 200 330 330 250s220-60 300-120" stroke="#cfe1f2" stroke-width="26" fill="none"/><rect x="40" y="20" width="90" height="80" rx="8" fill="#d6e6cf"/><rect x="460" y="300" width="120" height="80" rx="8" fill="#d6e6cf"/></svg><div class="pin"><i></i><span>' + esc(name) + '</span></div></div>'
           : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + tile() + '</div></div>') + '</div></section>';
-    var TAIL = '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + act + '">' + esc(cta) + '</a></div></div>' +
+    var TAIL = '<div class="band"><div class="wrap"><h2>' + esc(t.band || (cta + ' in under a minute.')) + '</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + esc(HL(act)) + '">' + esc(cta) + '</a></div></div>' +
       '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">' + (live ? 'Website by <a href="https://weltzcraft.com">Weltzcraft Studios</a>' : 'Sample site by <a href="/">Weltzcraft Studios</a>') + (PX && pxAll.some(function (o) { return o.src !== 'own'; }) ? ' · <span>Photos: ' + pxAll.filter(function (o) { return o.src !== 'own'; }).map(function (o) { return (o.page ? '<a href="' + esc(o.page) + '" target="_blank" rel="noopener">' : '') + esc(o.by || o.src || 'Unknown') + (o.page ? '</a>' : '') + ' (' + esc(o.lic) + ')'; }).join(', ') + '</span>'
         : photo && !PX ? ' · <span id="pc">Photos: Wikimedia Commons</span>' : '') + '</span></div></footer>' +
       // Phones get a bar that stays at the bottom: call, directions and the main button.
-      (tel || dir ? '<div class="mbar">' + (tel ? '<a href="' + tel + '">📞 Call</a>' : '') + (dir ? '<a href="' + dir + '" target="_blank" rel="noopener">📍 Directions</a>' : '') + '<a class="go" href="' + act + '">' + esc(cta) + '</a></div>' : '');
-    // Blocks the owner added in the page editor (a.blocks), each its own section, then everything in the owner's order (a.order).
-    var BL = Array.isArray(a.blocks) ? a.blocks : [];
-    var acts = { call: tel, email: real && real.email ? 'mailto:' + real.email : '', book: F.book ? '#book' : '', order: hasOrder ? '#order' : '', message: hasForm ? '#ask' : '', directions: dir };
-    BL.forEach(function (b, i) {
-      var k = 'b:' + b.id, pic = b.photo ? '<img src="/img/x?u=' + encodeURIComponent(b.photo.u) + '" alt="' + esc(b.cap || b.h || name) + '" loading="lazy">' : '', tint = i % 2 ? '' : ' tint';
-      var href = b.act === 'link' ? b.url : acts[b.act], blank = b.act === 'link' || b.act === 'directions' ? ' target="_blank" rel="noopener"' : '';
+      (tel || dir ? '<div class="mbar">' + (tel ? '<a href="' + tel + '">📞 Call</a>' : '') + (dir ? '<a href="' + dir + '" target="_blank" rel="noopener">📍 Directions</a>' : '') + '<a class="go" href="' + esc(HL(act)) + '">' + esc(cta) + '</a></div>' : '');
+    // Blocks the owner added in the page editor, each its own section.
+    var acts = { call: tel, email: real && real.email ? 'mailto:' + real.email : '', book: F.book ? HL('#book') : '', order: hasOrder ? HL('#order') : '', message: hasForm ? HL('#ask') : '', directions: dir };
+    function blockHtml(b, i) {
+      var pic = b.photo ? '<img src="/img/x?u=' + encodeURIComponent(b.photo.u) + '" alt="' + esc(b.cap || b.h || name) + '" loading="lazy">' : '', tint = i % 2 ? '' : ' tint';
+      var href = b.act === 'link' ? b.url : b.act === 'page' ? (PAGES.some(function (x) { return x.path === b.pg; }) ? purl({ path: b.pg }) : '') : acts[b.act], blank = b.act === 'link' || b.act === 'directions' ? ' target="_blank" rel="noopener"' : '';
       var btn = b.label && (href || window.wcEditor) ? '<a class="btn" href="' + esc(href || '#') + '"' + blank + '>' + esc(b.label) + '</a>' : '';
-      var h = b.h ? '<h2 data-f="h">' + esc(b.h) + '</h2>' : '', txt = b.p ? '<p class="xp" data-f="p">' + esc(b.p) + '</p>' : '';
-      SEC[k] = '<section class="blk blk-' + b.type + tint + '" id="b-' + b.id + '"><div class="wrap">' + (
-        b.type === 'text' ? (h ? '<div class="sec-h">' + h + '</div>' : '') + txt + (btn ? '<p class="blk-b">' + btn + '</p>' : '')
+      var h = b.h ? '<h2 data-f="h">' + esc(b.h) + '</h2>' : '', txt = b.p ? '<p class="xp" data-f="p">' + esc(b.p) + '</p>' : '', hh = h ? '<div class="sec-h">' + h + '</div>' : '';
+      return '<section class="blk blk-' + b.type + tint + '" id="b-' + b.id + '"><div class="wrap">' + (
+        b.type === 'text' ? hh + txt + (btn ? '<p class="blk-b">' + btn + '</p>' : '')
         : b.type === 'image' ? '<figure>' + pic + (b.cap ? '<figcaption data-f="cap">' + esc(b.cap) + '</figcaption>' : '') + '</figure>'
         : b.type === 'split' ? '<div class="about' + (b.flip ? ' flip' : '') + '"><div class="ph">' + pic + '</div><div>' + h + txt + (btn ? '<p class="blk-b">' + btn + '</p>' : '') + '</div></div>'
         : b.type === 'button' ? '<div class="blk-c">' + h + (b.p ? '<p data-f="p">' + esc(b.p) + '</p>' : '') + btn + '</div>'
-        : b.type === 'boxes' ? (h ? '<div class="sec-h">' + h + '</div>' : '') + '<div class="why">' + (b.items || []).map(function (x) { return '<div><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></div>'; }).join('') + '</div>'
-        : b.type === 'video' && b.yt ? (h ? '<div class="sec-h">' + h + '</div>' : '') + '<div class="blk-v"><iframe title="Video" loading="lazy" allowfullscreen src="https://www.youtube-nocookie.com/embed/' + esc(b.yt) + '"></iframe></div>'
+        : b.type === 'boxes' ? hh + '<div class="why">' + (b.items || []).map(function (x) { return '<div><h3>' + esc(x[0]) + '</h3><p>' + esc(x[1]) + '</p></div>'; }).join('') + '</div>'
+        : b.type === 'tabs' ? hh + '<div class="tabs"><div class="tab-bs" role="tablist">' + (b.items || []).map(function (x, j) { return '<button type="button" role="tab" class="tab-b' + (j ? '' : ' on') + '" data-i="' + j + '" aria-selected="' + (j ? 'false' : 'true') + '">' + esc(x[0]) + '</button>'; }).join('') + '</div>' +
+          (b.items || []).map(function (x, j) { return '<div class="tab-p" role="tabpanel"' + (j ? ' hidden' : '') + '><p class="xp">' + esc(x[1]) + '</p></div>'; }).join('') + '</div>'
+        : b.type === 'video' && b.yt ? hh + '<div class="blk-v"><iframe title="Video" loading="lazy" allowfullscreen src="https://www.youtube-nocookie.com/embed/' + esc(b.yt) + '"></iframe></div>'
         : '') + '</div></section>';
-    });
-    var hide = Array.isArray(a.hide) ? a.hide : [];
-    var BASE = ['about', 'why', 'menu', 'steps', 'order', 'book', 'gallery', 'reviews', 'faq', 'areas', 'extra'].concat(BL.map(function (b) { return 'b:' + b.id; })).concat(['ask', 'visit']);
-    var ORDER = (Array.isArray(a.order) ? a.order : []).filter(function (k, i, l) { return BASE.indexOf(k) > -1 && l.indexOf(k) === i; });
-    // Anything the saved order doesn't mention (a section switched on later) goes where it normally sits.
-    BASE.forEach(function (k, i) { if (ORDER.indexOf(k) < 0) { var after = -1; for (var j = i - 1; j >= 0 && after < 0; j--) after = ORDER.indexOf(BASE[j]); ORDER.splice(after + 1, 0, k); } });
-    document.getElementById('site').innerHTML = TOP + ORDER.map(function (k) { return hide.indexOf(k) > -1 ? '' : SEC[k] || ''; }).join('') + TAIL;
+    }
+    var BL = Array.isArray(a.blocks) ? a.blocks : [], ORDER;
+    if (cur) {
+      // One of the site's extra pages: its title, then its own blocks in the order they were added.
+      ORDER = (cur.blocks || []).map(function (b) { return 'b:' + b.id; });
+      (cur.blocks || []).forEach(function (b, i) { SEC['b:' + b.id] = blockHtml(b, i + 1); });
+      document.title = cur.title + ' · ' + name;
+      document.getElementById('site').innerHTML = TOP + '<section class="phero" id="top"><div class="wrap"><p class="crumb"><a href="' + esc(HOMEURL) + '">Home</a>' + (cur.group ? ' › ' + esc(cur.group) : '') + '</p><h1 data-pt="1">' + esc(cur.title) + '</h1></div></section>' +
+        ORDER.map(function (k) { return SEC[k]; }).join('') + TAIL;
+    } else {
+      // The home page: the built-in sections and the owner's blocks, in the owner's order (a.order), minus hidden ones (a.hide).
+      BL.forEach(function (b, i) { SEC['b:' + b.id] = blockHtml(b, i); });
+      var hide = Array.isArray(a.hide) ? a.hide : [];
+      var BASE = ['about', 'why', 'menu', 'steps', 'order', 'book', 'gallery', 'reviews', 'faq', 'areas', 'extra'].concat(BL.map(function (b) { return 'b:' + b.id; })).concat(['ask', 'visit']);
+      ORDER = (Array.isArray(a.order) ? a.order : []).filter(function (k, i, l) { return BASE.indexOf(k) > -1 && l.indexOf(k) === i; });
+      // Anything the saved order doesn't mention (a section switched on later) goes where it normally sits.
+      BASE.forEach(function (k, i) { if (ORDER.indexOf(k) < 0) { var after = -1; for (var j = i - 1; j >= 0 && after < 0; j--) after = ORDER.indexOf(BASE[j]); ORDER.splice(after + 1, 0, k); } });
+      document.getElementById('site').innerHTML = TOP + HERO + ORDER.map(function (k) { return hide.indexOf(k) > -1 ? '' : SEC[k] || ''; }).join('') + TAIL;
+    }
     root.classList.toggle('has-mbar', !!(tel || dir));
     // Search engines read this to show the business's name, phone, address and hours (live sites only).
     var ld = document.getElementById('wc-ld'); if (ld) ld.remove();
@@ -210,7 +238,7 @@
     var site = window.WC_SITE || {};
     if (window.wcFeatures) window.wcFeatures.mount({ a: a, copy: copy, t: t, slug: slug, live: !!(live && site.live), site: site.id || slug || '', name: name, town: town, cta: cta, F: F, d: { vibe: vibe, hero: hero, items: look }, photo: photo, show: show,
       rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); } });
-    window.wcPage = { a: a, copy: copy, slug: slug, live: live, order: ORDER, has: SEC, F: F, show: show, rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); }, redraw: function (a2, copy2, live2) { var y = window.scrollY; render(a2, copy2, slug, live2); window.scrollTo(0, y); } };
+    window.wcPage = { a: a, copy: copy, slug: slug, live: live, order: ORDER, pg: cur ? cur.path : '', base: BASEP, has: SEC, F: F, show: show, rerender: function (a2) { var y = window.scrollY; render(a2, copy, slug, live); window.scrollTo(0, y); }, redraw: function (a2, copy2, live2) { var y = window.scrollY; render(a2, copy2, slug, live2); window.scrollTo(0, y); } };
     if (window.wcEditor) window.wcEditor.decorate(window.wcPage);
     if (!render.done && location.hash && location.hash.length > 1) { var el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
     render.done = true;
@@ -226,12 +254,28 @@
   //   /sample?ai=1&...         fresh answers from /build (save it, with AI-written words, then show it)
   //   /sample?t=..&n=..        the old instant sample from the address (no saving)
   var A = { t: P.get('t'), what: clip(P.get('what'), 60), n: clip(P.get('n'), 40), town: clip(P.get('town'), 40), tag: clip(P.get('tag'), 90), more: clip(P.get('more'), 300), cta: clip(P.get('cta'), 24), h: P.get('h') || '', s: P.get('s') || 'list,pics,review,map', c: P.get('c') || '', links: clip(P.get('links'), 600) };
-  var saved = /^\/preview\/([a-z0-9-]{3,60})\/?$/.exec(location.pathname);
+  var saved = /^\/preview\/([a-z0-9-]{3,60})(?:\/([a-z0-9\/-]*?))?\/?$/.exec(location.pathname);
   var OWN = !/(^|\.)weltzcraft\.com$|\.pages\.dev$|^localhost$|^127\.0\.0\.1$/.test(location.hostname);
   var LIVEVIEW = /^\/live\/view\/?$/.test(location.pathname);
   var ready;
-  var EDIT = /^\/portal\/edit\/?$/.test(location.pathname);
-  function loadEditor() { if (document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=1'; document.body.appendChild(sc); }
+  var EDIT = /^\/portal\/edit(?:\/([a-z0-9\/-]*?))?\/?$/.exec(location.pathname);
+  // A site can have extra pages (a.pages), each at its own address under the site: BASEP is where the site's home lives
+  // (null when this view has no addresses of its own) and PG is the page being shown ('' = home).
+  var BASEP = OWN ? '' : saved ? '/preview/' + saved[1] : EDIT ? '/portal/edit' : null;
+  var PG = OWN ? location.pathname.replace(/^\/+|\/+$/g, '') : saved ? saved[2] || '' : EDIT ? EDIT[1] || '' : '';
+  var KEEPQ = EDIT ? location.search : '';
+  window.wcGo = function (path) { PG = path || ''; if (BASEP !== null) history.replaceState(null, '', (BASEP + (PG ? '/' + PG : '') || '/') + KEEPQ); };
+  // Drop-down menus, the phone menu and tabs work by these clicks, on every page.
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target : e.target.parentNode, dd = t.closest('.dd-b'), tab = t.closest('.tab-b'), root = document.documentElement;
+    [].forEach.call(document.querySelectorAll('.dd.open'), function (d) { if (!dd || d !== dd.parentNode) { d.classList.remove('open'); d.firstChild.setAttribute('aria-expanded', 'false'); } });
+    if (dd) { var o = dd.parentNode.classList.toggle('open'); dd.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+    if (t.closest('.mnav')) root.classList.toggle('mnav-on'); else if (!t.closest('.mpanel') || t.closest('.mpanel a')) root.classList.remove('mnav-on');
+    if (tab) { var box = tab.closest('.tabs'), i = Number(tab.getAttribute('data-i'));
+      [].forEach.call(box.querySelectorAll('.tab-b'), function (b, j) { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
+      [].forEach.call(box.querySelectorAll('.tab-p'), function (b, j) { b.hidden = j !== i; }); }
+  });
+  function loadEditor() { if (document.getElementById('wc-editor-js')) return; var sc = document.createElement('script'); sc.id = 'wc-editor-js'; sc.src = '/editor.js?v=2'; document.body.appendChild(sc); }
   if (EDIT) {
     document.getElementById('intro').remove();
     var auth = null;
@@ -240,7 +284,7 @@
     fetch('/api/portal/get', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ full: true }, auth)) }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j.site) { location.replace('/portal'); return; }
       window.WC_SITE = { id: '', domain: j.domain, live: false, view: true };
-      window.WC_EDIT = { mode: 'portal', auth: auth, demo: !!j.demo, site: j.site, name: j.name };
+      window.WC_EDIT = { mode: 'portal', auth: auth, demo: !!j.demo, site: j.site, name: j.name, backupAt: j.backupAt || '' };
       render(j.site.answers, j.site.copy, '', j.site.contact || {});
       loadEditor();
     }, function () { location.replace('/portal'); });
