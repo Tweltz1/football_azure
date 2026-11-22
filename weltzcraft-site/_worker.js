@@ -453,8 +453,8 @@ const emailOk = (e) => /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(e || '');
 // ---- The page editor's blocks -------------------------------------------------------------------------------
 // In the page editor (editor.js) an owner adds their own blocks, drags sections into a new order and hides ones
 // they don't want. That is stored on the answers: blocks (below), order (section keys) and hide (section keys).
-const BLOCK_TYPES = ['text', 'image', 'split', 'button', 'boxes', 'video'];
-const BLOCK_ACTS = ['call', 'email', 'book', 'order', 'message', 'directions', 'link'];
+const BLOCK_TYPES = ['text', 'image', 'split', 'button', 'boxes', 'tabs', 'video'];
+const BLOCK_ACTS = ['call', 'email', 'book', 'order', 'message', 'directions', 'link', 'page'];
 const SECTION_KEYS = ['about', 'why', 'menu', 'steps', 'order', 'book', 'gallery', 'reviews', 'faq', 'areas', 'extra', 'ask', 'visit'];
 /** A library photo {u, by, lic, page, src} with a license that allows business use; own uploads are checked by the portal. */
 function libraryPhoto(o) {
@@ -474,18 +474,40 @@ function blocksOf(v, okPhoto) {
     while (!id || ids.has(id)) id = hex(crypto.getRandomValues(new Uint8Array(4)));
     const o = { id, type: b.type }, h = oneLine(b.h, 80), text = clean(b.p, 900).replace(/\s+/g, ' '), photo = b.photo ? (okPhoto || libraryPhoto)(b.photo) : null;
     if (h) o.h = h;
-    if (text && b.type !== 'image' && b.type !== 'boxes' && b.type !== 'video') o.p = text;
+    if (text && !['image', 'boxes', 'tabs', 'video'].includes(b.type)) o.p = text;
     if (['text', 'split', 'button'].includes(b.type)) {
       const label = oneLine(b.label, 30), act = BLOCK_ACTS.includes(b.act) ? b.act : '';
       const url = act === 'link' ? linkUrl(b.url) : null;
-      if (label && act && (act !== 'link' || url)) { o.label = label; o.act = act; if (url) o.url = url.toString().slice(0, 300); }
+      const pg = act === 'page' && PAGE_PATH.test(b.pg || '') ? b.pg : '';
+      if (label && act && (act !== 'link' || url) && (act !== 'page' || pg)) { o.label = label; o.act = act; if (url) o.url = url.toString().slice(0, 300); if (pg) o.pg = pg; }
     }
     if (b.type === 'image' || b.type === 'split') { if (photo) o.photo = photo; const cap = oneLine(b.cap, 120); if (cap && b.type === 'image') o.cap = cap; if (b.flip) o.flip = 1; }
     if (b.type === 'boxes') o.items = pairs(b.items, 4, 40, 200);
+    if (b.type === 'tabs') o.items = pairs(b.items, 5, 30, 900);
     if (b.type === 'video') o.yt = youtubeId(b.yt || b.url);
     // A block with nothing to show is dropped.
-    if ((b.type === 'text' && !o.h && !o.p) || (b.type === 'image' && !o.photo) || (b.type === 'split' && !o.h && !o.p && !o.photo) || (b.type === 'button' && !o.label) || (b.type === 'boxes' && !o.items.length) || (b.type === 'video' && !o.yt)) continue;
+    if ((b.type === 'text' && !o.h && !o.p) || (b.type === 'image' && !o.photo) || (b.type === 'split' && !o.h && !o.p && !o.photo) || (b.type === 'button' && !o.label) || ((b.type === 'boxes' || b.type === 'tabs') && !o.items.length) || (b.type === 'video' && !o.yt)) continue;
     ids.add(id); out.push(o);
+  }
+  return out;
+}
+// Extra pages of a site, each at its own address (yoursite.com/catering, or two levels: /services/lawn). A page has a
+// title, its own blocks, whether it shows in the top menu, and an optional drop-down it sits under (group).
+const PAGE_PATH = /^[a-z0-9][a-z0-9-]{0,29}(\/[a-z0-9][a-z0-9-]{0,29})?$/;
+const PAGE_RESERVED = /^(api|img|portal|preview|live|sample|build|merch|index|favicon|robots|sitemap|features|editor|hit)(\.|\/|$)/;
+function pagesOf(v, okPhoto) {
+  const out = [], seen = new Set();
+  for (const pg of (Array.isArray(v) ? v : []).slice(0, 10)) {
+    if (!pg || typeof pg !== 'object') continue;
+    const title = oneLine(pg.title, 40);
+    let path = String(pg.path || '').toLowerCase().replace(/^\/+|\/+$/g, '');
+    if (!PAGE_PATH.test(path)) path = slugify(title).slice(0, 30);
+    if (!title || !PAGE_PATH.test(path) || PAGE_RESERVED.test(path) || seen.has(path)) continue;
+    seen.add(path);
+    const o = { path, title, blocks: blocksOf(pg.blocks, okPhoto) }, group = oneLine(pg.group, 24);
+    if (pg.menu === 0 || pg.menu === false) o.menu = 0;
+    if (group) o.group = group;
+    out.push(o);
   }
   return out;
 }
@@ -515,6 +537,8 @@ function previewAnswers(b, okPhoto) {
   if (blocks.length) a.blocks = blocks;
   if (order.length) a.order = order;
   if (hide.length) a.hide = hide;
+  const pages = pagesOf(b.pages, okPhoto);
+  if (pages.length) a.pages = pages;
   return a;
 }
 
@@ -829,26 +853,39 @@ async function previewEdit(slug, request, env) {
   if (!/^[a-z0-9-]{3,60}$/.test(slug)) return json(404, { error: 'Not found' });
   const origin = request.headers.get('Origin');
   if (origin && new URL(origin).host !== new URL(request.url).host) return json(403, { error: 'Wrong site' });
-  if (Number(request.headers.get('Content-Length') || 0) > 40000) return json(413, { error: 'Too long' });
+  if (Number(request.headers.get('Content-Length') || 0) > 90000) return json(413, { error: 'Too long' });
   let b;
   try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
   if (!b || typeof b !== 'object' || !/^[0-9a-f]{32}$/.test(b.key || '')) return json(403, { error: 'Only the person who made this preview can change it.' });
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return json(503, { error: 'Not set up' });
   const hash = await sha('wc-edit:' + b.key);
-  const r = await sb(env, 'weltzcraft_previews?select=answers&slug=eq.' + slug + '&edit_hash=eq.' + hash + '&expires_at=gt.' + new Date().toISOString());
+  let r = await sb(env, 'weltzcraft_previews?select=answers,backup&slug=eq.' + slug + '&edit_hash=eq.' + hash + '&expires_at=gt.' + new Date().toISOString());
+  if (!r.ok) r = await sb(env, 'weltzcraft_previews?select=answers&slug=eq.' + slug + '&edit_hash=eq.' + hash + '&expires_at=gt.' + new Date().toISOString());   // before the backup column exists
   const list = r.ok ? await r.json() : [];
   if (!list.length) return json(403, { error: 'Only the person who made this preview can change it.' });
-  const old = list[0].answers || {};
+  const old = list[0].answers || {}, bk = list[0].backup || null;
+  const own = 'weltzcraft_previews?slug=eq.' + slug + '&edit_hash=eq.' + hash, min = { method: 'PATCH', headers: { Prefer: 'return=minimal' } };
+  // A backup is a copy of the page the maker can always go back to. The first change keeps the original automatically.
+  if (b.backup === 'save') {
+    const u = await sb(env, own, { ...min, body: JSON.stringify({ backup: { answers: old, at: new Date().toISOString() } }) });
+    return u.ok ? json(200, { ok: true, answers: old, backupAt: new Date().toISOString() }) : json(502, { error: 'Could not save the backup. Try again in a minute.' });
+  }
+  if (b.backup === 'restore') {
+    if (!bk || !bk.answers) return json(400, { error: 'There is no backup yet.' });
+    const u = await sb(env, own, { ...min, body: JSON.stringify({ answers: bk.answers }) });
+    return u.ok ? json(200, { ok: true, answers: bk.answers, backupAt: bk.at }) : json(502, { error: 'Could not go back. Try again in a minute.' });
+  }
   const next = previewAnswers({ ...old, ...(b.s !== undefined ? { s: b.s } : {}), ...(b.c !== undefined ? { c: b.c } : {}),
     ...(b.tag !== undefined ? { tag: b.tag } : {}), ...(b.cta !== undefined ? { cta: b.cta } : {}), ...(b.links !== undefined ? { links: b.links } : {}),
-    ...(Array.isArray(b.blocks) ? { blocks: b.blocks } : {}), ...(Array.isArray(b.order) ? { order: b.order } : {}), ...(Array.isArray(b.hide) ? { hide: b.hide } : {}),
+    ...(Array.isArray(b.blocks) ? { blocks: b.blocks } : {}), ...(Array.isArray(b.order) ? { order: b.order } : {}), ...(Array.isArray(b.hide) ? { hide: b.hide } : {}), ...(Array.isArray(b.pages) ? { pages: b.pages } : {}),
     d: { ...(old.d || {}), ...(b.d && typeof b.d === 'object' ? b.d : {}) }, f: { ...(old.f || {}), ...(b.f && typeof b.f === 'object' ? b.f : {}) } });
   // previewAnswers defaults an empty section list; an owner who switched every extra section off means it.
   if (b.s !== undefined && !next.s) next.s = old.s;
   for (const k of ['src', 'state']) if (old[k]) next[k] = old[k];
-  const u = await sb(env, 'weltzcraft_previews?slug=eq.' + slug + '&edit_hash=eq.' + hash, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ answers: next }) });
+  let u = await sb(env, own, { ...min, body: JSON.stringify(bk ? { answers: next } : { answers: next, backup: { answers: old, at: new Date().toISOString(), auto: true } }) });
+  if (!u.ok && !bk) u = await sb(env, own, { ...min, body: JSON.stringify({ answers: next }) });
   if (!u.ok) return json(502, { error: 'Could not save' });
-  return json(200, { ok: true, answers: next });
+  return json(200, { ok: true, answers: next, backupAt: bk ? bk.at : new Date().toISOString() });
 }
 
 // ---- Built-in site features: online booking and contact / quote forms -------------------------------------
@@ -1388,7 +1425,8 @@ async function customerSite(request, env, url, ctx) {
   if (url.pathname === '/img/x') return photoProxy(request, url, ctx, env).catch(() => new Response('Not found', { status: 404 }));
   if (/^\/(sample\.js|features\.js|favicon\.svg|img\/sample\/[a-z0-9.-]+)$/.test(url.pathname)) return env.ASSETS.fetch(request);
   if (url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /\n', { headers: { 'Content-Type': 'text/plain' } });
-  if (url.pathname !== '/') return Response.redirect(url.origin + '/', 302);
+  // The home page, or one of the site's own extra pages (sample.js shows the home page for an address it doesn't know).
+  if (url.pathname !== '/' && !PAGE_PATH.test(url.pathname.replace(/^\/+|\/+$/g, ''))) return Response.redirect(url.origin + '/', 302);
   const row = await liveRow(env, 'status=eq.live&domain=eq.' + url.hostname);
   if (!row) return new Response('This site is being set up. Check back soon.', { status: 404, headers: { 'Content-Type': 'text/plain' } });
   const page = await env.ASSETS.fetch(new Request(new URL('/sample', url), request));
@@ -1451,7 +1489,7 @@ function portalView(site) {
     aboutTitle: c.aboutTitle || '', eyebrow: c.eyebrow || '', listSub: c.listSub || '', band: c.band || '',
     facts: (c.facts || []).map((r) => [r[0] || '', r[1] || '']), why: (c.why || []).map((r) => [r[0] || '', r[1] || '', r[2] || '']), steps: (c.steps || []).map((r) => [r[0] || '', r[1] || '']),
     areas: (c.areas || []).join(', '), reviews: (c.liveReviews || []).map((r) => [r[0] || '', r[1] || '']), extra: (c.extra || []).map((r) => [r[0] || '', r[1] || '']),
-    blocks: a.blocks || [], order: a.order || [], hide: a.hide || [],
+    blocks: a.blocks || [], order: a.order || [], hide: a.hide || [], pages: a.pages || [],
     photos: c.photos ? { hero: c.photos.hero || null, about: c.photos.about || null, gal: c.photos.gal || [] } : { hero: null, about: null, gal: [] } };
 }
 /** One photo {u, by, lic, page, src} the site may show: a free-to-use library photo, or one this owner uploaded. */
@@ -1469,7 +1507,7 @@ function portalApply(site, p, env, id) {
   const old = site.answers || {}, copy = { ...(site.copy || {}) }, contact = { ...(site.contact || {}) };
   const has = (k) => p[k] !== undefined && p[k] !== null;
   const answers = previewAnswers({ ...old, ...(has('s') ? { s: p.s } : {}), ...(has('c') ? { c: String(p.c).replace(/^#/, '') } : {}), ...(has('tag') ? { tag: p.tag } : {}), ...(has('cta') ? { cta: p.cta } : {}),
-    ...(has('links') ? { links: p.links } : {}), ...(Array.isArray(p.blocks) ? { blocks: p.blocks } : {}), ...(Array.isArray(p.order) ? { order: p.order } : {}), ...(Array.isArray(p.hide) ? { hide: p.hide } : {}),
+    ...(has('links') ? { links: p.links } : {}), ...(Array.isArray(p.blocks) ? { blocks: p.blocks } : {}), ...(Array.isArray(p.order) ? { order: p.order } : {}), ...(Array.isArray(p.hide) ? { hide: p.hide } : {}), ...(Array.isArray(p.pages) ? { pages: p.pages } : {}),
     d: { ...(old.d || {}), ...(p.d && typeof p.d === 'object' ? p.d : {}) }, f: { ...(old.f || {}), ...(p.f && typeof p.f === 'object' ? p.f : {}) } }, (o) => portalPhoto(env, id, o));
   if (has('s') && !String(p.s).trim()) answers.s = old.s;
   for (const k of ['src', 'state']) if (old[k]) answers[k] = old[k];
@@ -1502,7 +1540,7 @@ function portalApply(site, p, env, id) {
   if (has('hours')) contact.hours = clean(p.hours, 200).replace(/\s+/g, ' ').trim();
   return { ...site, answers, copy, contact };
 }
-const PORTAL_LABELS = { blocks: 'Your added blocks', order: 'Order of sections', hide: 'Hidden sections', aboutTitle: 'About heading', eyebrow: 'Line above the name', listSub: 'List heading', band: 'Closing line', facts: 'Quick facts', why: 'Why choose us', steps: 'How it works', areas: 'Areas served', reviews: 'Customer reviews', extra: 'Extra sections', photos: 'Photos', tag: 'Headline', about: 'About text', notice: 'Notice banner', cta: 'Main button', phone: 'Phone', email: 'Email', address: 'Address', hours: 'Hours', listTitle: 'List title', items: 'Menu / price list', faq: 'Questions and answers', c: 'Color', s: 'Sections shown', d: 'Look', f: 'Booking, ordering and form settings', links: 'Links' };
+const PORTAL_LABELS = { pages: 'Pages', blocks: 'Your added blocks', order: 'Order of sections', hide: 'Hidden sections', aboutTitle: 'About heading', eyebrow: 'Line above the name', listSub: 'List heading', band: 'Closing line', facts: 'Quick facts', why: 'Why choose us', steps: 'How it works', areas: 'Areas served', reviews: 'Customer reviews', extra: 'Extra sections', photos: 'Photos', tag: 'Headline', about: 'About text', notice: 'Notice banner', cta: 'Main button', phone: 'Phone', email: 'Email', address: 'Address', hours: 'Hours', listTitle: 'List title', items: 'Menu / price list', faq: 'Questions and answers', c: 'Color', s: 'Sections shown', d: 'Look', f: 'Booking, ordering and form settings', links: 'Links' };
 /** [{label, from, to}] for what differs between two sites, in plain words for the owner. */
 function portalDiff(before, after) {
   const x = portalView(before), y = portalView(after), out = [];
@@ -1511,6 +1549,7 @@ function portalDiff(before, after) {
     if (JSON.stringify(x[k]) === JSON.stringify(y[k])) continue;
     if (k === 'order') { out.push({ label: PORTAL_LABELS[k], from: '', to: 'rearranged' }); continue; }
     if (k === 'hide') { out.push({ label: PORTAL_LABELS[k], from: '', to: y.hide.join(', ') || 'none' }); continue; }
+    if (k === 'pages') { out.push({ label: 'Pages', from: '', to: y.pages.map((x) => x.title).join(', ') || 'none' }); continue; }
     if (k === 'blocks') { out.push({ label: PORTAL_LABELS[k], from: '', to: y.blocks.length + (y.blocks.length === 1 ? ' block' : ' blocks') }); continue; }
     if (k === 'photos') { const n = (v) => [v.hero, v.about].filter(Boolean).length + v.gal.length; out.push({ label: 'Photos', from: '', to: n(y.photos) ? n(y.photos) + (n(y.photos) === 1 ? ' photo' : ' photos') + ' chosen' : 'back to the starter photos' }); continue; }
     if (['items', 'faq', 'why', 'steps', 'reviews', 'extra', 'facts'].includes(k)) {
@@ -1536,7 +1575,9 @@ function portalDiff(before, after) {
 }
 async function portalSave(env, row, site) {
   const history = [row.site, ...(Array.isArray(row.site_history) ? row.site_history : [])].slice(0, PORTAL_HISTORY);
-  let u = await liveUpdate(env, row.id, { site, site_history: history });
+  // The first change ever keeps the original site as the backup, so there is always something to go back to.
+  let u = row.site_backup ? { ok: false } : await liveUpdate(env, row.id, { site, site_history: history, site_backup: { site: row.site, at: new Date().toISOString(), auto: true } });
+  if (!u.ok) u = await liveUpdate(env, row.id, { site, site_history: history });
   if (!u.ok) u = await liveUpdate(env, row.id, { site });   // before the site_history column exists
   return u.ok;
 }
@@ -1572,7 +1613,7 @@ async function portalRequests(env, id) {
 async function portalState(env, row, demo) {
   const n = (row.site.answers && row.site.answers.n) || row.domain;
   return { ok: true, demo, name: n, domain: row.domain, status: row.status, step: LIVE_STEPS[row.status] || row.status, care: !!row.care, view: portalView(row.site),
-    canUndo: !demo && Array.isArray(row.site_history) && row.site_history.length > 0, billing: !demo && !!row.stripe_customer, requests: demo ? [] : await portalRequests(env, row.id) };
+    canUndo: !demo && Array.isArray(row.site_history) && row.site_history.length > 0, backupAt: (row.site_backup && row.site_backup.at) || '', billing: !demo && !!row.stripe_customer, requests: demo ? [] : await portalRequests(env, row.id) };
 }
 
 /** The owner's words -> a set of edits, using the same fields the portal form has. Nothing is saved here. */
@@ -1600,7 +1641,7 @@ async function portalAsk(env, row, text) {
   const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 4000, thinkingConfig: { thinkingBudget: 0 } } }, 30000));
   if (!g) return null;
   const patch = g.can === true && g.patch && typeof g.patch === 'object' ? g.patch : {};
-  for (const k of ['photos', 'blocks', 'order', 'hide']) delete patch[k];
+  for (const k of ['photos', 'blocks', 'order', 'hide', 'pages']) delete patch[k];
   const changes = portalDiff(row.site, portalApply(row.site, patch, env, row.id));
   return { can: changes.length > 0, patch: changes.length ? patch : {}, changes, reply: oneLine(g.reply, 300) };
 }
@@ -1631,7 +1672,7 @@ async function portalApi(request, env, url) {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return json(503, { error: 'Not set up' });
   const act = url.pathname.slice(12);
   if (act === 'upload') return portalUpload(request, env, url);
-  if (Number(request.headers.get('Content-Length') || 0) > 40000) return json(413, { error: 'Too long' });
+  if (Number(request.headers.get('Content-Length') || 0) > 90000) return json(413, { error: 'Too long' });
   let b;
   try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
   if (!b || typeof b !== 'object') return json(400, { error: 'Bad request' });
@@ -1651,7 +1692,21 @@ async function portalApi(request, env, url) {
     const changes = portalDiff(row.site, site);
     if (!demo && changes.length && !(await portalSave(env, row, site))) return json(502, { error: 'Could not save. Try again in a minute.' });
     if (!demo && changes.length) await portalLog(env, row.id, 'portal_edit', await portalIp(request), { changes: changes.map((c) => c.label), ai: b.ai === true });
-    return json(200, { ...(await portalState(env, { ...row, site, site_history: changes.length ? [row.site] : row.site_history }, demo)), changes, ...(b.full ? { site } : {}) });
+    return json(200, { ...(await portalState(env, { ...row, site, site_history: changes.length ? [row.site] : row.site_history, site_backup: row.site_backup || (changes.length && !demo ? { at: new Date().toISOString() } : null) }, demo)), changes, ...(b.full ? { site } : {}) });
+  }
+  if (act === 'backup') {
+    if (demo) return json(200, { ...(await portalState(env, row, demo)), backupAt: new Date().toISOString(), ...(b.full ? { site: row.site } : {}) });
+    const bk = { site: row.site, at: new Date().toISOString() };
+    const u = await liveUpdate(env, row.id, { site_backup: bk });
+    if (!u.ok) return json(502, { error: 'Could not save the backup. Try again in a minute.' });
+    return json(200, { ...(await portalState(env, { ...row, site_backup: bk }, demo)), ...(b.full ? { site: row.site } : {}) });
+  }
+  if (act === 'restore') {
+    const bk = row.site_backup;
+    if (demo || !bk || !bk.site) return json(400, { error: 'There is no backup yet.' });
+    if (!(await portalSave(env, row, bk.site))) return json(502, { error: 'Could not go back. Try again in a minute.' });
+    await portalLog(env, row.id, 'portal_edit', await portalIp(request), { changes: ['Went back to the backup'] });
+    return json(200, { ...(await portalState(env, { ...row, site: bk.site, site_history: [row.site] }, demo)), ...(b.full ? { site: bk.site } : {}) });
   }
   if (act === 'undo') {
     const h = Array.isArray(row.site_history) ? row.site_history : [];
@@ -1792,7 +1847,7 @@ export default {
     if (url.pathname.startsWith('/api/portal/')) {
       try { return await portalApi(request, env, url); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
-    if (url.pathname === '/portal/edit' || url.pathname === '/portal/edit/') {
+    if (/^\/portal\/edit(\/[a-z0-9-]{1,30}){0,2}\/?$/.test(url.pathname)) {
       const page = await env.ASSETS.fetch(new Request(new URL('/sample', url), request));
       return new Response(page.body, page);
     }
@@ -1803,7 +1858,7 @@ export default {
       try { return await photoProxy(request, url, ctx, env); } catch (e) { return new Response('Not found', { status: 404 }); }
     }
     // A saved preview is the sample page; sample.js reads the slug from the address and loads it.
-    if (/^\/preview\/[a-z0-9-]{3,60}\/?$/.test(url.pathname)) {
+    if (/^\/preview\/[a-z0-9-]{3,60}(\/[a-z0-9-]{1,30}){0,2}\/?$/.test(url.pathname)) {
       const page = await env.ASSETS.fetch(new Request(new URL('/sample', url), request));
       return new Response(page.body, page);
     }
