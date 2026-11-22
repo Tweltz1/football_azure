@@ -514,6 +514,14 @@ function pagesOf(v, okPhoto) {
 const orderOf = (v, blocks) => [...new Set((Array.isArray(v) ? v : []).filter((k) => SECTION_KEYS.includes(k) || (typeof k === 'string' && k.startsWith('b:') && blocks.some((b) => 'b:' + b.id === k))))].slice(0, 40);
 const hideOf = (v) => [...new Set((Array.isArray(v) ? v : []).filter((k) => SECTION_KEYS.includes(k) && k !== 'about' && k !== 'visit'))];
 
+/** The page editor's "computer / phone view" shows the page in a frame on weltzcraft.com itself (?wcview=1); nothing else may frame it. */
+function viewFrame(url, res) {
+  if (url.searchParams.get('wcview') !== '1') return res;
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
+  return res;
+}
+
 /** Answers from the builder, cleaned. Only these ever reach Gemini or the page. */
 function previewAnswers(b, okPhoto) {
   const kind = PREVIEW_KINDS.includes(b.t) ? b.t : 'other';
@@ -1788,7 +1796,7 @@ async function portalDone(request, url, env) {
 // these POSTs per event in Cloudflare's analytics. The event is in the path because the free Cloudflare plan
 // can't group requests by query string. The older /api/hit?e=<event> still works for cached copies of hit.js.
 // Unknown event names get 400 so they don't pollute the count.
-const HIT_EVENTS = new Set(['start', 'brief_sent', 'build_open', 'build_done', 'preview_saved', 'sample_mine', 'live_open', 'live_checkout', 'merch_open', 'merch_checkout', 'appstore', 'app_page', 'app_visit', 'fb_import', 'customize', 'book_try', 'form_try', 'portal_open', 'portal_save', 'portal_ask', 'portal_request', 'editor_open', 'editor_save']);
+const HIT_EVENTS = new Set(['start', 'brief_sent', 'build_open', 'build_done', 'preview_saved', 'sample_mine', 'live_open', 'live_checkout', 'merch_open', 'merch_checkout', 'appstore', 'app_page', 'app_visit', 'fb_import', 'customize', 'book_try', 'form_try', 'portal_open', 'portal_save', 'portal_ask', 'portal_request', 'editor_open', 'editor_save', 'editor_view']);
 function hit(request) {
   if (request.method !== 'POST') return json(405, { error: 'POST only' });
   const url = new URL(request.url);
@@ -1849,7 +1857,7 @@ export default {
     }
     if (/^\/portal\/edit(\/[a-z0-9-]{1,30}){0,2}\/?$/.test(url.pathname)) {
       const page = await env.ASSETS.fetch(new Request(new URL('/sample', url), request));
-      return new Response(page.body, page);
+      return viewFrame(url, new Response(page.body, page));
     }
     if (url.pathname === '/portal/done') {
       try { return await portalDone(request, url, env); } catch (e) { return sitePage('Something went wrong', 'Try the link again in a minute.'); }
@@ -1860,7 +1868,7 @@ export default {
     // A saved preview is the sample page; sample.js reads the slug from the address and loads it.
     if (/^\/preview\/[a-z0-9-]{3,60}(\/[a-z0-9-]{1,30}){0,2}\/?$/.test(url.pathname)) {
       const page = await env.ASSETS.fetch(new Request(new URL('/sample', url), request));
-      return new Response(page.body, page);
+      return viewFrame(url, new Response(page.body, page));
     }
     const res = await env.ASSETS.fetch(request);
     // Curbsy's iPhone app shows its Terms and Privacy in an in-app panel (an iframe), so only those two pages
