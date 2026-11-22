@@ -378,7 +378,7 @@
       "key": "wild",
       "name": "Wild W Dad Hat",
       "type": "hat",
-      "price": 32,
+      "price": 35,
       "match": "Yupoong 6245CM",
       "placements": [
         "embroidery_front_large",
@@ -625,7 +625,7 @@
       "key": "wildcord",
       "name": "Wild W Corduroy Cap",
       "type": "hat",
-      "price": 34,
+      "price": 35,
       "match": "Big Accessories BA703",
       "placements": [
         "embroidery_front"
@@ -709,7 +709,7 @@
       "key": "woods",
       "name": "Northwoods Dad Hat",
       "type": "hat",
-      "price": 28,
+      "price": 31,
       "match": "Yupoong 6245CM",
       "placements": [
         "embroidery_front_large",
@@ -940,7 +940,7 @@
       "key": "woodscord",
       "name": "Northwoods Corduroy Cap",
       "type": "hat",
-      "price": 30,
+      "price": 33,
       "match": "Big Accessories BA703",
       "placements": [
         "embroidery_front"
@@ -1013,7 +1013,7 @@
       "key": "woodstwo",
       "name": "Northwoods Washed Cap",
       "type": "hat",
-      "price": 30,
+      "price": 33,
       "match": "Otto Cap 18-772",
       "placements": [
         "embroidery_front"
@@ -1381,7 +1381,7 @@
       "key": "script",
       "name": "Script Dad Hat",
       "type": "hat",
-      "price": 26,
+      "price": 29,
       "match": "Yupoong 6245CM",
       "placements": [
         "embroidery_front_large",
@@ -1577,7 +1577,7 @@
       "key": "rope",
       "name": "Rope Cap",
       "type": "hat",
-      "price": 30,
+      "price": 33,
       "match": "Comfort Colors CCRC0",
       "placements": [
         "embroidery_front"
@@ -1674,7 +1674,7 @@
       "key": "cord",
       "name": "Corduroy Cap",
       "type": "hat",
-      "price": 30,
+      "price": 33,
       "match": "Big Accessories BA703",
       "placements": [
         "embroidery_front"
@@ -1843,7 +1843,7 @@
       "key": "pixelhat",
       "name": "Pixel Dad Hat",
       "type": "hat",
-      "price": 26,
+      "price": 29,
       "match": "Yupoong 6245CM",
       "placements": [
         "embroidery_front_large",
@@ -1949,7 +1949,7 @@
       "key": "hat",
       "name": "Dad Hat",
       "type": "hat",
-      "price": 26,
+      "price": 29,
       "match": "Yupoong 6245CM",
       "placements": [
         "embroidery_front_large",
