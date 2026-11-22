@@ -7,9 +7,10 @@
 <meta name="description" content="How weltzcraft.com and the merch store handle your information.">
 <link rel="canonical" href="https://weltzcraft.com/privacy">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){var t;try{t=localStorage.getItem("wc-theme")}catch(e){}if(!t){var m=/(?:^|; )wc-theme=(dark|light)/.exec(document.cookie);t=m&&m[1]}if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)})()</script>
 <style>
 :root{--bg:#f6f1e7;--card:#fffdf8;--fg:#1d1b16;--muted:#625d52;--line:#e4dccb;--accent:#b4441c}
-@media (prefers-color-scheme:dark){:root{--bg:#151410;--card:#1e1c17;--fg:#f1ece1;--muted:#a8a193;--line:#33302a;--accent:#f08a5d}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151410;--card:#1e1c17;--fg:#f1ece1;--muted:#a8a193;--line:#33302a;--accent:#f08a5d}}:root[data-theme="dark"]{--bg:#151410;--card:#1e1c17;--fg:#f1ece1;--muted:#a8a193;--line:#33302a;--accent:#f08a5d}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:720px;margin:0 auto;padding:28px 16px 56px}article{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 24px}
 h1{font-size:28px;line-height:1.2;margin:0 0 6px}h2{font-size:18px;margin:26px 0 8px}p,li{margin:0 0 10px}ul{padding-left:20px}a{color:var(--accent)}.muted{color:var(--muted);font-size:14px}
@@ -20,16 +21,23 @@ h1{font-size:28px;line-height:1.2;margin:0 0 6px}h2{font-size:18px;margin:26px 0
 <a class="muted" href="/">&larr; Weltzcraft Studios</a>
 <article>
 <h1>Weltzcraft Studios Privacy Policy</h1>
-<p class="muted">weltzcraft.com and the Weltzcraft merch store · Last updated November 21, 2026</p>
+<p class="muted">weltzcraft.com and the Weltzcraft merch store · Last updated November 22, 2026</p>
 <p>This page covers the weltzcraft.com website, the project form and the merch store. Each Weltzcraft app has its own privacy policy, linked at the bottom of this page.</p>
 <h2>Browsing the site</h2>
 <ul>
 <li>The site doesn't use advertising or tracking cookies.</li>
 <li>When you click certain buttons (like Start a project, Merch or an App Store link) the page sends an anonymous click count with no ID, cookie or personal details. Cloudflare, which hosts the site, keeps standard request logs.</li>
-<li>The Build a sample page runs in your browser. What you type there isn't sent to us.</li>
+<li>The free sample site builder sends what you type (your business details, and a Facebook page or business name if you give one) to our server to build your preview. We use Google's Gemini service to write the words and choose photos, and may look up public details about the business online. We keep the preview so your link works; the link stops working after 30 days.</li>
 </ul>
 <h2>The project form</h2>
 <p>If you send a project brief, we get your name, email address, company (if you add one) and what you wrote. It is emailed to sales@weltzcraft.com through Resend so we can reply. We use it only to talk with you about your project and don't add you to a mailing list.</p>
+<h2>Buying a website</h2>
+<ul>
+<li><b>Stripe</b> takes your payment on its own secure checkout page and collects your name, email, phone number, billing address and card. We never see your full card number.</li>
+<li>Your name, email, phone and address are used to register your web address in your name through Cloudflare Registrar, with private WHOIS, and we keep them so we can run your site and contact you about it.</li>
+<li>The customer portal signs you in with a link sent to your email. Photos you upload and changes you make are stored so your site can show them.</li>
+<li>When a visitor books a time, places an order or sends a message on a website we built, those details are emailed to that business and kept so the business can see them.</li>
+</ul>
 <h2>Buying merch</h2>
 <ul>
 <li><b>Stripe</b> takes your payment on its own secure checkout page and collects your name, email, phone number, shipping address and card. We never see your full card number. See <a href="https://stripe.com/privacy" rel="noopener">Stripe's privacy policy</a>.</li>
