@@ -450,8 +450,50 @@ function linksOf(v) {
 const pairs = (v, n, a, b) => (Array.isArray(v) ? v : []).slice(0, n).map((r) => (Array.isArray(r) ? [oneLine(r[0], a), oneLine(r[1], b)] : null)).filter((r) => r && r[0] && r[1]);
 const emailOk = (e) => /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(e || '');
 
+// ---- The page editor's blocks -------------------------------------------------------------------------------
+// In the page editor (editor.js) an owner adds their own blocks, drags sections into a new order and hides ones
+// they don't want. That is stored on the answers: blocks (below), order (section keys) and hide (section keys).
+const BLOCK_TYPES = ['text', 'image', 'split', 'button', 'boxes', 'video'];
+const BLOCK_ACTS = ['call', 'email', 'book', 'order', 'message', 'directions', 'link'];
+const SECTION_KEYS = ['about', 'why', 'menu', 'steps', 'order', 'book', 'gallery', 'reviews', 'faq', 'areas', 'extra', 'ask', 'visit'];
+/** A library photo {u, by, lic, page, src} with a license that allows business use; own uploads are checked by the portal. */
+function libraryPhoto(o) {
+  if (!o || typeof o !== 'object' || typeof o.u !== 'string' || o.u.length > 600) return null;
+  let u; try { u = new URL(o.u); } catch (e) { return null; }
+  if (u.protocol !== 'https:' || !PHOTO_HOSTS.test(u.hostname) || !licOk(o.lic)) return null;
+  const page = typeof o.page === 'string' && /^https:\/\/(commons\.wikimedia\.org|www\.flickr\.com)\//.test(o.page) ? o.page.slice(0, 400) : '';
+  return { u: o.u, by: oneLine(o.by, 60), lic: oneLine(o.lic, 30), page, src: oneLine(o.src, 30) || 'Wikimedia Commons' };
+}
+const youtubeId = (v) => { const m = /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/.exec(String(v || '')) || /^([A-Za-z0-9_-]{11})$/.exec(String(v || '').trim()); return m ? m[1] : ''; };
+/** Up to 14 blocks, each cleaned to its own fields. okPhoto(o) says which photos this site may use. */
+function blocksOf(v, okPhoto) {
+  const out = [], ids = new Set();
+  for (const b of (Array.isArray(v) ? v : []).slice(0, 14)) {
+    if (!b || typeof b !== 'object' || !BLOCK_TYPES.includes(b.type)) continue;
+    let id = /^[a-z0-9]{4,10}$/.test(b.id || '') && !ids.has(b.id) ? b.id : '';
+    while (!id || ids.has(id)) id = hex(crypto.getRandomValues(new Uint8Array(4)));
+    const o = { id, type: b.type }, h = oneLine(b.h, 80), text = clean(b.p, 900).replace(/\s+/g, ' '), photo = b.photo ? (okPhoto || libraryPhoto)(b.photo) : null;
+    if (h) o.h = h;
+    if (text && b.type !== 'image' && b.type !== 'boxes' && b.type !== 'video') o.p = text;
+    if (['text', 'split', 'button'].includes(b.type)) {
+      const label = oneLine(b.label, 30), act = BLOCK_ACTS.includes(b.act) ? b.act : '';
+      const url = act === 'link' ? linkUrl(b.url) : null;
+      if (label && act && (act !== 'link' || url)) { o.label = label; o.act = act; if (url) o.url = url.toString().slice(0, 300); }
+    }
+    if (b.type === 'image' || b.type === 'split') { if (photo) o.photo = photo; const cap = oneLine(b.cap, 120); if (cap && b.type === 'image') o.cap = cap; if (b.flip) o.flip = 1; }
+    if (b.type === 'boxes') o.items = pairs(b.items, 4, 40, 200);
+    if (b.type === 'video') o.yt = youtubeId(b.yt || b.url);
+    // A block with nothing to show is dropped.
+    if ((b.type === 'text' && !o.h && !o.p) || (b.type === 'image' && !o.photo) || (b.type === 'split' && !o.h && !o.p && !o.photo) || (b.type === 'button' && !o.label) || (b.type === 'boxes' && !o.items.length) || (b.type === 'video' && !o.yt)) continue;
+    ids.add(id); out.push(o);
+  }
+  return out;
+}
+const orderOf = (v, blocks) => [...new Set((Array.isArray(v) ? v : []).filter((k) => SECTION_KEYS.includes(k) || (typeof k === 'string' && k.startsWith('b:') && blocks.some((b) => 'b:' + b.id === k))))].slice(0, 40);
+const hideOf = (v) => [...new Set((Array.isArray(v) ? v : []).filter((k) => SECTION_KEYS.includes(k) && k !== 'about' && k !== 'visit'))];
+
 /** Answers from the builder, cleaned. Only these ever reach Gemini or the page. */
-function previewAnswers(b) {
+function previewAnswers(b, okPhoto) {
   const kind = PREVIEW_KINDS.includes(b.t) ? b.t : 'other';
   const s = (Array.isArray(b.s) ? b.s : String(b.s || '').split(',')).filter((x) => PREVIEW_SECTIONS.includes(x));
   const a = {
@@ -469,6 +511,10 @@ function previewAnswers(b) {
   if (d) a.d = d;
   if (f) a.f = f;
   if (links) a.links = links;
+  const blocks = blocksOf(b.blocks, okPhoto), order = orderOf(b.order, blocks), hide = hideOf(b.hide);
+  if (blocks.length) a.blocks = blocks;
+  if (order.length) a.order = order;
+  if (hide.length) a.hide = hide;
   return a;
 }
 
@@ -783,7 +829,7 @@ async function previewEdit(slug, request, env) {
   if (!/^[a-z0-9-]{3,60}$/.test(slug)) return json(404, { error: 'Not found' });
   const origin = request.headers.get('Origin');
   if (origin && new URL(origin).host !== new URL(request.url).host) return json(403, { error: 'Wrong site' });
-  if (Number(request.headers.get('Content-Length') || 0) > 5000) return json(413, { error: 'Too long' });
+  if (Number(request.headers.get('Content-Length') || 0) > 40000) return json(413, { error: 'Too long' });
   let b;
   try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
   if (!b || typeof b !== 'object' || !/^[0-9a-f]{32}$/.test(b.key || '')) return json(403, { error: 'Only the person who made this preview can change it.' });
@@ -795,6 +841,7 @@ async function previewEdit(slug, request, env) {
   const old = list[0].answers || {};
   const next = previewAnswers({ ...old, ...(b.s !== undefined ? { s: b.s } : {}), ...(b.c !== undefined ? { c: b.c } : {}),
     ...(b.tag !== undefined ? { tag: b.tag } : {}), ...(b.cta !== undefined ? { cta: b.cta } : {}), ...(b.links !== undefined ? { links: b.links } : {}),
+    ...(Array.isArray(b.blocks) ? { blocks: b.blocks } : {}), ...(Array.isArray(b.order) ? { order: b.order } : {}), ...(Array.isArray(b.hide) ? { hide: b.hide } : {}),
     d: { ...(old.d || {}), ...(b.d && typeof b.d === 'object' ? b.d : {}) }, f: { ...(old.f || {}), ...(b.f && typeof b.f === 'object' ? b.f : {}) } });
   // previewAnswers defaults an empty section list; an owner who switched every extra section off means it.
   if (b.s !== undefined && !next.s) next.s = old.s;
@@ -1404,6 +1451,7 @@ function portalView(site) {
     aboutTitle: c.aboutTitle || '', eyebrow: c.eyebrow || '', listSub: c.listSub || '', band: c.band || '',
     facts: (c.facts || []).map((r) => [r[0] || '', r[1] || '']), why: (c.why || []).map((r) => [r[0] || '', r[1] || '', r[2] || '']), steps: (c.steps || []).map((r) => [r[0] || '', r[1] || '']),
     areas: (c.areas || []).join(', '), reviews: (c.liveReviews || []).map((r) => [r[0] || '', r[1] || '']), extra: (c.extra || []).map((r) => [r[0] || '', r[1] || '']),
+    blocks: a.blocks || [], order: a.order || [], hide: a.hide || [],
     photos: c.photos ? { hero: c.photos.hero || null, about: c.photos.about || null, gal: c.photos.gal || [] } : { hero: null, about: null, gal: [] } };
 }
 /** One photo {u, by, lic, page, src} the site may show: a free-to-use library photo, or one this owner uploaded. */
@@ -1421,7 +1469,8 @@ function portalApply(site, p, env, id) {
   const old = site.answers || {}, copy = { ...(site.copy || {}) }, contact = { ...(site.contact || {}) };
   const has = (k) => p[k] !== undefined && p[k] !== null;
   const answers = previewAnswers({ ...old, ...(has('s') ? { s: p.s } : {}), ...(has('c') ? { c: String(p.c).replace(/^#/, '') } : {}), ...(has('tag') ? { tag: p.tag } : {}), ...(has('cta') ? { cta: p.cta } : {}),
-    ...(has('links') ? { links: p.links } : {}), d: { ...(old.d || {}), ...(p.d && typeof p.d === 'object' ? p.d : {}) }, f: { ...(old.f || {}), ...(p.f && typeof p.f === 'object' ? p.f : {}) } });
+    ...(has('links') ? { links: p.links } : {}), ...(Array.isArray(p.blocks) ? { blocks: p.blocks } : {}), ...(Array.isArray(p.order) ? { order: p.order } : {}), ...(Array.isArray(p.hide) ? { hide: p.hide } : {}),
+    d: { ...(old.d || {}), ...(p.d && typeof p.d === 'object' ? p.d : {}) }, f: { ...(old.f || {}), ...(p.f && typeof p.f === 'object' ? p.f : {}) } }, (o) => portalPhoto(env, id, o));
   if (has('s') && !String(p.s).trim()) answers.s = old.s;
   for (const k of ['src', 'state']) if (old[k]) answers[k] = old[k];
   if (!answers.tag) answers.tag = old.tag || '';
@@ -1453,13 +1502,16 @@ function portalApply(site, p, env, id) {
   if (has('hours')) contact.hours = clean(p.hours, 200).replace(/\s+/g, ' ').trim();
   return { ...site, answers, copy, contact };
 }
-const PORTAL_LABELS = { aboutTitle: 'About heading', eyebrow: 'Line above the name', listSub: 'List heading', band: 'Closing line', facts: 'Quick facts', why: 'Why choose us', steps: 'How it works', areas: 'Areas served', reviews: 'Customer reviews', extra: 'Extra sections', photos: 'Photos', tag: 'Headline', about: 'About text', notice: 'Notice banner', cta: 'Main button', phone: 'Phone', email: 'Email', address: 'Address', hours: 'Hours', listTitle: 'List title', items: 'Menu / price list', faq: 'Questions and answers', c: 'Color', s: 'Sections shown', d: 'Look', f: 'Booking, ordering and form settings', links: 'Links' };
+const PORTAL_LABELS = { blocks: 'Your added blocks', order: 'Order of sections', hide: 'Hidden sections', aboutTitle: 'About heading', eyebrow: 'Line above the name', listSub: 'List heading', band: 'Closing line', facts: 'Quick facts', why: 'Why choose us', steps: 'How it works', areas: 'Areas served', reviews: 'Customer reviews', extra: 'Extra sections', photos: 'Photos', tag: 'Headline', about: 'About text', notice: 'Notice banner', cta: 'Main button', phone: 'Phone', email: 'Email', address: 'Address', hours: 'Hours', listTitle: 'List title', items: 'Menu / price list', faq: 'Questions and answers', c: 'Color', s: 'Sections shown', d: 'Look', f: 'Booking, ordering and form settings', links: 'Links' };
 /** [{label, from, to}] for what differs between two sites, in plain words for the owner. */
 function portalDiff(before, after) {
   const x = portalView(before), y = portalView(after), out = [];
   const show = (v) => (Array.isArray(v) ? v.length + (v.length === 1 ? ' entry' : ' entries') : v && typeof v === 'object' ? Object.entries(v).map(([k, w]) => k + ': ' + (Array.isArray(w) ? w.join(' ') : w)).join(', ') : String(v == null ? '' : v));
   for (const k of Object.keys(PORTAL_LABELS)) {
     if (JSON.stringify(x[k]) === JSON.stringify(y[k])) continue;
+    if (k === 'order') { out.push({ label: PORTAL_LABELS[k], from: '', to: 'rearranged' }); continue; }
+    if (k === 'hide') { out.push({ label: PORTAL_LABELS[k], from: '', to: y.hide.join(', ') || 'none' }); continue; }
+    if (k === 'blocks') { out.push({ label: PORTAL_LABELS[k], from: '', to: y.blocks.length + (y.blocks.length === 1 ? ' block' : ' blocks') }); continue; }
     if (k === 'photos') { const n = (v) => [v.hero, v.about].filter(Boolean).length + v.gal.length; out.push({ label: 'Photos', from: '', to: n(y.photos) ? n(y.photos) + (n(y.photos) === 1 ? ' photo' : ' photos') + ' chosen' : 'back to the starter photos' }); continue; }
     if (['items', 'faq', 'why', 'steps', 'reviews', 'extra', 'facts'].includes(k)) {
       if (k === 'why') { x[k] = x[k].map((r) => [r[1], r[2]]); y[k] = y[k].map((r) => [r[1], r[2]]); }
@@ -1548,7 +1600,7 @@ async function portalAsk(env, row, text) {
   const g = jsonIn(await gemini(env, { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 4000, thinkingConfig: { thinkingBudget: 0 } } }, 30000));
   if (!g) return null;
   const patch = g.can === true && g.patch && typeof g.patch === 'object' ? g.patch : {};
-  delete patch.photos;
+  for (const k of ['photos', 'blocks', 'order', 'hide']) delete patch[k];
   const changes = portalDiff(row.site, portalApply(row.site, patch, env, row.id));
   return { can: changes.length > 0, patch: changes.length ? patch : {}, changes, reply: oneLine(g.reply, 300) };
 }
@@ -1584,10 +1636,14 @@ async function portalApi(request, env, url) {
   try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
   if (!b || typeof b !== 'object') return json(400, { error: 'Bad request' });
   if (act === 'link') return portalSendLink(request, env, b, url.origin);
-  const row = await portalRow(env, b);
+  let row = await portalRow(env, b);
+  if (!row && act === 'photos' && /^[a-z0-9-]{3,60}$/.test(b.p || '') && /^[0-9a-f]{32}$/.test(b.key || '')) {
+    const r = await sb(env, 'weltzcraft_previews?select=slug&slug=eq.' + b.p + '&edit_hash=eq.' + (await sha('wc-edit:' + b.key)) + '&expires_at=gt.' + new Date().toISOString());
+    if (r.ok && (await r.json()).length) row = { id: 'pv-' + b.p, site: {} };
+  }
   if (!row) return json(401, { error: 'This sign-in link has expired. Ask for a new one.' });
   const demo = row.id === 'demo';
-  if (act === 'get') return json(200, await portalState(env, row, demo));
+  if (act === 'get') return json(200, { ...(await portalState(env, row, demo)), ...(b.full ? { site: row.site } : {}) });
   if (act === 'save') {
     if (!b.patch || typeof b.patch !== 'object') return json(400, { error: 'Nothing to save.' });
     const site = portalApply(row.site, b.patch, env, row.id);
@@ -1595,7 +1651,7 @@ async function portalApi(request, env, url) {
     const changes = portalDiff(row.site, site);
     if (!demo && changes.length && !(await portalSave(env, row, site))) return json(502, { error: 'Could not save. Try again in a minute.' });
     if (!demo && changes.length) await portalLog(env, row.id, 'portal_edit', await portalIp(request), { changes: changes.map((c) => c.label), ai: b.ai === true });
-    return json(200, { ...(await portalState(env, { ...row, site, site_history: changes.length ? [row.site] : row.site_history }, demo)), changes });
+    return json(200, { ...(await portalState(env, { ...row, site, site_history: changes.length ? [row.site] : row.site_history }, demo)), changes, ...(b.full ? { site } : {}) });
   }
   if (act === 'undo') {
     const h = Array.isArray(row.site_history) ? row.site_history : [];
@@ -1677,7 +1733,7 @@ async function portalDone(request, url, env) {
 // these POSTs per event in Cloudflare's analytics. The event is in the path because the free Cloudflare plan
 // can't group requests by query string. The older /api/hit?e=<event> still works for cached copies of hit.js.
 // Unknown event names get 400 so they don't pollute the count.
-const HIT_EVENTS = new Set(['start', 'brief_sent', 'build_open', 'build_done', 'preview_saved', 'sample_mine', 'live_open', 'live_checkout', 'merch_open', 'merch_checkout', 'appstore', 'app_page', 'app_visit', 'fb_import', 'customize', 'book_try', 'form_try', 'portal_open', 'portal_save', 'portal_ask', 'portal_request']);
+const HIT_EVENTS = new Set(['start', 'brief_sent', 'build_open', 'build_done', 'preview_saved', 'sample_mine', 'live_open', 'live_checkout', 'merch_open', 'merch_checkout', 'appstore', 'app_page', 'app_visit', 'fb_import', 'customize', 'book_try', 'form_try', 'portal_open', 'portal_save', 'portal_ask', 'portal_request', 'editor_open', 'editor_save']);
 function hit(request) {
   if (request.method !== 'POST') return json(405, { error: 'POST only' });
   const url = new URL(request.url);
@@ -1735,6 +1791,10 @@ export default {
     if (url.pathname.startsWith('/api/site/')) return siteApi(request, env, url);
     if (url.pathname.startsWith('/api/portal/')) {
       try { return await portalApi(request, env, url); } catch (e) { return json(500, { error: 'Something went wrong' }); }
+    }
+    if (url.pathname === '/portal/edit' || url.pathname === '/portal/edit/') {
+      const page = await env.ASSETS.fetch(new Request(new URL('/sample', url), request));
+      return new Response(page.body, page);
     }
     if (url.pathname === '/portal/done') {
       try { return await portalDone(request, url, env); } catch (e) { return sitePage('Something went wrong', 'Try the link again in a minute.'); }
