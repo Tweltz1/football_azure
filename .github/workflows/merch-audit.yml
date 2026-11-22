@@ -1,0 +1,25 @@
+name: Merch audit (Printful, read-only)
+
+# Checks every item on weltzcraft.com/merch against its Printful store product: blank, color, size, print spot,
+# print file, thread colors and price. Reads only; changes nothing on Printful.
+on:
+  push:
+    branches: ['claude/project-thread-0gyw1k']
+    paths: ['scripts/merch-audit.mjs', '.github/workflows/merch-audit.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
+      PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node scripts/merch-audit.mjs
