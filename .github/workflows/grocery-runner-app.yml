@@ -64,8 +64,15 @@ jobs:
       WALMART_CONSUMER_ID: ${{ secrets.WALMART_CONSUMER_ID }}
       WALMART_KEY_VERSION: ${{ secrets.WALMART_KEY_VERSION }}
       WALMART_PRIVATE_KEY: ${{ secrets.WALMART_PRIVATE_KEY }}
+      # Instacart Developer Platform key ("Shop on Instacart" on the list). INSTACART_ENV=production after approval.
+      INSTACART_API_KEY: ${{ secrets.INSTACART_API_KEY }}
+      INSTACART_ENV: ${{ secrets.INSTACART_ENV }}
       # Optional: replaces the store portal's built-in admin password (portal/index.html#admin), 12+ characters.
       STORE_ADMIN_KEY: ${{ secrets.STORE_ADMIN_KEY }}
+      # Store manager emails (requests to Tyler with Approve/Deny, approved/denied to the manager), from weltzcraft.com.
+      WELTZCRAFT_RESEND_API_KEY: ${{ secrets.WELTZCRAFT_RESEND_API_KEY }}
+      # Optional: where new store manager requests are emailed (default shopstride@weltzcraft.com).
+      STORE_CLAIM_NOTIFY: ${{ secrets.STORE_CLAIM_NOTIFY }}
     defaults:
       run:
         working-directory: grocery-runner-app
@@ -97,8 +104,24 @@ jobs:
           if [ -z "$WALMART_CONSUMER_ID" ]; then
             echo "::notice::No WALMART_CONSUMER_ID yet; Walmart stores come from Apple Maps only."
           fi
+          if [ -n "$INSTACART_API_KEY" ]; then
+            SET+=(INSTACART_API_KEY="$INSTACART_API_KEY" INSTACART_ENV="${INSTACART_ENV:-development}")
+          else
+            echo "::notice::No INSTACART_API_KEY yet; the Shop on Instacart button stays hidden."
+          fi
           if [ -n "$STORE_ADMIN_KEY" ]; then
             SET+=(STORE_ADMIN_KEY="$STORE_ADMIN_KEY")
+          fi
+          if [ -n "$WELTZCRAFT_RESEND_API_KEY" ]; then
+            SET+=(STRIDE_RESEND_API_KEY="$WELTZCRAFT_RESEND_API_KEY")
+          else
+            echo "::notice::No WELTZCRAFT_RESEND_API_KEY; store manager requests only show on the admin page."
+          fi
+          # Signs the Approve / Deny links in request emails. Derived from the deploy token so it is stable
+          # between deploys and the end-to-end check can make a link too; never printed.
+          SET+=(STORE_DECIDE_SECRET="$(printf 'store-decide:%s' "$SUPABASE_ACCESS_TOKEN" | sha256sum | cut -c1-64)")
+          if [ -n "$STORE_CLAIM_NOTIFY" ]; then
+            SET+=(STORE_CLAIM_NOTIFY="$STORE_CLAIM_NOTIFY")
           fi
           if [ ${#SET[@]} -gt 0 ]; then
             npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" --yes "${SET[@]}"
@@ -126,6 +149,11 @@ jobs:
             "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/store-portal")
           echo "store-portal without a key: $CODE (expect 401)"
           [ "$CODE" = "401" ]
+
+      # Store manager sign-in end to end (throwaway user + store, deleted after): commit message [stride-portal-e2e].
+      - name: Store portal end-to-end check
+        if: contains(github.event.head_commit.message, '[stride-portal-e2e]')
+        run: python3 tools/e2e_store_portal.py
 
   build:
     runs-on: macos-26

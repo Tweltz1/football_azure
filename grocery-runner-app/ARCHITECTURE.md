@@ -175,16 +175,24 @@ aisle label parsing, department guessing, stop order, grouping and the cold-last
   - Score: Kroger = 100 x share of items in stock; others = 50 + 20 x share of items mapped; minus 3 per
     mile. A Kroger with everything wins unless it is much farther; one missing several items does not.
 
+### Stock on the list and route
+At a Kroger-family store (Kroger, Pick 'n Save, Metro Market, Mariano's, ...) each unchecked item on the
+List and Route screens shows Kroger's stock level for that store: "In stock · $3.49", "Running low here"
+or "Out of stock at this store" (`src/lib/stock.ts`, `kroger-stock` action). Kroger matches by search
+term, so the product it checks is the closest match, not necessarily the exact brand. Other chains show
+nothing (no public stock data the app may use).
+
 ## 5. Next steps
 1. Sign in with Apple and rate limits on shared aisle votes.
-2. Cache Kroger lookups per store + item.
+2. ~~Cache Kroger lookups per store + item.~~ Done: the function keeps Kroger answers 30 min per store +
+   search, and the phone keeps stock answers 20 min per store + item.
 3. Let the shopper pick the exact Kroger product when the first search result is wrong.
 4. Learn where perimeter departments are (produce left or right) from check-off order.
 
 ## Partner stores (layouts and deals)
 
-Stores that partner with Shop Stride send their own data through `portal/index.html` (a private link
-per store) or the `store-portal` API; see `portal/README.md`. Tables `grocery_partner_stores`,
+Stores that partner with Shop Stride send their own data through `portal/index.html` (store managers sign
+in with an email code and are approved by Tyler; older stores use a private link) or the `store-portal` API; see `portal/README.md`. Tables `grocery_partner_stores`,
 `grocery_partner_aisles`, `grocery_partner_deals` (`tools/setup_supabase.py`), service role only.
 The store's category list ranks above every other shared source (source `store` in the app), and its
 current deals become "On sale" badges. Parsing and matching live in
