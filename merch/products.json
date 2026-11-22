@@ -1,5 +1,5 @@
 {
-  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly). A product's 'logos' limits it to those logos; logos marked 'solo' are only used where a product lists them. A 'tint' logo is one-color art recolored to the color's 'ink' (or a default per tone); 'cx' moves the logo sideways (share of the print area, default centered); a logo's 'threads' limits its embroidery thread colors. 'extra' adds more print spots to a product (e.g. a sleeve): each has its own file, box, top and tint. A color's 'swap' replaces one embroidery thread color with another on that color only; its 'outline' adds a stitched outline in the given thread around the named logo.",
+  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly). A product's 'logos' limits it to those logos; logos marked 'solo' are only used where a product lists them. A 'tint' logo is one-color art recolored to the color's 'ink' (or a default per tone); 'cx' moves the logo sideways (share of the print area, default centered); a logo's 'threads' limits its embroidery thread colors. 'extra' adds more print spots to a product (e.g. a sleeve): each has its own file, box, top and tint. A color's 'swap' replaces one embroidery thread color with another on that color only; its 'outline' adds a stitched outline in the given thread around the named logo. On hats, an embroidered 'extra' spot (the Weltzcraft name on the back, above the strap) is stitched in one thread: the color's 'back' thread, else the spot's 'thread' for that tone. The Patch Trucker has a mesh back and no back spot.",
   "logos": {
     "42": {
       "name": "Tall monogram",
@@ -440,6 +440,20 @@
             "a4": "#96A1A8"
           }
         }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
+        }
       ]
     },
     {
@@ -675,6 +689,20 @@
             "a4": "#96A1A8"
           }
         }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
+        }
       ]
     },
     {
@@ -771,6 +799,20 @@
           "tone": "light",
           "swap": {
             "#01784E": "#FFFFFF"
+          }
+        }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
           }
         }
       ]
@@ -951,6 +993,20 @@
           ],
           "tone": "light"
         }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
+        }
       ]
     },
     {
@@ -1009,6 +1065,20 @@
             "Maroon"
           ],
           "tone": "light"
+        }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
         }
       ]
     },
@@ -1397,6 +1467,20 @@
           ],
           "tone": "dark"
         }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
+        }
       ]
     },
     {
@@ -1570,6 +1654,20 @@
           ],
           "tone": "dark"
         }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
+        }
       ]
     },
     {
@@ -1633,6 +1731,20 @@
           ],
           "tone": "light",
           "ink": "#FFFFFF"
+        }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
         }
       ]
     },
@@ -1817,6 +1929,20 @@
           "tone": "dark",
           "ink": "#000000"
         }
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
+        }
       ]
     },
     {
@@ -1851,6 +1977,20 @@
       "box": [
         0.72,
         0.98
+      ],
+      "extra": [
+        {
+          "placement": "embroidery_back",
+          "file": "logo-back-name.png",
+          "box": [
+            0.8,
+            0.34
+          ],
+          "thread": {
+            "light": "#FFFFFF",
+            "dark": "#333366"
+          }
+        }
       ]
     },
     {
