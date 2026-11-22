@@ -73,7 +73,7 @@
 
     /** Full-page screen shown instead of the shop while it is locked. */
     function lockView(p, { owner, shopName, brand }) {
-      const title = p.state === "canceled" ? "Your Talk Shops plan has ended" : "Your free trial has ended";
+      const title = p.state === "canceled" ? "Your Talk Shops plan has ended" : p.trialUsed ? "Choose a plan to open your shop" : "Your free trial has ended";
       const again = `<button class="btn" id="planRecheck">${owner ? "I already paid · " : ""}Check again</button>`;
       if (!owner) {
         return `<div class="login-wrap"><section class="login plan-lock">${brand}
@@ -83,8 +83,8 @@
       }
       return `<div class="plan-lock-page">${brand}
         <h2>${title}</h2>
-        <p class="muted" style="margin:0 0 4px">Choose a plan to open ${esc(shopName)} again. Nothing was deleted: your cars, customers, prices and settings are all saved, and your customers' links still work.
-          As soon as payment goes through, your shop comes right back.</p>
+        <p class="muted" style="margin:0 0 4px">${p.trialUsed ? `This phone number, email or account already had a free trial, so ${esc(shopName)} starts on a paid plan. As soon as payment goes through, your shop opens. Questions? Email support@talkshops.app.` : `Choose a plan to open ${esc(shopName)} again. Nothing was deleted: your cars, customers, prices and settings are all saved, and your customers' links still work.
+          As soon as payment goes through, your shop comes right back.`}</p>
         ${p.payments ? "" : `<div class="notice">Online payments are being set up. Check back soon, or email support@talkshops.app.</div>`}
         <div class="plan-toggle" role="group" aria-label="Billing period">
           <button class="btn sm" data-plan-interval="month" aria-pressed="${interval === "month"}">Monthly</button>
