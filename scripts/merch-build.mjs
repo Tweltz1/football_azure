@@ -112,8 +112,6 @@ if (MODE === 'mockups') {
       const url = main.mockup_url;
       fs.writeFileSync(`weltzcraft-site/img/merch/${c.slug}.jpg`, Buffer.from(await (await fetch(url)).arrayBuffer()));
       // Extra angles for the swipe gallery: other sides of the main photo, then other print spots (e.g. a sleeve).
-      // (A hat's back stitching already shows in the main photo's back view, so other spots' photos go last:
-      // on some blanks they are just another front view.)
       // The back view goes right after the front (a hat's stitched back name shows there). Some blanks include a
       // 'Back' view with the front photo; others only show the back in the back print spot's own photo.
       const isBack = e => /back/i.test(`${e.option || ''} ${e.title || ''}`);
