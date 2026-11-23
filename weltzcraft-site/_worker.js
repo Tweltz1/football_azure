@@ -660,7 +660,9 @@ async function previewResearch(env, src, pageTitle) {
     ' "about": "3 to 5 plain sentences of facts: what they do, who runs it, how long, what customers praise, anything distinctive",',
     ' "tag": "what makes them different, under 80 characters, in plain words",',
     ' "links": {"facebook": "", "instagram": "", "doordash": "", "ubereats": "", "grubhub": "", "order": "their own online ordering or shop page", "yelp": ""} with the full https link for each one you actually saw in a search result for this business, and "" for the rest. Never build or guess a link,',
-    ' "cta": the best first step for a customer: "Book online", "Order ahead", "Get a quote", "Call us" or "Contact us"}',
+    ' "cta": the best first step for a customer: "Book online", "Order ahead", "Get a quote", "Call us" or "Contact us",',
+    ' "rating": {"score": "like 4.7", "count": "number of reviews, like 132", "source": "Google, Yelp or Facebook"} only when a search result showed this business\'s star rating, otherwise {},',
+    ' "reviews": [["a positive customer review of this business, copied word for word from a search result you read, at most two sentences", "the reviewer\'s first name and last initial, or \'\' if not shown", "where it was posted: Google, Yelp, Facebook or the site name"]] with up to 3 of them. Only reviews you actually read for THIS business. If you did not read any, use []. Never write, reword or guess a review.}',
   ].filter(Boolean).join('\n');
   const text = await gemini(env, { contents: [{ role: 'user', parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, maxOutputTokens: 3000, thinkingConfig: { thinkingBudget: 0 } } }, 50000);
   const g = jsonIn(text);
@@ -670,6 +672,8 @@ async function previewResearch(env, src, pageTitle) {
     addr: str(g.addr, 120), phone: str(g.phone, 30), email: str(g.email, 120), hrs: pairs(g.hours, 7, 30, 30),
     services: (Array.isArray(g.services) ? g.services : []).slice(0, 8).map((x) => str(x, 80)).filter(Boolean),
     links: linksOf(g.links && typeof g.links === 'object' ? g.links : null),
+    rating: g.rating && typeof g.rating === 'object' && /^[1-5](\.\d)?$/.test(str(g.rating.score, 4)) ? { score: str(g.rating.score, 4), count: str(g.rating.count, 8).replace(/[^\d,+]/g, ''), source: str(g.rating.source, 20) } : null,
+    reviews: rows(g.reviews, 3, [240, 30, 20]).filter((r) => r[0].length > 15),
     about: str(g.about, 900), tag: str(g.tag, 80), cta: ['Book online', 'Order ahead', 'Get a quote', 'Call us', 'Contact us'].includes(g.cta) ? g.cta : '',
   };
 }
@@ -721,7 +725,7 @@ async function previewCopy(env, a, facts) {
       noun: str(g.noun, 40).toLowerCase(), icon: str(g.icon, 8), serif: g.serif === true,
       photo: PREVIEW_KINDS.includes(g.photo) && g.photo !== 'other' ? g.photo : 'none',
       tag: str(g.tag, 90), aboutTitle: str(g.aboutTitle, 70), about: str(g.about, 600), list: str(g.list, 24), listSub: str(g.listSub, 100),
-      items: rows(g.items, 6, [50, 20, 140]), facts: rows(g.facts, 3, [12, 30]), reviews: facts ? [] : rows(g.reviews, 3, [220, 30]), faq: rows(g.faq, 4, [120, 300]),
+      items: rows(g.items, 6, [50, 20, 140]), facts: rows(g.facts, 3, [12, 30]), reviews: rows(g.reviews, 3, [220, 30]), faq: rows(g.faq, 4, [120, 300]),
       band: str(g.band, 70),
       d: designOf(g.design), eyebrow: str(g.eyebrow, 60), steps: rows(g.steps, 3, [40, 140]),
       areas: (Array.isArray(g.areas) ? g.areas : []).slice(0, 6).map((x) => str(x, 30)).filter(Boolean),
@@ -851,7 +855,9 @@ async function previewCreate(request, env) {
   if (!b || typeof b !== 'object' || clean(b.website, 200)) return json(400, { error: 'Bad request' });
   // src = "build it from my Facebook page": a link or a "name, town" line to look up instead of answering questions.
   let src = oneLine(b.src, 200);
-  if (!src && !oneLine(b.n, 40)) return json(400, { error: 'Add the business name.' });
+  // Two steps for a looked-up business: {src, find: 1} looks it up and answers "is this it?"; {lookup: id} then builds it.
+  const lookupId = /^lookup-[0-9a-f]{16}$/.test(b.lookup || '') ? b.lookup : '';
+  if (!src && !lookupId && !oneLine(b.n, 40)) return json(400, { error: 'Add the business name.' });
   if (src && src.length < 4) return json(400, { error: 'Paste the link to the Facebook page, or type the business name and town.' });
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return json(503, { error: 'Saving is not set up' });
   const day = new Date().toISOString().slice(0, 10);
@@ -860,7 +866,12 @@ async function previewCreate(request, env) {
   const [mine, all] = await Promise.all([sbCount(env, 'ip_hash=eq.' + ip + '&' + since), sbCount(env, since)]);
   if (mine >= PREVIEW_PER_IP_DAY) return json(429, { error: 'That\'s a lot of previews for one day. Come back tomorrow, or tell us about your business and we\'ll make one for you.' });
   let facts = null;
-  if (src) {
+  if (lookupId) {
+    const lr = await sb(env, 'weltzcraft_previews?select=answers,copy&slug=eq.' + lookupId + '&expires_at=gt.' + new Date().toISOString());
+    const row = lr.ok ? (await lr.json())[0] : null;
+    if (!row || !row.copy || !row.copy.facts) return json(422, { error: 'That sat a little too long. Look your business up again, or answer the quick questions.', questions: true });
+    facts = row.copy.facts; src = oneLine(row.answers.src, 200);
+  } else if (src) {
     const looked = await sbCount(env, 'answers->>src=not.is.null&' + since);
     if (looked >= PREVIEW_RESEARCH_DAY || all >= PREVIEW_ALL_DAY) return json(429, { error: 'We\'ve looked up a lot of businesses today. Answer the quick questions instead and you\'ll have your preview in a minute.', questions: true });
     // A Facebook app "Share" link hides the page: follow it to the real page first.
@@ -872,16 +883,28 @@ async function previewCreate(request, env) {
     }
     facts = await previewResearch(env, share ? pageTitle : src, pageTitle);
     if (!facts) return json(422, { error: 'We couldn\'t find that business online. Answer the quick questions instead and you\'ll have your preview in a minute.', questions: true });
+    if (b.find) {
+      // Keep what was found for a couple of hours so "Yes, that's us" doesn't pay for the search twice. It also counts toward the daily limits.
+      const id = 'lookup-' + hex(crypto.getRandomValues(new Uint8Array(8)));
+      const r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ slug: id, answers: { lookup: 1, src, n: facts.n }, copy: { facts }, ip_hash: ip, expires_at: new Date(Date.now() + 2 * 36e5).toISOString() }) });
+      if (!r.ok) return json(502, { error: 'Could not save the look-up. Try again in a minute.' });
+      return json(200, { ok: true, lookup: id, found: { n: facts.n, what: facts.what, town: facts.town, state: facts.state, addr: facts.addr, phone: facts.phone, rating: facts.rating } });
+    }
   }
   const a = previewAnswers(facts ? {
     ...b, t: facts.t, what: facts.what, n: facts.n, town: facts.town, tag: facts.tag, more: '', cta: facts.cta, h: '',
     addr: facts.addr, phone: facts.phone, email: facts.email, hrs: facts.hrs,
     links: { ...(facts.links || {}), ...(/(^|\/\/|\.)(facebook|fb)\.com\//i.test(src) ? { facebook: src } : {}) },
-    // No made-up reviews and no stock-photo "gallery" on a real business's preview.
-    s: ['list', 'faq', 'map', 'steps', 'areas'],
+    // Reviews are real ones found online, or clearly labelled samples. No stock-photo "gallery" on a real business's preview.
+    s: ['list', 'review', 'faq', 'map', 'steps', 'areas'],
   } : b);
   if (facts) { a.src = src; if (facts.state) a.state = facts.state; }
   const copy = all < PREVIEW_ALL_DAY ? await previewCopy(env, a, facts) : null;
+  // Real reviews and the star rating found online replace the sample ones.
+  if (facts && copy) {
+    if (facts.reviews && facts.reviews.length) { copy.reviews = facts.reviews; copy.revReal = true; }
+    if (facts.rating) copy.rating = facts.rating;
+  }
   // What the photo search did, returned to the maker's browser only (never saved): which sources answered and how many photos made it.
   const plog = [];
   if (copy) {
@@ -907,6 +930,7 @@ async function previewCreate(request, env) {
     if (r.ok && em) await previewWelcome(env, new URL(request.url).origin, em, slug, key, a).catch(() => {});
     // Before the edit_hash column exists (first deploy), save without it; the preview just can't be customized later.
     if (!r.ok && r.status !== 409) r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) });
+    if (r.ok && lookupId) await sb(env, 'weltzcraft_previews?slug=eq.' + lookupId, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(() => {});
     if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '', photoLog: plog });
     if (r.status !== 409) return json(502, { error: 'Could not save the preview' });
   }
@@ -977,6 +1001,7 @@ async function previewGet(slug, env) {
   const list = r.ok ? await r.json() : [];
   if (!list.length) return json(404, { error: 'This preview has expired or was never made.' });
   const p = list[0];
+  if (p.answers && p.answers.lookup) return json(404, { error: 'This preview has expired or was never made.' });
   return new Response(JSON.stringify({ ok: true, slug, answers: p.answers, copy: p.copy, expires: p.expires_at }), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=20' } });
 }
