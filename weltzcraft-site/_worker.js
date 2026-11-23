@@ -585,8 +585,8 @@ async function aiLog(env, body, status, out) {
     const kind = body.tools ? 'lookup' : parts.some((x) => x.inline_data) ? 'photos' : /OWNER'S REQUEST/.test((parts[0] && parts[0].text) || '') ? 'change' : 'words';
     const u = (out && out.usageMetadata) || {};
     const tin = (u.promptTokenCount || 0) + (u.toolUsePromptTokenCount || 0), tout = (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0);
-    const c0 = out && out.candidates && out.candidates[0];
-    const searched = !!(c0 && c0.groundingMetadata && ((c0.groundingMetadata.webSearchQueries || []).length || (c0.groundingMetadata.groundingChunks || []).length));
+    // A look-up that answered is counted as one paid web search, whether or not Google reports the search back: better to guess high than low.
+    const searched = !!body.tools && status === 200;
     const cost = tin * AI_PRICE.inPerM / 1e6 + tout * AI_PRICE.outPerM / 1e6 + (searched ? AI_PRICE.search : 0);
     await sb(env, 'weltzcraft_ai_log', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({
       kind, model: oneLine((out && out.modelVersion) || GEMINI_MODEL, 60), ok: status === 200, status, tokens_in: tin, tokens_out: tout, search: searched, cost: Math.round(cost * 1e5) / 1e5 }) });
@@ -617,6 +617,8 @@ async function gemini(env, body, ms, log) {
 async function aiUsage(env) {
   const r = await sb(env, 'weltzcraft_ai_log?select=created_at,kind,ok,status,tokens_in,tokens_out,search,cost&order=created_at.desc&limit=20000');
   const rows = r.ok ? await r.json() : [];
+  // Look-ups logged before the web search fee was always counted get it added here.
+  for (const x of rows) if (x.kind === 'lookup' && x.ok && !x.search) x.cost = (Number(x.cost) || 0) + AI_PRICE.search;
   const NAMES = { lookup: 'Looking a business up on the web', words: 'Writing a site\'s words and design', photos: 'Choosing photos', change: 'AI changes asked for in the portal' };
   const money = (n) => '$' + (n < 1 ? n.toFixed(3) : n.toFixed(2));
   const tally = (list) => { const t = {}; for (const x of list) { const k = t[x.kind] || (t[x.kind] = { n: 0, bad: 0, tin: 0, tout: 0, cost: 0 }); k.n++; if (!x.ok) k.bad++; k.tin += x.tokens_in || 0; k.tout += x.tokens_out || 0; k.cost += Number(x.cost) || 0; } return t; };
