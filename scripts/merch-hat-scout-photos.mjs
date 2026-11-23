@@ -19,6 +19,7 @@ const CANDS = [
   { key: 'ua', id: 755, colors: ['Black', 'Navy', 'White', 'Grey', 'Royal Blue', 'Red'] },
   { key: 'flexfit', id: 140, colors: ['Black', 'Dark Navy', 'White', 'Grey', 'Olive'] },
   { key: 'visor', id: 265, colors: ['Black', 'Navy', 'White'] },
+  { key: 'lowpro', id: 864, colors: ['Black', 'Dark Navy', 'Dark Green', 'Khaki', 'Red', 'White'] },
 ];
 fs.mkdirSync('merch/scout/photos', { recursive: true });
 const fit = (area, aspect, wf, hf) => {
@@ -41,7 +42,7 @@ for (const c of CANDS) {
     const ink = LIGHT.test(color) ? 'navy' : 'white';
     const files = [{ placement: front, image_url: `${RAW}/m1-${ink}.png`, position: fit(area(front), 828 / 588, 0.6, 0.8) }];
     if (places.includes('embroidery_back')) files.push({ placement: 'embroidery_back', image_url: `${RAW}/back-${ink}.png`, position: fit(area('embroidery_back'), 2058 / 309, 0.95, 0.4) });
-    console.log(`${c.key} ${color}: v${v.id} places ${places.join(',')} -> ${files.map(f => f.placement).join('+')}`);
+    console.log(`${c.key} ${color}: v${v.id} $${v.price} places ${places.join(',')} -> ${files.map(f => f.placement).join('+')}`);
     try {
       const task = await pf(`/mockup-generator/create-task/${c.id}`, { method: 'POST', body: JSON.stringify({ variant_ids: [v.id], format: 'jpg', files }) });
       let done;
