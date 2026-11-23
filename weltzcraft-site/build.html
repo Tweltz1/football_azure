@@ -66,6 +66,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
 .fbrow .txt{font-size:16px;padding:14px;min-width:0}
 .go.alt{background:rgba(255,138,60,.14);color:var(--warm);box-shadow:none;border:1.5px solid var(--em);white-space:nowrap;font-size:15px;padding:14px 16px}
 .fberr{color:#ff8f7a;font-size:14px;margin:8px 0 0}
+.found{display:flex;flex-direction:column;gap:6px;border:1.5px solid var(--em);border-radius:16px;padding:16px 18px;margin:4px 0 18px;background:var(--soft,rgba(255,138,60,.08))}.found b{font-size:20px;line-height:1.25}.found span{color:var(--mut);font-size:15px}
 .fberr:empty{display:none}
 .pulse{animation:wp 1.1s ease-in-out infinite}
 @keyframes wp{50%{box-shadow:0 0 70px 4px rgba(242,163,58,.75)}}
@@ -111,27 +112,28 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     card.innerHTML = '<div class="step"><div class="big-w">W</div><h1>See your website before you pay a thing.</h1><p class="sub">Answer a few quick questions about any kind of business and watch Weltzcraft design and write a site made for it, with online booking and a contact form built in. You get your own link to share for 30 days.</p>' +
       '<ul class="perks"><li>About 60 seconds</li><li>Free</li><li>No password</li></ul><button class="go" data-go>Let\'s build it →</button>' +
       '<div class="or"><span>or skip the questions</span></div>' +
-      '<form class="fb" id="fb"><label for="src">Already on Facebook? Paste your page and we\'ll build from what\'s public about your business.</label>' +
-      '<div class="fbrow"><input class="txt" id="src" maxlength="200" placeholder="facebook.com/yourbusiness, or name and town" autocomplete="off" enterkeyhint="next"></div><div class="fbrow"><input class="txt" id="fbem" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="Your email, for your link" aria-label="Your email" enterkeyhint="go"><button class="go alt" type="submit">Build from this</button></div><p class="fberr" id="fberr" role="alert"></p></form></div>';
+      '<form class="fb" id="fb"><label for="src">Type your business name and city, or paste your Facebook page. We\'ll find what\'s public about it and build from that.</label>' +
+      '<div class="fbrow"><input class="txt" id="src" maxlength="200" placeholder="Joe\'s Diner, Eau Claire" autocomplete="off" enterkeyhint="next"></div><div class="fbrow"><input class="txt" id="fbem" type="email" inputmode="email" autocomplete="email" maxlength="120" placeholder="Your email, for your link" aria-label="Your email" enterkeyhint="go"><button class="go alt" type="submit">Find my business</button></div><p class="fberr" id="fberr" role="alert"></p></form></div>';
     document.getElementById('fb').addEventListener('submit', function (e) { e.preventDefault(); lookup(document.getElementById('src').value.trim(), document.getElementById('fbem').value.trim()); });
   }
   // "Build it from my Facebook page": the server looks the business up online, writes the site and saves it.
-  function lookup(src, em) {
+  function lookup(src, em, found) {
     var err = document.getElementById('fberr');
-    if (src.length < 4) { err.textContent = 'Paste the link to the Facebook page, or type the business name and town.'; return; }
+    if (!found && src.length < 4) { err.textContent = 'Type the business name and city, or paste the link to its Facebook page.'; return; }
     if (!okEmail(em)) { err.textContent = 'Add your email so we can send you the link to your website.'; return; }
     a.em = em; keep(em);
     if (window.wcHit) window.wcHit('fb_import');
-    var lines = ['Finding your business…', 'Reading what\'s public about it…', 'Checking hours, address and phone…', 'Listing what you offer…', 'Picking a style that fits…', 'Writing your words…', 'Adding online booking…', 'Almost there…'], i = 0;
-    card.innerHTML = '<div class="step"><div class="big-w pulse">W</div><h2>Building from your page</h2><p class="sub" id="look">' + lines[0] + '</p><div class="bar"><i id="lookbar" style="width:6%"></i></div><p class="sub" style="font-size:14px">This takes about 30 seconds. We search the web for your business, so the preview starts with your real details.</p></div>';
+    var lines = found ? ['Picking a style that fits…', 'Writing your words…', 'Choosing photos…', 'Adding online booking…', 'Adding your reviews…', 'Almost there…'] : ['Searching the web…', 'Reading what\'s public about it…', 'Checking hours, address and phone…', 'Listing what you offer…', 'Looking for reviews…', 'Almost there…'], i = 0;
+    card.innerHTML = '<div class="step"><div class="big-w pulse">W</div><h2>' + (found ? 'Designing your website' : 'Finding your business') + '</h2><p class="sub" id="look">' + lines[0] + '</p><div class="bar"><i id="lookbar" style="width:6%"></i></div><p class="sub" style="font-size:14px">' + (found ? 'About 30 seconds more. Your site starts with your real details.' : 'This takes about 30 seconds. Next we\'ll show you what we found, so you can check it\'s you.') + '</p></div>';
     var tick = setInterval(function () { i = Math.min(i + 1, lines.length - 1); var l = document.getElementById('look'); if (!l) return clearInterval(tick); l.textContent = lines[i]; document.getElementById('lookbar').style.width = Math.round((i + 1) / lines.length * 94) + '%'; }, 4500);
     function fail(msg) {
       clearInterval(tick);
-      card.innerHTML = '<div class="step"><div class="big-w">W</div><h2>Let\'s do it the quick way</h2><p class="sub">' + esc(msg) + '</p><button class="go" data-go>Answer the questions →</button><div class="row"><button class="back" data-home>← Try another link</button><span></span></div></div>';
+      card.innerHTML = '<div class="step"><div class="big-w">W</div><h2>Let\'s do it the quick way</h2><p class="sub">' + esc(msg) + '</p><button class="go" data-go>Answer the questions →</button><div class="row"><button class="back" data-home>← Try again</button><span></span></div></div>';
     }
-    fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ src: src, em: em }) })
+    fetch('/api/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(found ? { lookup: found, em: em } : { src: src, em: em, find: 1 }) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
+        if (j.ok && j.lookup && j.found) { clearInterval(tick); return confirmBiz(src, em, j.lookup, j.found); }
         if (!j.ok || !j.slug) return fail(j.error || 'We couldn\'t build from that link.');
         clearInterval(tick);
         try { if (j.key) localStorage.setItem('wck:' + j.slug, j.key); } catch (e) {}
@@ -154,6 +156,23 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     card.innerHTML = h;
     var inp = card.querySelector('input,textarea');
     if (inp) inp.focus({ preventScroll: true });
+  }
+  // "Is this your business?": nothing is designed until they say yes.
+  function confirmBiz(src, em, id, f) {
+    var where = [f.town, f.state].filter(Boolean).join(', ');
+    card.innerHTML = '<div class="step"><p class="count">We found a match</p><h2>Is this your business?</h2>' +
+      '<div class="found"><b>' + esc(f.n) + '</b>' + ([f.what, where].filter(Boolean).length ? '<span>' + esc([f.what, where].filter(Boolean).join(' · ')) + '</span>' : '') +
+      (f.addr ? '<span>📍 ' + esc(f.addr) + '</span>' : '') + (f.phone ? '<span>📞 ' + esc(f.phone) + '</span>' : '') +
+      (f.rating && f.rating.score ? '<span>⭐ ' + esc(f.rating.score + (f.rating.count ? ' from ' + f.rating.count + ' reviews' : '') + (f.rating.source ? ' on ' + f.rating.source : '')) + '</span>' : '') + '</div>' +
+      '<button class="go" id="bizyes">Yes, build my website ✨</button><button class="opt" id="bizno" style="justify-content:center;width:100%;margin-top:10px">No, that\'s not it</button>' +
+      '<div class="row"><button class="back" data-go>Answer the questions instead →</button><span></span></div></div>';
+    document.getElementById('bizyes').onclick = function () { if (window.wcHit) window.wcHit('fb_confirm'); lookup(src, em, id); };
+    document.getElementById('bizno').onclick = function () {
+      step = -1; intro();
+      document.getElementById('src').value = src; document.getElementById('fbem').value = em;
+      document.getElementById('fberr').textContent = 'Sorry about that. Add the city or the street to the name, or paste the link to your page, and try again.';
+      document.getElementById('src').focus();
+    };
   }
   function shown(q) { return !q.when || q.when(); }
   function okEmail(v) { return /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]{2,}$/.test(v); }
@@ -192,7 +211,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     else if (b.hasAttribute('data-home')) { step = -1; intro(); }
     else if (b.hasAttribute('data-back')) { save(); step--; while (step >= 0 && !shown(Q[step])) step--; step < 0 ? intro() : ask(); }
   });
-  card.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); var g = card.querySelector('.step > [data-go]'); if (g) g.click(); else next(); } });
+  card.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !e.target.closest('form')) { e.preventDefault(); var g = card.querySelector('.step > [data-go]'); if (g) g.click(); else next(); } });
   intro();
 })();
 </script>

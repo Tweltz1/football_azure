@@ -388,6 +388,10 @@ const PREVIEW_DAYS = 30;
 // Until Tyler gives one, follow-ups are not sent. The first email (their own link) is always sent.
 const MAIL_ADDRESS = '';
 const FOLLOWUP_AFTER_DAYS = 3;
+// Outreach previews: Tyler (through the weltzcraft-outreach-previews workflow) builds a sample site for a local business
+// that has no website and emails them the link. The business can claim it on the page with their email.
+const OUTREACH_DAYS = 60;        // an outreach preview stays up this long, so the link in the email still works weeks later
+const CLAIM_DAYS = 30;           // claiming keeps it up at least this long from the claim
 const okEmail = (v) => /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]{2,}$/.test(v || '');
 const unsubKey = async (env, email) => (await sha('wc-unsub:' + String(email).toLowerCase() + ':' + env.SUPABASE_SERVICE_KEY)).slice(0, 24);
 const PREVIEW_PER_IP_DAY = 12;
@@ -660,7 +664,9 @@ async function previewResearch(env, src, pageTitle) {
     ' "about": "3 to 5 plain sentences of facts: what they do, who runs it, how long, what customers praise, anything distinctive",',
     ' "tag": "what makes them different, under 80 characters, in plain words",',
     ' "links": {"facebook": "", "instagram": "", "doordash": "", "ubereats": "", "grubhub": "", "order": "their own online ordering or shop page", "yelp": ""} with the full https link for each one you actually saw in a search result for this business, and "" for the rest. Never build or guess a link,',
-    ' "cta": the best first step for a customer: "Book online", "Order ahead", "Get a quote", "Call us" or "Contact us"}',
+    ' "cta": the best first step for a customer: "Book online", "Order ahead", "Get a quote", "Call us" or "Contact us",',
+    ' "rating": {"score": "like 4.7", "count": "number of reviews, like 132", "source": "Google, Yelp or Facebook"} only when a search result showed this business\'s star rating, otherwise {},',
+    ' "reviews": [["a positive customer review of this business, copied word for word from a search result you read, at most two sentences", "the reviewer\'s first name and last initial, or \'\' if not shown", "where it was posted: Google, Yelp, Facebook or the site name"]] with up to 3 of them. Only reviews you actually read for THIS business. If you did not read any, use []. Never write, reword or guess a review.}',
   ].filter(Boolean).join('\n');
   const text = await gemini(env, { contents: [{ role: 'user', parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.2, maxOutputTokens: 3000, thinkingConfig: { thinkingBudget: 0 } } }, 50000);
   const g = jsonIn(text);
@@ -670,6 +676,8 @@ async function previewResearch(env, src, pageTitle) {
     addr: str(g.addr, 120), phone: str(g.phone, 30), email: str(g.email, 120), hrs: pairs(g.hours, 7, 30, 30),
     services: (Array.isArray(g.services) ? g.services : []).slice(0, 8).map((x) => str(x, 80)).filter(Boolean),
     links: linksOf(g.links && typeof g.links === 'object' ? g.links : null),
+    rating: g.rating && typeof g.rating === 'object' && /^[1-5](\.\d)?$/.test(str(g.rating.score, 4)) ? { score: str(g.rating.score, 4), count: str(g.rating.count, 8).replace(/[^\d,+]/g, ''), source: str(g.rating.source, 20) } : null,
+    reviews: rows(g.reviews, 3, [240, 30, 20]).filter((r) => r[0].length > 15),
     about: str(g.about, 900), tag: str(g.tag, 80), cta: ['Book online', 'Order ahead', 'Get a quote', 'Call us', 'Contact us'].includes(g.cta) ? g.cta : '',
   };
 }
@@ -721,7 +729,7 @@ async function previewCopy(env, a, facts) {
       noun: str(g.noun, 40).toLowerCase(), icon: str(g.icon, 8), serif: g.serif === true,
       photo: PREVIEW_KINDS.includes(g.photo) && g.photo !== 'other' ? g.photo : 'none',
       tag: str(g.tag, 90), aboutTitle: str(g.aboutTitle, 70), about: str(g.about, 600), list: str(g.list, 24), listSub: str(g.listSub, 100),
-      items: rows(g.items, 6, [50, 20, 140]), facts: rows(g.facts, 3, [12, 30]), reviews: facts ? [] : rows(g.reviews, 3, [220, 30]), faq: rows(g.faq, 4, [120, 300]),
+      items: rows(g.items, 6, [50, 20, 140]), facts: rows(g.facts, 3, [12, 30]), reviews: rows(g.reviews, 3, [220, 30]), faq: rows(g.faq, 4, [120, 300]),
       band: str(g.band, 70),
       d: designOf(g.design), eyebrow: str(g.eyebrow, 60), steps: rows(g.steps, 3, [40, 140]),
       areas: (Array.isArray(g.areas) ? g.areas : []).slice(0, 6).map((x) => str(x, 30)).filter(Boolean),
@@ -849,18 +857,26 @@ async function previewCreate(request, env) {
   let b;
   try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
   if (!b || typeof b !== 'object' || clean(b.website, 200)) return json(400, { error: 'Bad request' });
+  const admin = await outreachOk(request, env);
   // src = "build it from my Facebook page": a link or a "name, town" line to look up instead of answering questions.
   let src = oneLine(b.src, 200);
-  if (!src && !oneLine(b.n, 40)) return json(400, { error: 'Add the business name.' });
+  // Two steps for a looked-up business: {src, find: 1} looks it up and answers "is this it?"; {lookup: id} then builds it.
+  const lookupId = /^lookup-[0-9a-f]{16}$/.test(b.lookup || '') ? b.lookup : '';
+  if (!src && !lookupId && !oneLine(b.n, 40)) return json(400, { error: 'Add the business name.' });
   if (src && src.length < 4) return json(400, { error: 'Paste the link to the Facebook page, or type the business name and town.' });
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return json(503, { error: 'Saving is not set up' });
   const day = new Date().toISOString().slice(0, 10);
   const ip = await sha('wc-preview:' + day + ':' + (request.headers.get('CF-Connecting-IP') || ''));
   const since = 'created_at=gte.' + day + 'T00:00:00Z';
   const [mine, all] = await Promise.all([sbCount(env, 'ip_hash=eq.' + ip + '&' + since), sbCount(env, since)]);
-  if (mine >= PREVIEW_PER_IP_DAY) return json(429, { error: 'That\'s a lot of previews for one day. Come back tomorrow, or tell us about your business and we\'ll make one for you.' });
+  if (mine >= PREVIEW_PER_IP_DAY && !admin) return json(429, { error: 'That\'s a lot of previews for one day. Come back tomorrow, or tell us about your business and we\'ll make one for you.' });
   let facts = null;
-  if (src) {
+  if (lookupId) {
+    const lr = await sb(env, 'weltzcraft_previews?select=answers,copy&slug=eq.' + lookupId + '&expires_at=gt.' + new Date().toISOString());
+    const row = lr.ok ? (await lr.json())[0] : null;
+    if (!row || !row.copy || !row.copy.facts) return json(422, { error: 'That sat a little too long. Look your business up again, or answer the quick questions.', questions: true });
+    facts = row.copy.facts; src = oneLine(row.answers.src, 200);
+  } else if (src) {
     const looked = await sbCount(env, 'answers->>src=not.is.null&' + since);
     if (looked >= PREVIEW_RESEARCH_DAY || all >= PREVIEW_ALL_DAY) return json(429, { error: 'We\'ve looked up a lot of businesses today. Answer the quick questions instead and you\'ll have your preview in a minute.', questions: true });
     // A Facebook app "Share" link hides the page: follow it to the real page first.
@@ -871,17 +887,32 @@ async function previewCreate(request, env) {
       if (!got.url && !got.title) return json(422, { error: 'Facebook wouldn\'t tell us which page that share link is for. Type the business name and town instead (like "Joe\'s Diner, Eau Claire"), or answer the quick questions.', questions: true });
     }
     facts = await previewResearch(env, share ? pageTitle : src, pageTitle);
+    // Details Tyler already checked on the business's own listing win over what the search found.
+    if (facts && admin && b.known && typeof b.known === 'object') for (const k of ['addr', 'phone', 'email', 'town']) { const v = oneLine(b.known[k], 120); if (v) facts[k] = v; }
     if (!facts) return json(422, { error: 'We couldn\'t find that business online. Answer the quick questions instead and you\'ll have your preview in a minute.', questions: true });
+    if (b.find) {
+      // Keep what was found for a couple of hours so "Yes, that's us" doesn't pay for the search twice. It also counts toward the daily limits.
+      const id = 'lookup-' + hex(crypto.getRandomValues(new Uint8Array(8)));
+      const r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ slug: id, answers: { lookup: 1, src, n: facts.n }, copy: { facts }, ip_hash: ip, expires_at: new Date(Date.now() + 2 * 36e5).toISOString() }) });
+      if (!r.ok) return json(502, { error: 'Could not save the look-up. Try again in a minute.' });
+      return json(200, { ok: true, lookup: id, found: { n: facts.n, what: facts.what, town: facts.town, state: facts.state, addr: facts.addr, phone: facts.phone, rating: facts.rating } });
+    }
   }
   const a = previewAnswers(facts ? {
     ...b, t: facts.t, what: facts.what, n: facts.n, town: facts.town, tag: facts.tag, more: '', cta: facts.cta, h: '',
     addr: facts.addr, phone: facts.phone, email: facts.email, hrs: facts.hrs,
     links: { ...(facts.links || {}), ...(/(^|\/\/|\.)(facebook|fb)\.com\//i.test(src) ? { facebook: src } : {}) },
-    // No made-up reviews and no stock-photo "gallery" on a real business's preview.
-    s: ['list', 'faq', 'map', 'steps', 'areas'],
+    // Reviews are real ones found online, or clearly labelled samples. No stock-photo "gallery" on a real business's preview.
+    s: ['list', 'review', 'faq', 'map', 'steps', 'areas'],
   } : b);
   if (facts) { a.src = src; if (facts.state) a.state = facts.state; }
+  if (admin) a.claim = true;
   const copy = all < PREVIEW_ALL_DAY ? await previewCopy(env, a, facts) : null;
+  // Real reviews and the star rating found online replace the sample ones.
+  if (facts && copy) {
+    if (facts.reviews && facts.reviews.length) { copy.reviews = facts.reviews; copy.revReal = true; }
+    if (facts.rating) copy.rating = facts.rating;
+  }
   // What the photo search did, returned to the maker's browser only (never saved): which sources answered and how many photos made it.
   const plog = [];
   if (copy) {
@@ -892,8 +923,8 @@ async function previewCreate(request, env) {
   }
   // Nobody picked a color for a looked-up business, so the AI's pick is used.
   if (facts && copy && copy.color && !/^[0-9a-f]{6}$/i.test(b.c || '')) a.c = copy.color;
-  const expires = new Date(Date.now() + PREVIEW_DAYS * 864e5).toISOString();
-  const em = okEmail(oneLine(b.em, 120)) ? oneLine(b.em, 120).toLowerCase() : '';
+  const expires = new Date(Date.now() + (admin ? OUTREACH_DAYS : PREVIEW_DAYS) * 864e5).toISOString();
+  const em = admin ? '' : okEmail(oneLine(b.em, 120)) ? oneLine(b.em, 120).toLowerCase() : '';
   // The maker of a preview gets a key (kept in their browser) that lets them change its look and features later.
   const key = hex(crypto.getRandomValues(new Uint8Array(16)));
   const edit_hash = await sha('wc-edit:' + key);
@@ -907,7 +938,8 @@ async function previewCreate(request, env) {
     if (r.ok && em) await previewWelcome(env, new URL(request.url).origin, em, slug, key, a).catch(() => {});
     // Before the edit_hash column exists (first deploy), save without it; the preview just can't be customized later.
     if (!r.ok && r.status !== 409) r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) });
-    if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '', photoLog: plog });
+    if (r.ok && lookupId) await sb(env, 'weltzcraft_previews?slug=eq.' + lookupId, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(() => {});
+    if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '', photoLog: plog, ...(admin ? { facts } : {}) });
     if (r.status !== 409) return json(502, { error: 'Could not save the preview' });
   }
   return json(502, { error: 'Could not save the preview' });
@@ -970,14 +1002,74 @@ async function previewUnsub(url, env) {
   return page('Done. We will not email ' + em.replace(/[<>&"]/g, '') + ' again.');
 }
 
+/** True when the request carries the outreach key (made by the weltzcraft-outreach-previews workflow from the same server key). */
+async function outreachOk(request, env) {
+  const k = request.headers.get('X-Weltzcraft-Outreach') || '';
+  if (!env.SUPABASE_SERVICE_KEY || k.length !== 64) return false;
+  return k === (await sha('wc-outreach:' + env.SUPABASE_SERVICE_KEY));
+}
+
+/**
+ * POST /api/preview/<slug>/claim {email}: the business an outreach preview was made for claims it.
+ * The first person to claim it gets the edit link by email (the email is the proof), the preview stays up at least
+ * CLAIM_DAYS more days, and Tyler gets a lead at sales@. Claiming again with the same email sends a fresh link.
+ */
+async function previewClaim(slug, request, env) {
+  if (request.method !== 'POST') return json(405, { error: 'POST only' });
+  if (!/^[a-z0-9-]{3,60}$/.test(slug)) return json(404, { error: 'Not found' });
+  const origin = request.headers.get('Origin');
+  if (origin && new URL(origin).host !== new URL(request.url).host) return json(403, { error: 'Wrong site' });
+  if (Number(request.headers.get('Content-Length') || 0) > 2000) return json(413, { error: 'Too long' });
+  let b;
+  try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
+  const em = oneLine(b && b.email, 120).toLowerCase();
+  if (!okEmail(em)) return json(400, { error: 'That email doesn\'t look right. Check it and try again.' });
+  if (!b || typeof b !== 'object' || b.website) return json(400, { error: 'Bad request' });
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return json(503, { error: 'Not set up' });
+  const now = new Date();
+  const r = await sb(env, 'weltzcraft_previews?select=answers,expires_at,claimed_at,email&slug=eq.' + slug + '&expires_at=gt.' + now.toISOString());
+  const list = r.ok ? await r.json() : [];
+  if (!list.length) return json(404, { error: 'This preview has expired. Reply to our email and we\'ll make you a fresh one.' });
+  const p = list[0], a = p.answers || {};
+  if (!a.claim) return json(403, { error: 'This sample can\'t be claimed.' });
+  if (p.claimed_at && String(p.email || '').toLowerCase() !== em) return json(409, { error: 'Someone has already claimed this site. If that wasn\'t you, email sales@weltzcraft.com and we\'ll sort it out.' });
+  // A few claims an hour per visitor is plenty; this stops anyone from using the form to send mail to strangers.
+  const ip = await sha('wc-claim:' + now.toISOString().slice(0, 13) + ':' + (request.headers.get('CF-Connecting-IP') || ''));
+  const key = hex(crypto.getRandomValues(new Uint8Array(16)));
+  const expires = new Date(Math.max(new Date(p.expires_at).getTime(), now.getTime() + CLAIM_DAYS * 864e5)).toISOString();
+  const patch = { email: em, claimed_at: p.claimed_at || now.toISOString(), edit_hash: await sha('wc-edit:' + key), expires_at: expires, claim_ip: ip };
+  const recent = await sbCount(env, 'claim_ip=eq.' + ip);
+  if (recent >= 3) return json(429, { error: 'Too many tries. Wait an hour, or email sales@weltzcraft.com.' });
+  // Only one claim can win: the update is conditional on the row still being unclaimed (or claimed by this same email).
+  const cond = p.claimed_at ? '&email=eq.' + encodeURIComponent(em) : '&claimed_at=is.null';
+  const u = await sb(env, 'weltzcraft_previews?slug=eq.' + slug + cond, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(patch) });
+  const won = u.ok ? await u.json() : [];
+  if (!won.length) return json(409, { error: 'Someone has already claimed this site. If that wasn\'t you, email sales@weltzcraft.com and we\'ll sort it out.' });
+  const base = new URL(request.url).origin, link = base + '/preview/' + slug, name = a.n || 'your business';
+  await emailBuyer(env, em, 'Your website for ' + name, [
+    'Thanks for claiming the sample website we made for ' + name + '. Here is your own link:', '',
+    link + '#k=' + key, '',
+    'Open it on any phone or computer and tap "Edit page" to change the words, pictures, colors and sections. Keep this email, the link is your way back in.', '',
+    'It is saved for you until ' + new Date(expires).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: SITE_TZ }) + '. When you are happy with it, tap "Make it live" to put it on your own web address.', '',
+    'Questions, or want me to make changes for you? Just reply to this email.', '', 'Tyler', 'Weltzcraft Studios'].join('\n')).catch(() => {});
+  if (!p.claimed_at) await emailSales(env, 'Claimed: ' + name + (a.town ? ', ' + a.town : ''), [
+    em + ' claimed the outreach sample for ' + name + (a.town ? ' in ' + a.town : '') + '.', '', 'See it: ' + link, '',
+    'They were emailed their own edit link. Reply to them at ' + em + '.',
+    'If this was not the real business, run the weltzcraft-outreach-previews workflow with action "unclaim" and slug ' + slug + '.'].join('\n')).catch(() => {});
+  return json(200, { ok: true, email: em, again: !!p.claimed_at });
+}
+
 async function previewGet(slug, env) {
   if (!/^[a-z0-9-]{3,60}$/.test(slug)) return json(404, { error: 'Not found' });
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return json(503, { error: 'Not set up' });
-  const r = await sb(env, 'weltzcraft_previews?select=answers,copy,expires_at&slug=eq.' + slug + '&expires_at=gt.' + new Date().toISOString());
+  const now = new Date().toISOString();
+  let r = await sb(env, 'weltzcraft_previews?select=answers,copy,expires_at,claimed_at&slug=eq.' + slug + '&expires_at=gt.' + now);
+  if (!r.ok) r = await sb(env, 'weltzcraft_previews?select=answers,copy,expires_at&slug=eq.' + slug + '&expires_at=gt.' + now);   // before the claimed_at column exists
   const list = r.ok ? await r.json() : [];
   if (!list.length) return json(404, { error: 'This preview has expired or was never made.' });
   const p = list[0];
-  return new Response(JSON.stringify({ ok: true, slug, answers: p.answers, copy: p.copy, expires: p.expires_at }), {
+  if (p.answers && p.answers.lookup) return json(404, { error: 'This preview has expired or was never made.' });
+  return new Response(JSON.stringify({ ok: true, slug, answers: p.answers, copy: p.copy, expires: p.expires_at, ...(p.answers && p.answers.claim ? { claimed: !!p.claimed_at } : {}) }), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=20' } });
 }
 
@@ -1017,7 +1109,7 @@ async function previewEdit(slug, request, env) {
     d: { ...(old.d || {}), ...(b.d && typeof b.d === 'object' ? b.d : {}) }, f: { ...(old.f || {}), ...(b.f && typeof b.f === 'object' ? b.f : {}) } });
   // previewAnswers defaults an empty section list; an owner who switched every extra section off means it.
   if (b.s !== undefined && !next.s) next.s = old.s;
-  for (const k of ['src', 'state']) if (old[k]) next[k] = old[k];
+  for (const k of ['src', 'state', 'claim']) if (old[k]) next[k] = old[k];
   let u = await sb(env, own, { ...min, body: JSON.stringify(bk ? { answers: next } : { answers: next, backup: { answers: old, at: new Date().toISOString(), auto: true } }) });
   if (!u.ok && !bk) u = await sb(env, own, { ...min, body: JSON.stringify({ answers: next }) });
   if (!u.ok) return json(502, { error: 'Could not save' });
@@ -1984,6 +2076,9 @@ export default {
     }
     if (url.pathname === '/api/preview/unsub') {
       try { return await previewUnsub(url, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
+    }
+    if (/^\/api\/preview\/[a-z0-9-]{3,60}\/claim$/.test(url.pathname)) {
+      try { return await previewClaim(url.pathname.slice(13, -6), request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
     if (url.pathname.startsWith('/api/preview/')) {
       try { return request.method === 'PATCH' ? await previewEdit(url.pathname.slice(13), request, env) : await previewGet(url.pathname.slice(13), env); } catch (e) { return json(500, { error: 'Something went wrong' }); }

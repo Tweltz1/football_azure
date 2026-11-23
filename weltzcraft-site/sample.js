@@ -119,6 +119,8 @@
     var dir = real && real.address ? 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(real.address) : '';
     var realRev = t.liveReviews && t.liveReviews.length ? t.liveReviews : null;   // the owner's own reviews, typed in their portal
     var reviews = realRev ? true : on('review') && !live;
+    // Found online for a looked-up business (preview only): real quotes with where they were posted, and the star rating.
+    var foundRev = !realRev && copy && copy.revReal, RT = !live && copy && copy.rating && copy.rating.score ? copy.rating : null;
     var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(hasOrder ? [['order', 'Order']] : []).concat(F.book ? [['book', 'Book']] : []).concat(reviews ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', hasForm ? 'Contact' : 'Visit']]);
     var PAGES = BASEP === null ? [] : (Array.isArray(a.pages) ? a.pages : []);
     var cur = PG ? PAGES.filter(function (x) { return x.path === PG; })[0] || null : null;
@@ -135,9 +137,13 @@
     var steps = on('steps') && t.steps && t.steps.length ? t.steps : null, areas = on('areas') && t.areas && t.areas.length ? t.areas : null;
     var TOP =
       (live ? (LIVEVIEW ? '<div class="wz"><div class="wrap"><span>👀 This is how the live site will look.</span></div></div>' : '') :
+      (window.WC_CLAIM && slug ? '<div class="wz wzc"><div class="wrap"><span>👋 We made this free sample website for <b>' + esc(name) + '</b>. ' +
+        (window.WC_CLAIM.claimed ? 'It has been claimed by its owner.' : 'Is this your business? Claim it to edit it and keep it.') + '</span><span>' +
+        (window.WC_CLAIM.claimed ? '' : '<button class="claim" type="button" id="claim" data-track="claim_open">✋ Claim this site</button> ') +
+        '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a></span></div></div>' :
       '<div class="wz"><div class="wrap"><span>✨ Sample site ' + (copy ? 'written and ' : '') + 'built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span>' +
         (slug ? '<button class="share" type="button" id="share">🔗 Share link</button> ' : '') + '<a class="back" href="/build">↺ Try another</a> ' +
-        (slug ? '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a>' : '<a href="' + brief + '" data-track="sample_mine">Make it mine</a>') + '</span></div></div>') +
+        (slug ? '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a>' : '<a href="' + brief + '" data-track="sample_mine">Make it mine</a>') + '</span></div></div>')) +
       (t.notice ? '<div class="notice"><div class="wrap">' + esc(t.notice) + '</div></div>' : '') +
       '<header class="hd"><div class="wrap"><a class="logo" href="' + (cur ? esc(HOMEURL) : '#top') + '"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
         navs.slice(0, inMenu.length ? 5 : 99).map(function (n) { return '<a href="' + esc(HL('#' + n[0])) + '">' + esc(n[1]) + '</a>'; }).join('') + navP + '</nav><a class="btn" href="' + esc(HL(go)) + '">' + esc(cta) + '</a>' +
@@ -146,7 +152,7 @@
     var HERO =
       '<section class="hero" id="top">' + (img(0, name) || (hero === 'split' ? '<div class="htile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>' : '')) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(t.eyebrow || (town + '\'s favorite ' + t.noun)) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
         '<div class="cta"><a class="btn" href="' + go + '">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
-        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (H1 && !(H1[1].length > 24) ? '<span><b>' + esc(H1[1]) + '</b>' + esc(H1[0]) + '</span>' : '') + '</div></div></section>';
+        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : RT ? '<span><b>' + esc(RT.score) + ' ★</b>' + esc((RT.count ? RT.count + ' ' : '') + (RT.source ? RT.source + ' ' : '') + 'reviews') + '</span>' : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (H1 && !(H1[1].length > 24) ? '<span><b>' + esc(H1[1]) + '</b>' + esc(H1[0]) + '</span>' : '') + '</div></div></section>';
     var SEC = {};
     SEC.about = '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + tile() + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">' + esc(t.aboutTitle || ('More than a ' + t.noun + '. A neighbor.')) + '</h2><p>' + esc(t.about) + '</p>' +
         '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + esc(f[0]) + '</b><small>' + esc(f[1]) + '</small></div>'; }).join('') + '</div></div></div></section>';
@@ -162,8 +168,8 @@
     SEC.book = (F.book ? '<section id="book" class="tint"><div class="wrap" id="wc-book"></div></section>' : '');
     SEC.gallery = (on('pics') && (PX ? pxGal.length >= 3 : photo) ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>' + (a.src ? 'A closer look.' : 'Come see for yourself.') + '</h2></div><div class="gal' + (PX && pxGal.length === 3 ? ' g3' : '') + '">' +
         (PX ? pxGal.map(function (o) { return '<div>' + pimg(o, name + ' photo') + '</div>'; }) : [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; })).join('') + '</div></div></section>' : '');
-    SEC.reviews = (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
-        (realRev || t.reviews).map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + (realRev ? '' : ' · Sample review') + '</span></div>'; }).join('') + '</div></div></section>' : '');
+    SEC.reviews = (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2>' + (RT ? '<p class="rev-rate"><b>' + esc(RT.score) + ' ★</b> ' + esc((RT.count ? 'from ' + RT.count + ' reviews' : 'rating') + (RT.source ? ' on ' + RT.source : '')) + '</p>' : '') + '</div><div class="revs">' +
+        (realRev || t.reviews).map(function (r) { return '<div class="rev">' + (foundRev ? '' : '<span class="st">★★★★★</span>') + '<p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '★')[0]) + '</i>' + esc(r[1] || 'Customer') + (realRev ? '' : foundRev ? (r[2] ? ' · on ' + esc(r[2]) : '') : ' · Sample review') + '</span></div>'; }).join('') + '</div>' + (foundRev ? '<p class="rev-note">We found these reviews online. Check them, then add your favorites before your site goes live.</p>' : '') + '</div></section>' : '');
     SEC.faq = (on('faq') ? '<section id="faq"><div class="wrap"><div class="sec-h"><p class="eyebrow">Questions</p><h2>Good to know.</h2></div><div class="faq">' +
         faq.map(function (f) { return '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>'; }).join('') + '</div></div></section>' : '');
     SEC.areas = (areas ? '<section id="areas"><div class="wrap"><div class="sec-h"><p class="eyebrow">Where we work</p><h2>Proudly serving ' + esc(town) + ' and nearby.</h2></div><ul class="areas"><li>' + esc(town) + '</li>' +
@@ -230,6 +236,11 @@
       if (SOCIAL.length) biz.sameAs = SOCIAL.map(function (x) { return L[x[0]]; });
       ld.textContent = JSON.stringify(biz); document.head.appendChild(ld);
     }
+    var cl = document.getElementById('claim');
+    if (cl) cl.addEventListener('click', function () {
+      if (window.wcClaimOpen) return window.wcClaimOpen();
+      var sc = document.createElement('script'); sc.src = '/claim.js?v=1'; sc.onload = function () { window.wcClaimOpen(); }; document.body.appendChild(sc);
+    });
     var sh = document.getElementById('share');
     if (sh) sh.addEventListener('click', function () {
       var link = location.origin + '/preview/' + slug;
@@ -325,6 +336,8 @@
       if (hk) { try { localStorage.setItem('wck:' + saved[1], hk[1]); } catch (e) {} history.replaceState(null, '', location.pathname); }
       var mk = hk ? hk[1] : ''; try { mk = mk || localStorage.getItem('wck:' + saved[1]) || ''; } catch (e) {}
       if (mk) { window.WC_EDIT = { mode: 'preview', slug: saved[1], key: mk }; loadEditor(); }
+      // An outreach sample made for a business: visitors (not the owner) get a "Claim this site" button (claim.js).
+      if (x.j.answers.claim && !mk) window.WC_CLAIM = { slug: saved[1], name: x.j.answers.n || '', claimed: !!x.j.claimed };
       return function () { render(x.j.answers, x.j.copy, saved[1]); };
     }, function () { return function () { gone('We couldn\'t load this preview. Try again in a minute.'); }; });
   } else if (P.get('ai') === '1' && A.n) {
