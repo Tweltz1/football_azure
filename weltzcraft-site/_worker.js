@@ -1024,7 +1024,7 @@ async function previewClaim(slug, request, env) {
   try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
   const em = oneLine(b && b.email, 120).toLowerCase();
   if (!okEmail(em)) return json(400, { error: 'That email doesn\'t look right. Check it and try again.' });
-  if (b.website) return json(400, { error: 'Bad request' });
+  if (!b || typeof b !== 'object' || b.website) return json(400, { error: 'Bad request' });
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return json(503, { error: 'Not set up' });
   const now = new Date();
   const r = await sb(env, 'weltzcraft_previews?select=answers,expires_at,claimed_at,email&slug=eq.' + slug + '&expires_at=gt.' + now.toISOString());
