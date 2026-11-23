@@ -239,6 +239,8 @@ jobs:
           alter table public.weltzcraft_previews add column if not exists email text;
           alter table public.weltzcraft_previews add column if not exists followup_at timestamptz;
           alter table public.weltzcraft_previews add column if not exists no_mail boolean not null default false;
+          alter table public.weltzcraft_previews add column if not exists claimed_at timestamptz;
+          alter table public.weltzcraft_previews add column if not exists claim_ip text;
           insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('weltzcraft-sites', 'weltzcraft-sites', true, 1500000, array['image/jpeg']) on conflict (id) do nothing;
           create table if not exists public.weltzcraft_site_requests (
             id bigint generated always as identity primary key,

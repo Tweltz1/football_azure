@@ -137,9 +137,13 @@
     var steps = on('steps') && t.steps && t.steps.length ? t.steps : null, areas = on('areas') && t.areas && t.areas.length ? t.areas : null;
     var TOP =
       (live ? (LIVEVIEW ? '<div class="wz"><div class="wrap"><span>👀 This is how the live site will look.</span></div></div>' : '') :
+      (window.WC_CLAIM && slug ? '<div class="wz wzc"><div class="wrap"><span>👋 We made this free sample website for <b>' + esc(name) + '</b>. ' +
+        (window.WC_CLAIM.claimed ? 'It has been claimed by its owner.' : 'Is this your business? Claim it to edit it and keep it.') + '</span><span>' +
+        (window.WC_CLAIM.claimed ? '' : '<button class="claim" type="button" id="claim" data-track="claim_open">✋ Claim this site</button> ') +
+        '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a></span></div></div>' :
       '<div class="wz"><div class="wrap"><span>✨ Sample site ' + (copy ? 'written and ' : '') + 'built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span>' +
         (slug ? '<button class="share" type="button" id="share">🔗 Share link</button> ' : '') + '<a class="back" href="/build">↺ Try another</a> ' +
-        (slug ? '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a>' : '<a href="' + brief + '" data-track="sample_mine">Make it mine</a>') + '</span></div></div>') +
+        (slug ? '<a class="golive" href="/live?p=' + encodeURIComponent(slug) + '" data-track="live_open">🚀 Make it live</a>' : '<a href="' + brief + '" data-track="sample_mine">Make it mine</a>') + '</span></div></div>')) +
       (t.notice ? '<div class="notice"><div class="wrap">' + esc(t.notice) + '</div></div>' : '') +
       '<header class="hd"><div class="wrap"><a class="logo" href="' + (cur ? esc(HOMEURL) : '#top') + '"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
         navs.slice(0, inMenu.length ? 5 : 99).map(function (n) { return '<a href="' + esc(HL('#' + n[0])) + '">' + esc(n[1]) + '</a>'; }).join('') + navP + '</nav><a class="btn" href="' + esc(HL(go)) + '">' + esc(cta) + '</a>' +
@@ -232,6 +236,11 @@
       if (SOCIAL.length) biz.sameAs = SOCIAL.map(function (x) { return L[x[0]]; });
       ld.textContent = JSON.stringify(biz); document.head.appendChild(ld);
     }
+    var cl = document.getElementById('claim');
+    if (cl) cl.addEventListener('click', function () {
+      if (window.wcClaimOpen) return window.wcClaimOpen();
+      var sc = document.createElement('script'); sc.src = '/claim.js?v=1'; sc.onload = function () { window.wcClaimOpen(); }; document.body.appendChild(sc);
+    });
     var sh = document.getElementById('share');
     if (sh) sh.addEventListener('click', function () {
       var link = location.origin + '/preview/' + slug;
@@ -327,6 +336,8 @@
       if (hk) { try { localStorage.setItem('wck:' + saved[1], hk[1]); } catch (e) {} history.replaceState(null, '', location.pathname); }
       var mk = hk ? hk[1] : ''; try { mk = mk || localStorage.getItem('wck:' + saved[1]) || ''; } catch (e) {}
       if (mk) { window.WC_EDIT = { mode: 'preview', slug: saved[1], key: mk }; loadEditor(); }
+      // An outreach sample made for a business: visitors (not the owner) get a "Claim this site" button (claim.js).
+      if (x.j.answers.claim && !mk) window.WC_CLAIM = { slug: saved[1], name: x.j.answers.n || '', claimed: !!x.j.claimed };
       return function () { render(x.j.answers, x.j.copy, saved[1]); };
     }, function () { return function () { gone('We couldn\'t load this preview. Try again in a minute.'); }; });
   } else if (P.get('ai') === '1' && A.n) {
