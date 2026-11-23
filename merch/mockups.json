@@ -746,5 +746,10 @@
   "shield-naturalblack-h2": {
     "hash": "39ca10593333",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9d29b3ba4fb8e9ffc2021378d41ef722/classic-snapback-natural-black-front-6b020eb7e743a.jpg"
+  },
+  "wild-stone-a1": {
+    "hash": "ed425ae54f93",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/640fb5ed6099be7e7a9a23be82cb67e7/classic-dad-hat-stone-front-6b03a207eda4c.jpg",
+    "angles": 4
   }
 }
