@@ -1,0 +1,29 @@
+name: Weltzcraft builder counts
+# Read-only. Prints how many free sample sites were built per day, and how many used the AI writer and the web look-up,
+# so the Gemini cost of the builder can be estimated. Only counts are printed, never names or emails. Run by hand.
+on:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  counts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Count previews
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          q() { curl --silent --show-error --fail -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg q "$1" '{query:$q}')"; }
+          q "select (created_at at time zone 'America/Chicago')::date as day, count(*) as saved,
+               count(*) filter (where copy is not null and not coalesce(answers ? 'lookup', false)) as ai_written,
+               count(*) filter (where answers ? 'src' and not coalesce(answers ? 'lookup', false)) as looked_up_and_built,
+               count(*) filter (where answers ? 'lookup') as lookups_not_confirmed,
+               count(*) filter (where copy ? 'photos') as with_ai_picked_photos,
+               count(*) filter (where coalesce((answers->>'claim')::boolean, false)) as outreach,
+               count(*) filter (where email is not null) as with_email,
+               count(distinct ip_hash) as visitors
+             from public.weltzcraft_previews group by 1 order by 1" | jq -r '.[] | [.day, "saved=\(.saved)", "ai=\(.ai_written)", "lookup_built=\(.looked_up_and_built)", "lookup_only=\(.lookups_not_confirmed)", "photos=\(.with_ai_picked_photos)", "outreach=\(.outreach)", "email=\(.with_email)", "visitors=\(.visitors)"] | join("  ")'
+          q "select count(*) as live_sites from public.weltzcraft_live" | jq -c .
