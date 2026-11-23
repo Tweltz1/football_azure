@@ -756,5 +756,610 @@
     "hash": "28c926ab5c49",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7214f2a61df0f688879a9a7eff18d1ed/sunwashed-rope-cap-black-front-6b03a2a247c59.jpg",
     "angles": 4
+  },
+  "wild-stone-a2": {
+    "hash": "5752b00ec5d7",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d6b7a90dad590ffd9dd26415147a7796/classic-dad-hat-stone-front-6b03a346becf2.jpg",
+    "angles": 4
+  },
+  "wild-stone-a3": {
+    "hash": "7fa6bafdea83",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9692f4734492ae6b5a8805e6654e317e/classic-dad-hat-stone-front-6b03a3513e4fd.jpg",
+    "angles": 4
+  },
+  "wild-stone-a4": {
+    "hash": "f8c5efc753de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ade24812959fe83e48d4d5b6643a9123/classic-dad-hat-stone-front-6b03a3a3e7ef5.jpg",
+    "angles": 4
+  },
+  "wild-stone-a5": {
+    "hash": "50409dca5257",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/af0660ae40b2eac7fe9b22ff157b7d31/classic-dad-hat-stone-front-6b03a3adb6fc4.jpg",
+    "angles": 4
+  },
+  "wild-stone-a6": {
+    "hash": "07729799a82a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/625a7341e9785e278e5252f747555042/classic-dad-hat-stone-front-6b03a3eb24586.jpg",
+    "angles": 4
+  },
+  "wild-khaki-a1": {
+    "hash": "ed425ae54f93",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8c5ee175a8a76c22cc96c2b6ef211ec1/classic-dad-hat-khaki-front-6b03a3f6ce48f.jpg",
+    "angles": 4
+  },
+  "wild-khaki-a2": {
+    "hash": "5752b00ec5d7",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5da73e01fda10f8808ce4ab0d4512931/classic-dad-hat-khaki-front-6b03a43386491.jpg",
+    "angles": 4
+  },
+  "wild-khaki-a3": {
+    "hash": "7fa6bafdea83",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/49cd462bd03c0df31347bfe639867990/classic-dad-hat-khaki-front-6b03a43e4090d.jpg",
+    "angles": 4
+  },
+  "wild-khaki-a4": {
+    "hash": "f8c5efc753de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/15f22fbbe7c626f346822b33b48ca6b8/classic-dad-hat-khaki-front-6b03a4913fc33.jpg",
+    "angles": 4
+  },
+  "wild-khaki-a5": {
+    "hash": "50409dca5257",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0879bfe7777c4311eee6382fb7a9f830/classic-dad-hat-khaki-front-6b03a49b091e3.jpg",
+    "angles": 4
+  },
+  "wild-khaki-a6": {
+    "hash": "07729799a82a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7e107a61281f930aa90ce5e5a1ffdc8c/classic-dad-hat-khaki-front-6b03a4d844a33.jpg",
+    "angles": 4
+  },
+  "wild-white-a1": {
+    "hash": "ed425ae54f93",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/980de882b76bf71b182a508b61a7f4ce/classic-dad-hat-white-front-6b03a4e0024f2.jpg",
+    "angles": 4
+  },
+  "wild-white-a2": {
+    "hash": "5752b00ec5d7",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b0ea9df19e9927e7d03a2aef1592a123/classic-dad-hat-white-front-6b03a51d055cc.jpg",
+    "angles": 4
+  },
+  "wild-white-a3": {
+    "hash": "7fa6bafdea83",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a53dd681d0f27f0acb6a94ecbbd6a4c7/classic-dad-hat-white-front-6b03a5274d50d.jpg",
+    "angles": 4
+  },
+  "wild-white-a4": {
+    "hash": "f8c5efc753de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/efdeb4ee3c9944df640970e9c301f1ab/classic-dad-hat-white-front-6b03a57aa4222.jpg",
+    "angles": 4
+  },
+  "wild-white-a5": {
+    "hash": "50409dca5257",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/32d2ac14b1255cbd483af3ed4df9c29c/classic-dad-hat-white-front-6b03a58473ca7.jpg",
+    "angles": 4
+  },
+  "wild-white-a6": {
+    "hash": "07729799a82a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/37ab519780e4631f0e7b9fdef91129d8/classic-dad-hat-white-front-6b03a5c107346.jpg",
+    "angles": 4
+  },
+  "wild-spruce-a1": {
+    "hash": "1ab9fafdc63d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a427223f461e2880f2b6039f90c622fd/classic-dad-hat-spruce-front-6b03a5cb55e90.jpg",
+    "angles": 4
+  },
+  "wild-spruce-a2": {
+    "hash": "849aee293a66",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e3c874e85be193b006e1d292bce5a8d1/classic-dad-hat-spruce-front-6b03a60d08b9f.jpg",
+    "angles": 4
+  },
+  "wild-spruce-a3": {
+    "hash": "ef488bdaaa52",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/abecee86a7e9644208f9a9af24636b55/classic-dad-hat-spruce-front-6b03a619ed150.jpg",
+    "angles": 4
+  },
+  "wild-spruce-a4": {
+    "hash": "2da3c3f6fff3",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2737b3f94d55b761bd77c1ac467016a6/classic-dad-hat-spruce-front-6b03a6684e225.jpg",
+    "angles": 4
+  },
+  "wild-spruce-a5": {
+    "hash": "9ef75f0bae1e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9ae2d364920e743cb1cc3e4fdf54ca4a/classic-dad-hat-spruce-front-6b03a6739527a.jpg",
+    "angles": 4
+  },
+  "wild-spruce-a6": {
+    "hash": "fdb576ba4754",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/47134faa6ce4e538676426b3cf211948/classic-dad-hat-spruce-front-6b03a6b07bb38.jpg",
+    "angles": 4
+  },
+  "wild-black-a1": {
+    "hash": "1ab9fafdc63d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/55412d99d8598efde3db1a11f601a76a/classic-dad-hat-black-front-6b03a6ba4b5cb.jpg",
+    "angles": 4
+  },
+  "wild-black-a2": {
+    "hash": "849aee293a66",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/926fa9ab3e5c9219bf834cf605dd99d1/classic-dad-hat-black-front-6b03a6f8692e5.jpg",
+    "angles": 4
+  },
+  "wild-black-a3": {
+    "hash": "ef488bdaaa52",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/96d8c06268032f2b98d927650a0c91ee/classic-dad-hat-black-front-6b03a70340452.jpg",
+    "angles": 4
+  },
+  "wild-black-a4": {
+    "hash": "cc35f42ddd68",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c8e71d863e09e3df33234d78475cd8e6/classic-dad-hat-black-front-6b03a74093804.jpg",
+    "angles": 4
+  },
+  "wild-black-a5": {
+    "hash": "9ef75f0bae1e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a93b0f48b1cb91f2f9379a62c5720cdc/classic-dad-hat-black-front-6b03a74bc6a5c.jpg",
+    "angles": 4
+  },
+  "wild-black-a6": {
+    "hash": "fdb576ba4754",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a5559455de2e0624f9df980800b916fd/classic-dad-hat-black-front-6b03a7883d20e.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a1": {
+    "hash": "1ab9fafdc63d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c8b96601f49d88b0972e6dfa31fd9c6f/vintage-corduroy-cap-brown-front-6b03a79348d61.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a2": {
+    "hash": "849aee293a66",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c585918f8e8009c960a363aba66bde67/vintage-corduroy-cap-brown-front-6b03a7d0ab2b8.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a3": {
+    "hash": "ef488bdaaa52",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5b58bf5c86e46f98b5aef14c87ea47c6/vintage-corduroy-cap-brown-front-6b03a7dbeb719.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a4": {
+    "hash": "2da3c3f6fff3",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/fb55a5363487878e0607e25dee2ef1b1/vintage-corduroy-cap-brown-front-6b03a819075e3.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a5": {
+    "hash": "9ef75f0bae1e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/51ff54f5bdc613c41301637b2d95d0d2/vintage-corduroy-cap-brown-front-6b03a8250ebc4.jpg",
+    "angles": 4
+  },
+  "wildcord-brown-a6": {
+    "hash": "fdb576ba4754",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/34df4eced1321a3d1d85d067fdb3b631/vintage-corduroy-cap-brown-front-6b03a861d9c46.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a1": {
+    "hash": "1ab9fafdc63d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/caf08c53df342b341f0a52c4dd3d9cc4/vintage-corduroy-cap-olive-front-6b03a87760f4f.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a2": {
+    "hash": "849aee293a66",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/af88b45c0a87b6fa506af728a4a54059/vintage-corduroy-cap-olive-front-6b03a8b5244ee.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a3": {
+    "hash": "ef488bdaaa52",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/28f9274066aefae21b066b323ecfb698/vintage-corduroy-cap-olive-front-6b03a8db011ce.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a4": {
+    "hash": "2da3c3f6fff3",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ee07213dd8eab49b13fedf55ab2c60aa/vintage-corduroy-cap-olive-front-6b03a91861401.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a5": {
+    "hash": "9ef75f0bae1e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/157d6fed883855606e6cc5e284da6947/vintage-corduroy-cap-olive-front-6b03a93cddcb0.jpg",
+    "angles": 4
+  },
+  "wildcord-olive-a6": {
+    "hash": "fdb576ba4754",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2360d191f80d9ea03900cc8eddf02d2f/vintage-corduroy-cap-olive-front-6b03a97a02baf.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a1": {
+    "hash": "1ab9fafdc63d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/1e53d05975b0b36d7cbc874005ef381b/vintage-corduroy-cap-navy-front-6b03a9a324eef.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a2": {
+    "hash": "849aee293a66",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/911de30e331739719f7ae71e1e70dca3/vintage-corduroy-cap-navy-front-6b03a9e359bd5.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a3": {
+    "hash": "ef488bdaaa52",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8be32e40264567af6f549883b330a4d6/vintage-corduroy-cap-navy-front-6b03a9ef0d51d.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a4": {
+    "hash": "cc35f42ddd68",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0798536bf056b8e1dec73b35057ed808/vintage-corduroy-cap-navy-front-6b03aa2c071a0.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a5": {
+    "hash": "9ef75f0bae1e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/48229af43ac939450c88a9b27b3dcda9/vintage-corduroy-cap-navy-front-6b03aa3753259.jpg",
+    "angles": 4
+  },
+  "wildcord-navy-a6": {
+    "hash": "fdb576ba4754",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/43a91015e1a220d4e2731e818568ab62/vintage-corduroy-cap-navy-front-6b03aa742a9ee.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a1": {
+    "hash": "1ab9fafdc63d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7ecba195f7370f1eb985f793a2470a52/vintage-corduroy-cap-burgundy-front-6b03aa7eed2f0.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a2": {
+    "hash": "849aee293a66",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b98713f1423be2ae2ccd42f1577d6f36/vintage-corduroy-cap-burgundy-front-6b03aabd3ebe4.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a3": {
+    "hash": "ef488bdaaa52",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/36474b9271e746c6b74aa88052c22285/vintage-corduroy-cap-burgundy-front-6b03aac7a7acb.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a4": {
+    "hash": "2da3c3f6fff3",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/bc9cddba4e7a29e0a9a915d9244ec8c5/vintage-corduroy-cap-burgundy-front-6b03ab05096f8.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a5": {
+    "hash": "9ef75f0bae1e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/20d7a3597a64796ea448c2412a0fc69e/vintage-corduroy-cap-burgundy-front-6b03ab1010e21.jpg",
+    "angles": 4
+  },
+  "wildcord-burgundy-a6": {
+    "hash": "fdb576ba4754",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/745425924a9e2ba057c9360bf640bf1d/vintage-corduroy-cap-burgundy-front-6b03ab4d2d7d7.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a1": {
+    "hash": "1ab9fafdc63d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/259e28060834fc8fa151e6c7500c727b/vintage-corduroy-cap-black-front-6b03ab57aaa64.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a2": {
+    "hash": "849aee293a66",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/cfd517c8f3cdfe4908ae3c3cc92c7d48/vintage-corduroy-cap-black-front-6b03ab95ad13a.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a3": {
+    "hash": "ef488bdaaa52",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/15de7a126b6050bb0b58a5c53f8ca8d0/vintage-corduroy-cap-black-front-6b03aba062393.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a4": {
+    "hash": "cc35f42ddd68",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e3b02e363929a451a5a63e5c00cb6143/vintage-corduroy-cap-black-front-6b03abddb159e.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a5": {
+    "hash": "9ef75f0bae1e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3596b0f81fba194400ca358e0c937b17/vintage-corduroy-cap-black-front-6b03abe87c9f9.jpg",
+    "angles": 4
+  },
+  "wildcord-black-a6": {
+    "hash": "fdb576ba4754",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/69b0c70bd5f2ef102ea1e217dbef1a86/vintage-corduroy-cap-black-front-6b03ac26966ca.jpg",
+    "angles": 4
+  },
+  "woods-white-h3": {
+    "hash": "8e78beabb52b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6cbfc6da4a5336a8ad13ab6d60d41097/classic-dad-hat-white-front-6b03ac315d730.jpg",
+    "angles": 4
+  },
+  "woods-stone-h3": {
+    "hash": "8e78beabb52b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0b0ee32256ebdb5819a22190768b0b2d/classic-dad-hat-stone-front-6b03ac6e88acc.jpg",
+    "angles": 4
+  },
+  "woods-khaki-h3": {
+    "hash": "f20c30ca37ad",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/767f2a62b53f945a7097964efa3d0112/classic-dad-hat-khaki-front-6b03ac7a72e4f.jpg",
+    "angles": 4
+  },
+  "woods-lightblue-h3": {
+    "hash": "8e78beabb52b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/57782a89f93077b5a91f2a175ccf74e8/classic-dad-hat-light-blue-front-6b03acb7c8c54.jpg",
+    "angles": 4
+  },
+  "woods-navy-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/18aae1c26e8af51f831faf6fd3640a60/classic-dad-hat-navy-front-6b03acc14f062.jpg",
+    "angles": 4
+  },
+  "woods-black-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4913448594a5bedadd0985db01fb1b3d/classic-dad-hat-black-front-6b03acfdea0c0.jpg",
+    "angles": 4
+  },
+  "woods-cranberry-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4eb4eb94dbcd5001a72eacaaa176e5c3/classic-dad-hat-cranberry-front-6b03ad08db360.jpg",
+    "angles": 4
+  },
+  "woods-darkgrey-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/19f9f6843d52070a7e7bdcb2a2675328/classic-dad-hat-dark-grey-front-6b03ad458bea0.jpg",
+    "angles": 4
+  },
+  "woods-spruce-h3": {
+    "hash": "8c21041dca59",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4c99f98959ad9dd0c8ebbae15cd890c7/classic-dad-hat-spruce-front-6b03ad508d85b.jpg",
+    "angles": 4
+  },
+  "woodscord-brown-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b02f1377ad57a551202ebb635b1647c3/vintage-corduroy-cap-brown-front-6b03ad94dc1cb.jpg",
+    "angles": 4
+  },
+  "woodscord-olive-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5dcd867c0af4fd48be58bf40f4b324e6/vintage-corduroy-cap-olive-front-6b03ad9c1f5e7.jpg",
+    "angles": 4
+  },
+  "woodscord-navy-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f44aee62dfafefdc805e4ef8a3a38fb4/vintage-corduroy-cap-navy-front-6b03add891bdb.jpg",
+    "angles": 4
+  },
+  "woodscord-burgundy-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/dbd2624af72d6124f782f62c3a679399/vintage-corduroy-cap-burgundy-front-6b03addf7be7e.jpg",
+    "angles": 4
+  },
+  "woodscord-black-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/579e4a0ec9659f66f1d18a62e1aa489b/vintage-corduroy-cap-black-front-6b03ae1db407a.jpg",
+    "angles": 4
+  },
+  "woodstwo-greenkhaki-h3": {
+    "hash": "962ce7fe44ba",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/10d23ff7dcc21d0f9c8807582d760ec4/otto-cap-18-772-dark-green-khaki-front-6b03ae247b284.jpg",
+    "angles": 2
+  },
+  "woodstwo-navykhaki-h3": {
+    "hash": "8e78beabb52b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/41f2672f439095105067433f1cc6e8ec/otto-cap-18-772-navy-khaki-front-6b03ae6150595.jpg",
+    "angles": 2
+  },
+  "woodstwo-dustyrose-h3": {
+    "hash": "8e78beabb52b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/afdcbbabe5dc319b93a1f388fd3ae08e/otto-cap-18-772-dusty-rose-front-6b03ae671cc26.jpg",
+    "angles": 2
+  },
+  "woodstwo-gray-h3": {
+    "hash": "8e78beabb52b",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d05e6909bfffc6f8b356e41639e39c3e/otto-cap-18-772-gray-front-6b03aea5621bd.jpg",
+    "angles": 2
+  },
+  "woodstwo-maroon-h3": {
+    "hash": "4b64c547caaf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ee50cd00a28c4c2e58d24b3a1f68902c/otto-cap-18-772-maroon-front-6b03aeac0256c.jpg",
+    "angles": 2
+  },
+  "script-stone-v2": {
+    "hash": "94a862ef6816",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c5c1b3f9842ba901ecc8f1659cc1a8f7/classic-dad-hat-stone-front-6b03aee977828.jpg",
+    "angles": 4
+  },
+  "script-navy-v2": {
+    "hash": "9e6e619e1e05",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2dc15602df9d963ce7655bdbfa6d65c2/classic-dad-hat-navy-front-6b03aef4b8f0e.jpg",
+    "angles": 4
+  },
+  "script-black-v2": {
+    "hash": "9e6e619e1e05",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/35958353dfe6042a1e38fa80c44f5422/classic-dad-hat-black-front-6b03af308098e.jpg",
+    "angles": 4
+  },
+  "script-lightblue-v2": {
+    "hash": "94a862ef6816",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0ea310d4cb5c4ebdccc066a8d2de6095/classic-dad-hat-light-blue-front-6b03af3b339c6.jpg",
+    "angles": 4
+  },
+  "script-spruce-v2": {
+    "hash": "9e6e619e1e05",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e9b4498d16f7a6c0dec35514c584765b/classic-dad-hat-spruce-front-6b03af780eb8b.jpg",
+    "angles": 4
+  },
+  "script-pink-v2": {
+    "hash": "94a862ef6816",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ce3700195e6feb4b445d7ae71a6a52e6/classic-dad-hat-pink-front-6b03af834f492.jpg",
+    "angles": 4
+  },
+  "script-cranberry-v2": {
+    "hash": "9e6e619e1e05",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3beab23cf02e378ef6f07b0ec008bd76/classic-dad-hat-cranberry-front-6b03afc0bafdc.jpg",
+    "angles": 4
+  },
+  "script-khaki-v2": {
+    "hash": "94a862ef6816",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/1842bfeec723016d2f623000aeb096a6/classic-dad-hat-khaki-front-6b03afcba6706.jpg",
+    "angles": 4
+  },
+  "script-white-v2": {
+    "hash": "94a862ef6816",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2767e99a8994f9aa05be688a95aebf79/classic-dad-hat-white-front-6b03b00a419d2.jpg",
+    "angles": 4
+  },
+  "rope-espresso-h1": {
+    "hash": "28c926ab5c49",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6dd76f511781770c672fa5abb128734a/sunwashed-rope-cap-espresso-front-6b03b016246e0.jpg",
+    "angles": 4
+  },
+  "rope-moss-h1": {
+    "hash": "28c926ab5c49",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7b1c7aa3695d0a8800ddf67a394ad820/sunwashed-rope-cap-moss-front-6b03b0532045f.jpg",
+    "angles": 4
+  },
+  "rope-granite-h1": {
+    "hash": "28c926ab5c49",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/da82b6bb80b0349697d6a916231034af/sunwashed-rope-cap-granite-front-6b03b059884b1.jpg",
+    "angles": 4
+  },
+  "rope-bluejean-h1": {
+    "hash": "28c926ab5c49",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/77e64deec24205bdaf4827fbfee98b18/sunwashed-rope-cap-blue-jean-front-6b03b096ec6d3.jpg",
+    "angles": 4
+  },
+  "rope-chambray-h1": {
+    "hash": "5bd6d76180c1",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6fb3472ec0ef3a9ff01e18212ca397b6/sunwashed-rope-cap-chambray-front-6b03b09e63f4b.jpg",
+    "angles": 4
+  },
+  "rope-ivory-h1": {
+    "hash": "5bd6d76180c1",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4545bb4523a2654c90604f19bc8a9422/sunwashed-rope-cap-ivory-front-6b03b0da72f5e.jpg",
+    "angles": 4
+  },
+  "rope-peachy-h1": {
+    "hash": "5bd6d76180c1",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e93d1a2adb1628cd1978eb328ebad92f/sunwashed-rope-cap-peachy-front-6b03b0e14553b.jpg",
+    "angles": 4
+  },
+  "cord-brown-v9": {
+    "hash": "29ad57113a8d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/98aabd8f34ffe90ed773732d36c89e15/vintage-corduroy-cap-brown-front-6b03b11f54c24.jpg",
+    "angles": 4
+  },
+  "cord-olive-v9": {
+    "hash": "29ad57113a8d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/226af59ae2f3d8dc9000a6239153d558/vintage-corduroy-cap-olive-front-6b03b12933dac.jpg",
+    "angles": 4
+  },
+  "cord-navy-v9": {
+    "hash": "29ad57113a8d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/40988da670a235336a8a3187ac091b83/vintage-corduroy-cap-navy-front-6b03b166a46ec.jpg",
+    "angles": 4
+  },
+  "cord-burgundy-v9": {
+    "hash": "29ad57113a8d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/105d96da5d48e78c5d2c135953c50ad1/vintage-corduroy-cap-burgundy-front-6b03b16d0a1e0.jpg",
+    "angles": 4
+  },
+  "cord-black-v9": {
+    "hash": "29ad57113a8d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9bdc3cbc0c3c77c6b8046baf5e6a6d7e/vintage-corduroy-cap-black-front-6b03b1a9abc24.jpg",
+    "angles": 4
+  },
+  "pixelhat-black-m7": {
+    "hash": "66e2947eed8e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/bd1a0322508a557773bcc39176aea6fe/classic-dad-hat-black-front-6b03b1b236370.jpg",
+    "angles": 4
+  },
+  "pixelhat-stone-m7": {
+    "hash": "c1061a7fad37",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9ac41a206c81fffaa4019cbe51e5cb8f/classic-dad-hat-stone-front-6b03b1ee4598a.jpg",
+    "angles": 4
+  },
+  "pixelhat-navy-m7": {
+    "hash": "66e2947eed8e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/25a8dcd29d1d9d78fe682d281d20d82a/classic-dad-hat-navy-front-6b03b1f9bbd4d.jpg",
+    "angles": 4
+  },
+  "pixelhat-spruce-m7": {
+    "hash": "66e2947eed8e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c17f6c91ba50b50e53ec6430dd90b0b4/classic-dad-hat-spruce-front-6b03b23810f01.jpg",
+    "angles": 4
+  },
+  "pixelhat-lightblue-m7": {
+    "hash": "c1061a7fad37",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/fa7a44c43e3924da241bb817f91bacd8/classic-dad-hat-light-blue-front-6b03b24286d8d.jpg",
+    "angles": 4
+  },
+  "pixelhat-pink-m7": {
+    "hash": "c1061a7fad37",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/07b71dc74b7cf39a9394ac32f7c76764/classic-dad-hat-pink-front-6b03b27eec403.jpg",
+    "angles": 4
+  },
+  "pixelhat-darkgrey-m7": {
+    "hash": "66e2947eed8e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8b8c0918331045fb16bfb0afd6a8e0a5/classic-dad-hat-dark-grey-front-6b03b286cc3ee.jpg",
+    "angles": 4
+  },
+  "pixelhat-white-m7": {
+    "hash": "0ebf1d99d606",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6179aa5074e4fb6140dde8418a08c2ff/classic-dad-hat-white-front-6b03b2c3cc927.jpg",
+    "angles": 4
+  },
+  "hat-navy-42": {
+    "hash": "c92706c2abdc",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/12e0add5c8c0e6a3ad4631375fe6ace4/classic-dad-hat-navy-front-6b03b2ce9432b.jpg",
+    "angles": 4
+  },
+  "hat-navy-43": {
+    "hash": "ae96667aa441",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e9c1277ba9be4f7b2d9ec1e8800212a1/classic-dad-hat-navy-front-6b03b30b8ebe8.jpg",
+    "angles": 4
+  },
+  "hat-navy-44": {
+    "hash": "429728c8c526",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/18f02d17116f657bffebf197614234e0/classic-dad-hat-navy-front-6b03b317cca93.jpg",
+    "angles": 4
+  },
+  "hat-navy-55": {
+    "hash": "892897bdc7a9",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f9e3540bd1d114946847c9510c33caf4/classic-dad-hat-navy-front-6b03b353f03b5.jpg",
+    "angles": 4
+  },
+  "hat-navy-58": {
+    "hash": "ea98c8657cdd",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/133ae2b18727ddb44c717af7c9a43d79/classic-dad-hat-navy-front-6b03b35f8b0d3.jpg",
+    "angles": 4
+  },
+  "hat-navy-59": {
+    "hash": "d0d2aea8a6c5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9de3939cda4033751d0b850d18d6615b/classic-dad-hat-navy-front-6b03b39c09687.jpg",
+    "angles": 4
+  },
+  "hat-navy-60": {
+    "hash": "80723f32bc37",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5060e723e9d24724fe9dfcfe70b2b811/classic-dad-hat-navy-front-6b03b3a86c018.jpg",
+    "angles": 4
+  },
+  "hat-stone-42": {
+    "hash": "ca090eb1575f",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/15cd1208d56ce3a57190ffc170ad61a7/classic-dad-hat-stone-front-6b03b3e3c79d5.jpg",
+    "angles": 4
+  },
+  "hat-stone-43": {
+    "hash": "de2533333a40",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/51a81b17c7dd457a936c2e65912972a3/classic-dad-hat-stone-front-6b03b3eed6d64.jpg",
+    "angles": 4
+  },
+  "hat-stone-44": {
+    "hash": "f2533e2bade1",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/33a3a2c2c40dd3611dc352ea6762457b/classic-dad-hat-stone-front-6b03b42c17310.jpg",
+    "angles": 4
+  },
+  "hat-stone-55": {
+    "hash": "22d70bf6dfcd",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/31fb75145b568f0069baed9ab9ca45e7/classic-dad-hat-stone-front-6b03b4370a37e.jpg",
+    "angles": 4
+  },
+  "hat-stone-58": {
+    "hash": "262f73f4ed11",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/cc55a28d710bfaa7afd0db5bb349c2da/classic-dad-hat-stone-front-6b03b474d0d30.jpg",
+    "angles": 4
+  },
+  "hat-stone-59": {
+    "hash": "635d99e878a3",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/705e00d9936f019ac91bdb4ae342553d/classic-dad-hat-stone-front-6b03b47f8a8f5.jpg",
+    "angles": 4
+  },
+  "hat-stone-60": {
+    "hash": "14e545ea5a92",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c8f7e5d6939d1896f07bf2952bfd1751/classic-dad-hat-stone-front-6b03b4bce0310.jpg",
+    "angles": 4
   }
 }
