@@ -88,7 +88,13 @@ for (const [slug, item] of Object.entries(cat.items)) {
       if (localMd5 && main.hash && main.hash !== localMd5) bad(slug, `size ${v.size}: Printful's print file differs from the one in the repo (old artwork?)`);
       if (main.dpi && main.dpi < 120) notes.push(`${slug}: print file is only ${main.dpi} dpi`);
     }
-    for (const e of p.extras || []) if (!files.find(f => f.type === e.placement)) bad(slug, `size ${v.size}: missing extra print "${e.placement}"`);
+    // Printful stores 'embroidery_back' under the short type 'back' (same for left/right).
+    for (const e of p.extras || []) {
+      const ef = files.find(f => f.type === e.placement || f.type === e.placement.replace(/^embroidery_/, ''));
+      if (!ef) bad(slug, `size ${v.size}: missing extra print "${e.placement}" (has ${files.map(f => f.type).join(', ') || 'none'})`);
+      else if (!String(ef.filename || ef.url || '').includes(`${slug}--${e.placement}.png`)) bad(slug, `size ${v.size}: extra print file is "${ef.filename}"`);
+    }
+    if (p.extras?.length && v === item.variants[0]) notes.push(`${slug}: options ${JSON.stringify(sv.options || [])}`);
     if (/^embroidery/.test(p.placement)) {
       const opt = (sv.options || []).find(o => o.id === threadOption(p.placement));
       const want = threads[slug];
