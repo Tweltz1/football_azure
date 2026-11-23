@@ -12,7 +12,7 @@ on:
       action:
         description: 'build (make previews from the list) or unclaim (free a wrongly claimed preview)'
         type: choice
-        options: [build, unclaim]
+        options: [build, unclaim, check-ai]
         default: build
       list:
         description: 'build: JSON array like [{"src":"Two Step Detailing, Chippewa Falls WI","known":{"phone":"(715) 456-0667","email":"x@gmail.com","addr":""}}]'
@@ -41,6 +41,18 @@ jobs:
           ok=$(printf 'wc-outreach:%s' "$key" | sha256sum | cut -d' ' -f1)
           echo "::add-mask::$ok"
           echo "k=$ok" >> "$GITHUB_OUTPUT"
+
+      - name: Check the AI key
+        if: inputs.action == 'check-ai' || inputs.action == 'build'
+        env:
+          GEMINI_KEY: ${{ secrets.GENINI_TRAINING_KEY || secrets.GEMINI_TRAINING_KEY || secrets.GEMINI_API_KEY }}
+        run: |
+          # One tiny request with the same key and model the site uses; prints only the status and Google's error text.
+          for m in gemini-flash-latest gemini-2.5-flash; do
+            code=$(curl -s -o g.json -w '%{http_code}' -X POST "https://generativelanguage.googleapis.com/v1beta/models/$m:generateContent" \
+              -H 'Content-Type: application/json' -H "x-goog-api-key: $GEMINI_KEY" -d '{"contents":[{"parts":[{"text":"Say OK"}]}],"generationConfig":{"maxOutputTokens":5}}')
+            echo "$m -> $code $(jq -c '.error | if . then {code, status, message: (.message | .[0:300])} else "ok" end' g.json)"
+          done
 
       - name: Unclaim
         if: inputs.action == 'unclaim'
