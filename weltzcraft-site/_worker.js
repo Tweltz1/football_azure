@@ -574,24 +574,68 @@ function previewAnswers(b, okPhoto) {
 const str = (v, max) => oneLine(v, max);
 const rows = (v, n, cols) => (Array.isArray(v) ? v : []).slice(0, n).map((r) => (Array.isArray(r) ? r : [])).map((r) => cols.map((max, i) => str(r[i], max))).filter((r) => r[0]);
 
+// Every AI request the site makes is written to weltzcraft_ai_log so the spend on the paid key can be added up
+// (see /ai-usage). Prices are Google's list prices for Gemini Flash in dollars; the bill in Google AI Studio is the
+// real number. Change these if Google's prices change.
+const AI_PRICE = { inPerM: 0.30, outPerM: 2.50, search: 0.035 };
+const AI_CREDIT = { added: 5, since: '2026-11-23T02:10:00Z' };   // Tyler's last top-up: dollars, and when
+async function aiLog(env, body, status, out) {
+  try {
+    const parts = (body.contents && body.contents[0] && body.contents[0].parts) || [];
+    const kind = body.tools ? 'lookup' : parts.some((x) => x.inline_data) ? 'photos' : /OWNER'S REQUEST/.test((parts[0] && parts[0].text) || '') ? 'change' : 'words';
+    const u = (out && out.usageMetadata) || {};
+    const tin = (u.promptTokenCount || 0) + (u.toolUsePromptTokenCount || 0), tout = (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0);
+    const c0 = out && out.candidates && out.candidates[0];
+    const searched = !!(c0 && c0.groundingMetadata && ((c0.groundingMetadata.webSearchQueries || []).length || (c0.groundingMetadata.groundingChunks || []).length));
+    const cost = tin * AI_PRICE.inPerM / 1e6 + tout * AI_PRICE.outPerM / 1e6 + (searched ? AI_PRICE.search : 0);
+    await sb(env, 'weltzcraft_ai_log', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({
+      kind, model: oneLine((out && out.modelVersion) || GEMINI_MODEL, 60), ok: status === 200, status, tokens_in: tin, tokens_out: tout, search: searched, cost: Math.round(cost * 1e5) / 1e5 }) });
+  } catch (e) {}
+}
 async function gemini(env, body, ms, log) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
+  let status = 0, out = null;
   try {
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent', {
       method: 'POST', signal: ctl.signal,
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify(body),
     });
+    status = r.status;
     // An outreach build passes a meter in env: every Gemini request is counted (failed ones too), for Tyler's cost tracking.
     const m = env._meter; if (m) { m.calls++; if (body.tools) m.searchCalls++; if (!r.ok) m.failed++; }
     if (!r.ok) { if (log) log.push('gemini ' + r.status + ' ' + (await r.text()).slice(0, 300)); return null; }
-    const out = await r.json();
+    out = await r.json();
     if (m && out.usageMetadata) { m.inTok += out.usageMetadata.promptTokenCount || 0; m.outTok += (out.usageMetadata.candidatesTokenCount || 0) + (out.usageMetadata.thoughtsTokenCount || 0);
       m.searches += ((out.candidates && out.candidates[0] && out.candidates[0].groundingMetadata && out.candidates[0].groundingMetadata.webSearchQueries) || []).length; }
     if (log) log.push('gemini finish ' + ((out.candidates && out.candidates[0] && out.candidates[0].finishReason) || JSON.stringify(out.promptFeedback || {}).slice(0, 120)));
     return (out.candidates && out.candidates[0] && out.candidates[0].content && out.candidates[0].content.parts || []).map((p) => p.text || '').join('');
-  } catch (e) { if (log) log.push('gemini ' + e.name); return null; } finally { clearTimeout(timer); }
+  } catch (e) { if (log) log.push('gemini ' + e.name); return null; } finally { clearTimeout(timer); await aiLog(env, body, status, out); }
+}
+/** GET /ai-usage: the running total of AI requests and their estimated cost. Numbers only. */
+async function aiUsage(env) {
+  const r = await sb(env, 'weltzcraft_ai_log?select=created_at,kind,ok,status,tokens_in,tokens_out,search,cost&order=created_at.desc&limit=20000');
+  const rows = r.ok ? await r.json() : [];
+  const NAMES = { lookup: 'Looking a business up on the web', words: 'Writing a site\'s words and design', photos: 'Choosing photos', change: 'AI changes asked for in the portal' };
+  const money = (n) => '$' + (n < 1 ? n.toFixed(3) : n.toFixed(2));
+  const tally = (list) => { const t = {}; for (const x of list) { const k = t[x.kind] || (t[x.kind] = { n: 0, bad: 0, tin: 0, tout: 0, cost: 0 }); k.n++; if (!x.ok) k.bad++; k.tin += x.tokens_in || 0; k.tout += x.tokens_out || 0; k.cost += Number(x.cost) || 0; } return t; };
+  const table = (list) => { const t = tally(list), keys = Object.keys(t).sort(); const sum = keys.reduce((a, k) => a + t[k].cost, 0);
+    return '<table><tr><th>What</th><th>Requests</th><th>Failed</th><th>Words in</th><th>Words out</th><th>Est. cost</th></tr>' + keys.map((k) => '<tr><td>' + (NAMES[k] || k) + '</td><td>' + t[k].n + '</td><td>' + t[k].bad + '</td><td>' + t[k].tin.toLocaleString('en-US') + '</td><td>' + t[k].tout.toLocaleString('en-US') + '</td><td>' + money(t[k].cost) + '</td></tr>').join('') +
+      '<tr class="t"><td>Total</td><td>' + list.length + '</td><td>' + list.filter((x) => !x.ok).length + '</td><td></td><td></td><td>' + money(sum) + '</td></tr></table>'; };
+  const since = rows.filter((x) => x.created_at >= AI_CREDIT.since), used = since.reduce((a, x) => a + (Number(x.cost) || 0), 0);
+  const day = (x) => new Date(x.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' });
+  const days = {}; for (const x of rows) { const d = days[day(x)] || (days[day(x)] = { n: 0, cost: 0 }); d.n++; d.cost += Number(x.cost) || 0; }
+  const html = '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>AI usage · Weltzcraft</title>' +
+    '<style>:root{color-scheme:light dark}body{font:16px/1.5 system-ui,sans-serif;max-width:760px;margin:0 auto;padding:24px 16px 60px}h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:30px 0 8px}.big{font-size:34px;font-weight:800;margin:14px 0 0}.mut{opacity:.7;font-size:14px}.sc{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14.5px}th,td{text-align:right;padding:8px 10px;border-bottom:1px solid rgba(128,128,128,.3);white-space:nowrap}th:first-child,td:first-child{text-align:left;white-space:normal}tr.t td{font-weight:700}</style>' +
+    '<h1>AI usage on weltzcraft.com</h1><p class="mut">Every AI request the website builder and customer portal make, counted as it happens.</p>' +
+    '<p class="big">' + money(used) + ' used</p><p>of the $' + AI_CREDIT.added + ' added on ' + new Date(AI_CREDIT.since).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'long', day: 'numeric' }) + ', by the website. About <b>' + money(Math.max(0, AI_CREDIT.added - used)) + '</b> left if nothing else used the key.</p>' +
+    '<h2>Since the last top-up</h2><div class="sc">' + table(since) + '</div>' +
+    '<h2>By day</h2><div class="sc"><table><tr><th>Day</th><th>Requests</th><th>Est. cost</th></tr>' + Object.keys(days).map((d) => '<tr><td>' + d + '</td><td>' + days[d].n + '</td><td>' + money(days[d].cost) + '</td></tr>').join('') + '</table></div>' +
+    '<h2>Everything counted so far</h2><div class="sc">' + table(rows) + '</div>' +
+    '<p class="mut">Costs are estimates from Google\'s listed prices ($' + AI_PRICE.inPerM.toFixed(2) + ' per million words in, $' + AI_PRICE.outPerM.toFixed(2) + ' per million out, $' + AI_PRICE.search + ' per web search). "Words" are tokens, the pieces Google bills by. A failed request costs nothing. ' +
+    'Not counted here: merch artwork and picture training, which use the same key from GitHub and not from the website. The exact bill is in Google AI Studio under Billing.</p></html>';
+  return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
 }
 /** The first {...} JSON object in a model's answer (it may be wrapped in ``` or have words around it). */
 function jsonIn(text) {
@@ -2073,6 +2117,9 @@ export default {
     }
     if (url.pathname === '/api/merch/stripe-webhook') {
       try { return await merchWebhook(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
+    }
+    if (url.pathname === '/ai-usage') {
+      try { return await aiUsage(env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
     if (url.pathname === '/api/preview') {
       try { return await previewCreate(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
