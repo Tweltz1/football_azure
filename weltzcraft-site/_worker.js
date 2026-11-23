@@ -583,8 +583,12 @@ async function gemini(env, body, ms, log) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify(body),
     });
+    // An outreach build passes a meter in env: every Gemini request is counted (failed ones too), for Tyler's cost tracking.
+    const m = env._meter; if (m) { m.calls++; if (body.tools) m.searchCalls++; if (!r.ok) m.failed++; }
     if (!r.ok) { if (log) log.push('gemini ' + r.status + ' ' + (await r.text()).slice(0, 300)); return null; }
     const out = await r.json();
+    if (m && out.usageMetadata) { m.inTok += out.usageMetadata.promptTokenCount || 0; m.outTok += (out.usageMetadata.candidatesTokenCount || 0) + (out.usageMetadata.thoughtsTokenCount || 0);
+      m.searches += ((out.candidates && out.candidates[0] && out.candidates[0].groundingMetadata && out.candidates[0].groundingMetadata.webSearchQueries) || []).length; }
     if (log) log.push('gemini finish ' + ((out.candidates && out.candidates[0] && out.candidates[0].finishReason) || JSON.stringify(out.promptFeedback || {}).slice(0, 120)));
     return (out.candidates && out.candidates[0] && out.candidates[0].content && out.candidates[0].content.parts || []).map((p) => p.text || '').join('');
   } catch (e) { if (log) log.push('gemini ' + e.name); return null; } finally { clearTimeout(timer); }
@@ -858,6 +862,8 @@ async function previewCreate(request, env) {
   try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
   if (!b || typeof b !== 'object' || clean(b.website, 200)) return json(400, { error: 'Bad request' });
   const admin = await outreachOk(request, env);
+  const meter = { calls: 0, failed: 0, searchCalls: 0, searches: 0, inTok: 0, outTok: 0 };
+  if (admin) env = { ...env, _meter: meter };
   // src = "build it from my Facebook page": a link or a "name, town" line to look up instead of answering questions.
   let src = oneLine(b.src, 200);
   // Two steps for a looked-up business: {src, find: 1} looks it up and answers "is this it?"; {lookup: id} then builds it.
@@ -889,7 +895,7 @@ async function previewCreate(request, env) {
     facts = await previewResearch(env, share ? pageTitle : src, pageTitle);
     // Details Tyler already checked on the business's own listing win over what the search found.
     if (facts && admin && b.known && typeof b.known === 'object') for (const k of ['addr', 'phone', 'email', 'town']) { const v = oneLine(b.known[k], 120); if (v) facts[k] = v; }
-    if (!facts) return json(422, { error: 'We couldn\'t find that business online. Answer the quick questions instead and you\'ll have your preview in a minute.', questions: true });
+    if (!facts) return json(422, { error: 'We couldn\'t find that business online. Answer the quick questions instead and you\'ll have your preview in a minute.', questions: true, ...(admin ? { meter } : {}) });
     if (b.find) {
       // Keep what was found for a couple of hours so "Yes, that's us" doesn't pay for the search twice. It also counts toward the daily limits.
       const id = 'lookup-' + hex(crypto.getRandomValues(new Uint8Array(8)));
@@ -939,7 +945,7 @@ async function previewCreate(request, env) {
     // Before the edit_hash column exists (first deploy), save without it; the preview just can't be customized later.
     if (!r.ok && r.status !== 409) r = await sb(env, 'weltzcraft_previews', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) });
     if (r.ok && lookupId) await sb(env, 'weltzcraft_previews?slug=eq.' + lookupId, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(() => {});
-    if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '', photoLog: plog, ...(admin ? { facts } : {}) });
+    if (r.ok) return json(200, { ok: true, slug, url: '/preview/' + slug, answers: a, copy, expires, key: keyed ? key : '', photoLog: plog, ...(admin ? { facts, meter } : {}) });
     if (r.status !== 409) return json(502, { error: 'Could not save the preview' });
   }
   return json(502, { error: 'Could not save the preview' });
