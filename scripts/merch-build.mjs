@@ -112,8 +112,9 @@ if (MODE === 'mockups') {
       const url = main.mockup_url;
       fs.writeFileSync(`weltzcraft-site/img/merch/${c.slug}.jpg`, Buffer.from(await (await fetch(url)).arrayBuffer()));
       // Extra angles for the swipe gallery: other sides of the main photo, then other print spots (e.g. a sleeve).
-      // Other print spots (e.g. a hat's back) come first so they are never cut off.
-      const more = [...done.mockups.filter(m => m !== main).map(m => m.mockup_url), ...(main.extra || []).map(e => e.url)].slice(0, 3);
+      // (A hat's back stitching already shows in the main photo's back view, so other spots' photos go last:
+      // on some blanks they are just another front view.)
+      const more = [...(main.extra || []).map(e => e.url), ...done.mockups.filter(m => m !== main).map(m => m.mockup_url)].slice(0, 3);
       fs.mkdirSync('weltzcraft-site/img/merch/angles', { recursive: true });
       for (const [i, u] of more.entries()) fs.writeFileSync(`weltzcraft-site/img/merch/angles/${c.slug}~${i + 2}.jpg`, Buffer.from(await (await fetch(u)).arrayBuffer()));
       state[c.slug] = { hash: h, mockup_url: url, angles: 1 + more.length };
