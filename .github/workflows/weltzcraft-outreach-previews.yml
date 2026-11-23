@@ -1,0 +1,89 @@
+name: Weltzcraft outreach previews
+
+# Builds free sample websites for local businesses that have no website, for Tyler's outreach emails.
+# Each one is made by the live site's own builder (weltzcraft.com/api/preview) with the outreach key, which:
+# skips the per-visitor daily limit, sends no email, keeps the preview up 60 days, and puts a
+# "Is this your business? Claim it" box on the page (the business enters its email to get the edit link).
+# Look-ups still count toward the site-wide 60 a day (each is a paid Gemini web search), so keep batches small.
+# Run by hand only. Nothing is ever emailed to the businesses by this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'build (make previews from the list) or unclaim (free a wrongly claimed preview)'
+        type: choice
+        options: [build, unclaim]
+        default: build
+      list:
+        description: 'build: JSON array like [{"src":"Two Step Detailing, Chippewa Falls WI","known":{"phone":"(715) 456-0667","email":"x@gmail.com","addr":""}}]'
+        type: string
+        default: '[]'
+      slug:
+        description: 'unclaim: the preview slug'
+        type: string
+        default: ''
+
+jobs:
+  previews:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Make the outreach key
+        id: key
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          key=$(curl --silent -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$REF/api-keys?reveal=true" \
+            | jq -r '[.[] | select(.type=="secret")][0].api_key // ([.[] | select(.name=="service_role")][0].api_key) // empty')
+          [ -n "$key" ] || { echo "::error::Could not read the Supabase server key"; exit 1; }
+          ok=$(printf 'wc-outreach:%s' "$key" | sha256sum | cut -d' ' -f1)
+          echo "::add-mask::$ok"
+          echo "k=$ok" >> "$GITHUB_OUTPUT"
+
+      - name: Unclaim
+        if: inputs.action == 'unclaim'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SLUG: ${{ inputs.slug }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$SLUG" | grep -Eq '^[a-z0-9-]{3,60}$' || { echo "::error::Bad slug"; exit 1; }
+          sql="update public.weltzcraft_previews set claimed_at = null, email = null, edit_hash = null where slug = '$SLUG' and answers->>'claim' = 'true' returning slug;"
+          curl --silent --show-error -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg q "$sql" '{query:$q}')"; echo
+
+      - name: Build previews
+        if: inputs.action == 'build'
+        env:
+          K: ${{ steps.key.outputs.k }}
+          LIST: ${{ inputs.list }}
+        run: |
+          set -uo pipefail
+          echo "$LIST" | jq -e 'type == "array"' >/dev/null || { echo "::error::list must be a JSON array"; exit 1; }
+          n=$(echo "$LIST" | jq length); echo "Building $n previews"
+          : > results.jsonl
+          for i in $(seq 0 $((n - 1))); do
+            item=$(echo "$LIST" | jq -c ".[$i]")
+            src=$(echo "$item" | jq -r '.src')
+            body=$(echo "$item" | jq -c '{src: .src, known: (.known // {})}')
+            res=$(curl --silent --max-time 170 -X POST https://weltzcraft.com/api/preview \
+              -H 'Content-Type: application/json' -H "X-Weltzcraft-Outreach: $K" -d "$body" || echo '{"error":"timeout"}')
+            line=$(echo "$res" | jq -c --arg src "$src" '{src: $src, slug: .slug, error: .error, name: .answers.n, town: .answers.town, kind: .answers.what,
+              addr: .answers.addr, phone: .answers.phone, email: .answers.email, photos: ((.copy.photos.gal // []) | length), expires: .expires,
+              found: (.facts | if . then {n, town, addr, phone, email} else null end)}' 2>/dev/null || jq -nc --arg src "$src" '{src: $src, error: "bad answer"}')
+            echo "RESULT $line"
+            echo "$line" >> results.jsonl
+            sleep 3
+          done
+          echo "Made $(jq -s '[.[] | select(.slug)] | length' results.jsonl) of $n"
+
+      - name: Keep the results
+        if: inputs.action == 'build'
+        uses: actions/upload-artifact@v4
+        with:
+          name: outreach-previews
+          path: results.jsonl
