@@ -119,6 +119,8 @@
     var dir = real && real.address ? 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(real.address) : '';
     var realRev = t.liveReviews && t.liveReviews.length ? t.liveReviews : null;   // the owner's own reviews, typed in their portal
     var reviews = realRev ? true : on('review') && !live;
+    // Found online for a looked-up business (preview only): real quotes with where they were posted, and the star rating.
+    var foundRev = !realRev && copy && copy.revReal, RT = !live && copy && copy.rating && copy.rating.score ? copy.rating : null;
     var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') && photo ? [['gallery', 'Gallery']] : []).concat(hasOrder ? [['order', 'Order']] : []).concat(F.book ? [['book', 'Book']] : []).concat(reviews ? [['reviews', 'Reviews']] : []).concat(on('faq') ? [['faq', 'FAQ']] : []).concat([['visit', hasForm ? 'Contact' : 'Visit']]);
     var PAGES = BASEP === null ? [] : (Array.isArray(a.pages) ? a.pages : []);
     var cur = PG ? PAGES.filter(function (x) { return x.path === PG; })[0] || null : null;
@@ -146,7 +148,7 @@
     var HERO =
       '<section class="hero" id="top">' + (img(0, name) || (hero === 'split' ? '<div class="htile" aria-hidden="true">' + esc(t.icon || '⭐') + '</div>' : '')) + '<div class="wrap"><p class="eyebrow">' + esc(t.icon) + ' ' + esc(t.eyebrow || (town + '\'s favorite ' + t.noun)) + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +
         '<div class="cta"><a class="btn" href="' + go + '">' + esc(cta) + '</a>' + (on('list') ? '<a class="btn ghost" href="#menu">See ' + esc(t.list.toLowerCase()) + '</a>' : '') + '</div>' +
-        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (H1 && !(H1[1].length > 24) ? '<span><b>' + esc(H1[1]) + '</b>' + esc(H1[0]) + '</span>' : '') + '</div></div></section>';
+        '<div class="trust">' + (real ? (real.phone ? '<span><b>' + esc(real.phone) + '</b>Call or text</span>' : '') : RT ? '<span><b>' + esc(RT.score) + ' ★</b>' + esc((RT.count ? RT.count + ' ' : '') + (RT.source ? RT.source + ' ' : '') + 'reviews') + '</span>' : a.src ? '' : '<span><b>4.9 ★</b>200+ reviews</span>') + '<span><b>Local</b>owned in ' + esc(town) + '</span>' + (H1 && !(H1[1].length > 24) ? '<span><b>' + esc(H1[1]) + '</b>' + esc(H1[0]) + '</span>' : '') + '</div></div></section>';
     var SEC = {};
     SEC.about = '<section id="about"><div class="wrap about"><div class="ph">' + img(1, name + ' inside') + tile() + '</div><div><p class="eyebrow">Our story</p><h2 style="font-size:clamp(32px,4.4vw,48px)">' + esc(t.aboutTitle || ('More than a ' + t.noun + '. A neighbor.')) + '</h2><p>' + esc(t.about) + '</p>' +
         '<div class="facts">' + t.facts.map(function (f) { return '<div><b>' + esc(f[0]) + '</b><small>' + esc(f[1]) + '</small></div>'; }).join('') + '</div></div></div></section>';
@@ -162,8 +164,8 @@
     SEC.book = (F.book ? '<section id="book" class="tint"><div class="wrap" id="wc-book"></div></section>' : '');
     SEC.gallery = (on('pics') && (PX ? pxGal.length >= 3 : photo) ? '<section id="gallery"><div class="wrap"><div class="sec-h"><p class="eyebrow">Gallery</p><h2>' + (a.src ? 'A closer look.' : 'Come see for yourself.') + '</h2></div><div class="gal' + (PX && pxGal.length === 3 ? ' g3' : '') + '">' +
         (PX ? pxGal.map(function (o) { return '<div>' + pimg(o, name + ' photo') + '</div>'; }) : [2, 3, 0, 1].map(function (s) { return '<div>' + img(s, name + ' photo') + '</div>'; })).join('') + '</div></div></section>' : '');
-    SEC.reviews = (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2></div><div class="revs">' +
-        (realRev || t.reviews).map(function (r) { return '<div class="rev"><span class="st">★★★★★</span><p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '?')[0]) + '</i>' + esc(r[1]) + (realRev ? '' : ' · Sample review') + '</span></div>'; }).join('') + '</div></div></section>' : '');
+    SEC.reviews = (reviews ? '<section id="reviews" class="tint"><div class="wrap"><div class="sec-h"><p class="eyebrow">Reviews</p><h2>Loved by ' + esc(town) + '.</h2>' + (RT ? '<p class="rev-rate"><b>' + esc(RT.score) + ' ★</b> ' + esc((RT.count ? 'from ' + RT.count + ' reviews' : 'rating') + (RT.source ? ' on ' + RT.source : '')) + '</p>' : '') + '</div><div class="revs">' +
+        (realRev || t.reviews).map(function (r) { return '<div class="rev">' + (foundRev ? '' : '<span class="st">★★★★★</span>') + '<p>“' + esc(r[0]) + '”</p><span class="who"><i>' + esc((r[1] || '★')[0]) + '</i>' + esc(r[1] || 'Customer') + (realRev ? '' : foundRev ? (r[2] ? ' · on ' + esc(r[2]) : '') : ' · Sample review') + '</span></div>'; }).join('') + '</div>' + (foundRev ? '<p class="rev-note">We found these reviews online. Check them, then add your favorites before your site goes live.</p>' : '') + '</div></section>' : '');
     SEC.faq = (on('faq') ? '<section id="faq"><div class="wrap"><div class="sec-h"><p class="eyebrow">Questions</p><h2>Good to know.</h2></div><div class="faq">' +
         faq.map(function (f) { return '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>'; }).join('') + '</div></div></section>' : '');
     SEC.areas = (areas ? '<section id="areas"><div class="wrap"><div class="sec-h"><p class="eyebrow">Where we work</p><h2>Proudly serving ' + esc(town) + ' and nearby.</h2></div><ul class="areas"><li>' + esc(town) + '</li>' +
