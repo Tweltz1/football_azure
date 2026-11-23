@@ -746,35 +746,5 @@
   "shield-naturalblack-h2": {
     "hash": "39ca10593333",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9d29b3ba4fb8e9ffc2021378d41ef722/classic-snapback-natural-black-front-6b020eb7e743a.jpg"
-  },
-  "wild-stone-a1": {
-    "hash": "ed425ae54f93",
-    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/db1b0c97d2c413fb82ae19163ca00f6d/classic-dad-hat-stone-front-6b03a099bd71f.jpg",
-    "angles": 4
-  },
-  "wild-stone-a2": {
-    "hash": "5752b00ec5d7",
-    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/153afb34e8a5eb0c5ec7b28d6c28a288/classic-dad-hat-stone-front-6b03a0a8b4462.jpg",
-    "angles": 4
-  },
-  "wild-stone-a3": {
-    "hash": "7fa6bafdea83",
-    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e9fcb2eb891524ee49abba3a3ea7e370/classic-dad-hat-stone-front-6b03a0e2830b3.jpg",
-    "angles": 4
-  },
-  "wild-stone-a4": {
-    "hash": "f8c5efc753de",
-    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/850b8529e608ff5fa7a0512f0aac6844/classic-dad-hat-stone-front-6b03a103179b8.jpg",
-    "angles": 4
-  },
-  "wild-stone-a5": {
-    "hash": "50409dca5257",
-    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/20f433f5ba8f4b536a8680f62476cc10/classic-dad-hat-stone-front-6b03a12d0a0f3.jpg",
-    "angles": 4
-  },
-  "wild-stone-a6": {
-    "hash": "07729799a82a",
-    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a587d11e1e5a2e1d01b14050b5b8b69e/classic-dad-hat-stone-front-6b03a139228d1.jpg",
-    "angles": 4
   }
 }
