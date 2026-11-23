@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T03:37:17.898Z",
+ "updated": "2026-11-23T05:58:24.448Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -1418,360 +1418,360 @@
    "angles": 4
   },
   "wild-stone-a1": {
-   "hash": "ed425ae54f93",
+   "hash": "bc5c33e94b82",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660052943,
+     "id": 5660590438,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-stone-a2": {
-   "hash": "5752b00ec5d7",
+   "hash": "1d994a55e4ef",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660052948,
+     "id": 5660590513,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-stone-a3": {
-   "hash": "7fa6bafdea83",
+   "hash": "c7d99107f9a2",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660052987,
+     "id": 5660590622,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-stone-a4": {
-   "hash": "f8c5efc753de",
+   "hash": "ee146d9ff234",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660053022,
+     "id": 5660590754,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-stone-a5": {
-   "hash": "50409dca5257",
+   "hash": "792a9d82c84c",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660053121,
+     "id": 5660590765,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-stone-a6": {
-   "hash": "07729799a82a",
+   "hash": "381fb733511a",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660053183,
+     "id": 5660590875,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-khaki-a1": {
-   "hash": "ed425ae54f93",
+   "hash": "bc5c33e94b82",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660053188,
+     "id": 5660591019,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-khaki-a2": {
-   "hash": "5752b00ec5d7",
+   "hash": "1d994a55e4ef",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660053208,
+     "id": 5660591159,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-khaki-a3": {
-   "hash": "7fa6bafdea83",
+   "hash": "c7d99107f9a2",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660053249,
+     "id": 5660591198,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-khaki-a4": {
-   "hash": "f8c5efc753de",
+   "hash": "ee146d9ff234",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660053323,
+     "id": 5660591267,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-khaki-a5": {
-   "hash": "50409dca5257",
+   "hash": "792a9d82c84c",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660054506,
+     "id": 5660592593,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-khaki-a6": {
-   "hash": "07729799a82a",
+   "hash": "381fb733511a",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660054536,
+     "id": 5660592760,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-white-a1": {
-   "hash": "ed425ae54f93",
+   "hash": "bc5c33e94b82",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660054725,
+     "id": 5660592900,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-white-a2": {
-   "hash": "5752b00ec5d7",
+   "hash": "1d994a55e4ef",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660054787,
+     "id": 5660592909,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-white-a3": {
-   "hash": "7fa6bafdea83",
+   "hash": "c7d99107f9a2",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660054818,
+     "id": 5660592915,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-white-a4": {
-   "hash": "f8c5efc753de",
+   "hash": "ee146d9ff234",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660054940,
+     "id": 5660592996,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-white-a5": {
-   "hash": "50409dca5257",
+   "hash": "792a9d82c84c",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660055002,
+     "id": 5660593027,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-white-a6": {
-   "hash": "07729799a82a",
+   "hash": "381fb733511a",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660055068,
+     "id": 5660593068,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-spruce-a1": {
-   "hash": "1ab9fafdc63d",
+   "hash": "a5f3a0377084",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660055278,
+     "id": 5660593076,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-spruce-a2": {
-   "hash": "849aee293a66",
+   "hash": "7b5b5b1f2fc3",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660055332,
+     "id": 5660593088,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-spruce-a3": {
-   "hash": "ef488bdaaa52",
+   "hash": "2cef12ca6ef9",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660056465,
+     "id": 5660593481,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-spruce-a4": {
-   "hash": "2da3c3f6fff3",
+   "hash": "93a02051198b",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660056533,
+     "id": 5660593493,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-spruce-a5": {
-   "hash": "9ef75f0bae1e",
+   "hash": "9f90506ae88e",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660056577,
+     "id": 5660593554,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-spruce-a6": {
-   "hash": "fdb576ba4754",
+   "hash": "3fe847f62b71",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660056803,
+     "id": 5660593572,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-black-a1": {
-   "hash": "1ab9fafdc63d",
+   "hash": "a5f3a0377084",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660056901,
+     "id": 5660593578,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-black-a2": {
-   "hash": "849aee293a66",
+   "hash": "7b5b5b1f2fc3",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660057008,
+     "id": 5660593580,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-black-a3": {
-   "hash": "ef488bdaaa52",
+   "hash": "2cef12ca6ef9",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660057083,
+     "id": 5660593581,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-black-a4": {
-   "hash": "cc35f42ddd68",
+   "hash": "5d63d5b59ccb",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660057096,
+     "id": 5660593597,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-black-a5": {
-   "hash": "9ef75f0bae1e",
+   "hash": "9f90506ae88e",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660057178,
+     "id": 5660593615,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wild-black-a6": {
-   "hash": "fdb576ba4754",
+   "hash": "3fe847f62b71",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660057214,
+     "id": 5660593625,
      "price": 35
     }
    ],
@@ -2259,468 +2259,468 @@
    "angles": 4
   },
   "wildcord-brown-a1": {
-   "hash": "1ab9fafdc63d",
+   "hash": "a5f3a0377084",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660058657,
+     "id": 5660594072,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-brown-a2": {
-   "hash": "849aee293a66",
+   "hash": "7b5b5b1f2fc3",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660058700,
+     "id": 5660594106,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-brown-a3": {
-   "hash": "ef488bdaaa52",
+   "hash": "2cef12ca6ef9",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660058807,
+     "id": 5660594119,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-brown-a4": {
-   "hash": "2da3c3f6fff3",
+   "hash": "93a02051198b",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660058854,
+     "id": 5660594126,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-brown-a5": {
-   "hash": "9ef75f0bae1e",
+   "hash": "9f90506ae88e",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660058992,
+     "id": 5660594131,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-brown-a6": {
-   "hash": "fdb576ba4754",
+   "hash": "3fe847f62b71",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660059057,
+     "id": 5660594136,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-olive-a1": {
-   "hash": "1ab9fafdc63d",
+   "hash": "a5f3a0377084",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660059070,
+     "id": 5660594145,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-olive-a2": {
-   "hash": "849aee293a66",
+   "hash": "7b5b5b1f2fc3",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660059120,
+     "id": 5660594239,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-olive-a3": {
-   "hash": "ef488bdaaa52",
+   "hash": "2cef12ca6ef9",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660059177,
+     "id": 5660594243,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-olive-a4": {
-   "hash": "2da3c3f6fff3",
+   "hash": "93a02051198b",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660059346,
+     "id": 5660594244,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-olive-a5": {
-   "hash": "9ef75f0bae1e",
+   "hash": "9f90506ae88e",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060467,
+     "id": 5660594737,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-olive-a6": {
-   "hash": "fdb576ba4754",
+   "hash": "3fe847f62b71",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060508,
+     "id": 5660594775,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-navy-a1": {
-   "hash": "1ab9fafdc63d",
+   "hash": "a5f3a0377084",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060603,
+     "id": 5660594798,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-navy-a2": {
-   "hash": "849aee293a66",
+   "hash": "7b5b5b1f2fc3",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060693,
+     "id": 5660594801,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-navy-a3": {
-   "hash": "ef488bdaaa52",
+   "hash": "2cef12ca6ef9",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060777,
+     "id": 5660594802,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-navy-a4": {
-   "hash": "cc35f42ddd68",
+   "hash": "5d63d5b59ccb",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060842,
+     "id": 5660594858,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-navy-a5": {
-   "hash": "9ef75f0bae1e",
+   "hash": "9f90506ae88e",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060907,
+     "id": 5660594862,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-navy-a6": {
-   "hash": "fdb576ba4754",
+   "hash": "3fe847f62b71",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060936,
+     "id": 5660594892,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-burgundy-a1": {
-   "hash": "1ab9fafdc63d",
+   "hash": "a5f3a0377084",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060974,
+     "id": 5660594898,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-burgundy-a2": {
-   "hash": "849aee293a66",
+   "hash": "7b5b5b1f2fc3",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660060994,
+     "id": 5660594948,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-burgundy-a3": {
-   "hash": "ef488bdaaa52",
+   "hash": "2cef12ca6ef9",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062069,
+     "id": 5660595448,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-burgundy-a4": {
-   "hash": "2da3c3f6fff3",
+   "hash": "93a02051198b",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062196,
+     "id": 5660595558,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-burgundy-a5": {
-   "hash": "9ef75f0bae1e",
+   "hash": "9f90506ae88e",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062212,
+     "id": 5660595580,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-burgundy-a6": {
-   "hash": "fdb576ba4754",
+   "hash": "3fe847f62b71",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062347,
+     "id": 5660595618,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-black-a1": {
-   "hash": "1ab9fafdc63d",
+   "hash": "a5f3a0377084",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062390,
+     "id": 5660595640,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-black-a2": {
-   "hash": "849aee293a66",
+   "hash": "7b5b5b1f2fc3",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062496,
+     "id": 5660595695,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-black-a3": {
-   "hash": "ef488bdaaa52",
+   "hash": "2cef12ca6ef9",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062526,
+     "id": 5660595701,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-black-a4": {
-   "hash": "cc35f42ddd68",
+   "hash": "5d63d5b59ccb",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062550,
+     "id": 5660595742,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-black-a5": {
-   "hash": "9ef75f0bae1e",
+   "hash": "9f90506ae88e",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062606,
+     "id": 5660595749,
      "price": 35
     }
    ],
    "angles": 4
   },
   "wildcord-black-a6": {
-   "hash": "fdb576ba4754",
+   "hash": "3fe847f62b71",
    "price": 35,
    "variants": [
     {
      "size": "One size",
-     "id": 5660062705,
+     "id": 5660595753,
      "price": 35
     }
    ],
    "angles": 4
   },
   "woods-white-h3": {
-   "hash": "8e78beabb52b",
+   "hash": "0b579e451183",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660063789,
+     "id": 5660596268,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-stone-h3": {
-   "hash": "8e78beabb52b",
+   "hash": "0b579e451183",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660063892,
+     "id": 5660596282,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-khaki-h3": {
-   "hash": "f20c30ca37ad",
+   "hash": "29107517302c",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064002,
+     "id": 5660596301,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-lightblue-h3": {
-   "hash": "8e78beabb52b",
+   "hash": "0b579e451183",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064039,
+     "id": 5660596313,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-navy-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064105,
+     "id": 5660596336,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-black-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064222,
+     "id": 5660596388,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-cranberry-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064236,
+     "id": 5660596429,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-darkgrey-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064315,
+     "id": 5660596450,
      "price": 31
     }
    ],
    "angles": 4
   },
   "woods-spruce-h3": {
-   "hash": "8c21041dca59",
+   "hash": "58f6b1afff86",
    "price": 31,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064371,
+     "id": 5660596462,
      "price": 31
     }
    ],
@@ -3097,120 +3097,120 @@
    "angles": 4
   },
   "woodscord-brown-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660064382,
+     "id": 5660596652,
      "price": 33
     }
    ],
    "angles": 4
   },
   "woodscord-olive-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065478,
+     "id": 5660598896,
      "price": 33
     }
    ],
    "angles": 4
   },
   "woodscord-navy-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065491,
+     "id": 5660598903,
      "price": 33
     }
    ],
    "angles": 4
   },
   "woodscord-burgundy-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065498,
+     "id": 5660598904,
      "price": 33
     }
    ],
    "angles": 4
   },
   "woodscord-black-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065541,
+     "id": 5660598919,
      "price": 33
     }
    ],
    "angles": 4
   },
   "woodstwo-greenkhaki-h3": {
-   "hash": "962ce7fe44ba",
+   "hash": "210377363a4e",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660210808,
+     "id": 5660599146,
      "price": 33
     }
    ],
    "angles": 2
   },
   "woodstwo-navykhaki-h3": {
-   "hash": "8e78beabb52b",
+   "hash": "0b579e451183",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660210812,
+     "id": 5660599207,
      "price": 33
     }
    ],
    "angles": 2
   },
   "woodstwo-dustyrose-h3": {
-   "hash": "8e78beabb52b",
+   "hash": "0b579e451183",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065676,
+     "id": 5660599269,
      "price": 33
     }
    ],
    "angles": 2
   },
   "woodstwo-gray-h3": {
-   "hash": "8e78beabb52b",
+   "hash": "0b579e451183",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065761,
+     "id": 5660599395,
      "price": 33
     }
    ],
    "angles": 2
   },
   "woodstwo-maroon-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "cca04cae740c",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065818,
+     "id": 5660599413,
      "price": 33
     }
    ],
@@ -3996,108 +3996,108 @@
    "angles": 4
   },
   "script-stone-v2": {
-   "hash": "94a862ef6816",
+   "hash": "574d19a6a0f0",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065895,
+     "id": 5660599526,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-navy-v2": {
-   "hash": "9e6e619e1e05",
+   "hash": "5cb02fe86267",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067026,
+     "id": 5660599988,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-black-v2": {
-   "hash": "9e6e619e1e05",
+   "hash": "5cb02fe86267",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067050,
+     "id": 5660600078,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-lightblue-v2": {
-   "hash": "94a862ef6816",
+   "hash": "574d19a6a0f0",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067130,
+     "id": 5660600166,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-spruce-v2": {
-   "hash": "9e6e619e1e05",
+   "hash": "5cb02fe86267",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067273,
+     "id": 5660600223,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-pink-v2": {
-   "hash": "94a862ef6816",
+   "hash": "574d19a6a0f0",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067311,
+     "id": 5660600275,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-cranberry-v2": {
-   "hash": "9e6e619e1e05",
+   "hash": "5cb02fe86267",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067379,
+     "id": 5660600285,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-khaki-v2": {
-   "hash": "94a862ef6816",
+   "hash": "574d19a6a0f0",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067419,
+     "id": 5660600300,
      "price": 29
     }
    ],
    "angles": 4
   },
   "script-white-v2": {
-   "hash": "94a862ef6816",
+   "hash": "574d19a6a0f0",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067434,
+     "id": 5660600313,
      "price": 29
     }
    ],
@@ -4360,156 +4360,156 @@
    "angles": 4
   },
   "rope-black-h1": {
-   "hash": "28c926ab5c49",
+   "hash": "26072f609faf",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067451,
+     "id": 5660600319,
      "price": 33
     }
    ],
    "angles": 4
   },
   "rope-espresso-h1": {
-   "hash": "28c926ab5c49",
+   "hash": "26072f609faf",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660067488,
+     "id": 5660600324,
      "price": 33
     }
    ],
    "angles": 4
   },
   "rope-moss-h1": {
-   "hash": "28c926ab5c49",
+   "hash": "26072f609faf",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068311,
+     "id": 5660601086,
      "price": 33
     }
    ],
    "angles": 4
   },
   "rope-granite-h1": {
-   "hash": "28c926ab5c49",
+   "hash": "26072f609faf",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068365,
+     "id": 5660601094,
      "price": 33
     }
    ],
    "angles": 4
   },
   "rope-bluejean-h1": {
-   "hash": "28c926ab5c49",
+   "hash": "26072f609faf",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068381,
+     "id": 5660601115,
      "price": 33
     }
    ],
    "angles": 4
   },
   "rope-chambray-h1": {
-   "hash": "5bd6d76180c1",
+   "hash": "8dc1f8cb5bcc",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068426,
+     "id": 5660601129,
      "price": 33
     }
    ],
    "angles": 4
   },
   "rope-ivory-h1": {
-   "hash": "5bd6d76180c1",
+   "hash": "8dc1f8cb5bcc",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068487,
+     "id": 5660601150,
      "price": 33
     }
    ],
    "angles": 4
   },
   "rope-peachy-h1": {
-   "hash": "5bd6d76180c1",
+   "hash": "8dc1f8cb5bcc",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068554,
+     "id": 5660601181,
      "price": 33
     }
    ],
    "angles": 4
   },
   "cord-brown-v9": {
-   "hash": "29ad57113a8d",
+   "hash": "dd52b58a64bb",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068609,
+     "id": 5660601193,
      "price": 33
     }
    ],
    "angles": 4
   },
   "cord-olive-v9": {
-   "hash": "29ad57113a8d",
+   "hash": "dd52b58a64bb",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068690,
+     "id": 5660601233,
      "price": 33
     }
    ],
    "angles": 4
   },
   "cord-navy-v9": {
-   "hash": "29ad57113a8d",
+   "hash": "dd52b58a64bb",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068751,
+     "id": 5660601236,
      "price": 33
     }
    ],
    "angles": 4
   },
   "cord-burgundy-v9": {
-   "hash": "29ad57113a8d",
+   "hash": "dd52b58a64bb",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660068822,
+     "id": 5660601335,
      "price": 33
     }
    ],
    "angles": 4
   },
   "cord-black-v9": {
-   "hash": "29ad57113a8d",
+   "hash": "dd52b58a64bb",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660069996,
+     "id": 5660603561,
      "price": 33
     }
    ],
@@ -4612,264 +4612,264 @@
    "angles": 4
   },
   "pixelhat-black-m7": {
-   "hash": "66e2947eed8e",
+   "hash": "d60c4d6d3824",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070084,
+     "id": 5660603573,
      "price": 29
     }
    ],
    "angles": 4
   },
   "pixelhat-stone-m7": {
-   "hash": "c1061a7fad37",
+   "hash": "cb1b5cbf09cb",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070111,
+     "id": 5660603577,
      "price": 29
     }
    ],
    "angles": 4
   },
   "pixelhat-navy-m7": {
-   "hash": "66e2947eed8e",
+   "hash": "d60c4d6d3824",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070155,
+     "id": 5660603611,
      "price": 29
     }
    ],
    "angles": 4
   },
   "pixelhat-spruce-m7": {
-   "hash": "66e2947eed8e",
+   "hash": "d60c4d6d3824",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070183,
+     "id": 5660603713,
      "price": 29
     }
    ],
    "angles": 4
   },
   "pixelhat-lightblue-m7": {
-   "hash": "c1061a7fad37",
+   "hash": "cb1b5cbf09cb",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070200,
+     "id": 5660603748,
      "price": 29
     }
    ],
    "angles": 4
   },
   "pixelhat-pink-m7": {
-   "hash": "c1061a7fad37",
+   "hash": "cb1b5cbf09cb",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070249,
+     "id": 5660603796,
      "price": 29
     }
    ],
    "angles": 4
   },
   "pixelhat-darkgrey-m7": {
-   "hash": "66e2947eed8e",
+   "hash": "d60c4d6d3824",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070286,
+     "id": 5660603898,
      "price": 29
     }
    ],
    "angles": 4
   },
   "pixelhat-white-m7": {
-   "hash": "0ebf1d99d606",
+   "hash": "31a85fbb4004",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070320,
+     "id": 5660603971,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-navy-42": {
-   "hash": "c92706c2abdc",
+   "hash": "e29bbedd4cb8",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660070373,
+     "id": 5660603986,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-navy-43": {
-   "hash": "ae96667aa441",
+   "hash": "d9cb5fe9e49e",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072050,
+     "id": 5660605724,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-navy-44": {
-   "hash": "429728c8c526",
+   "hash": "d8111450d82b",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072080,
+     "id": 5660605758,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-navy-55": {
-   "hash": "892897bdc7a9",
+   "hash": "3b75b6cf554f",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072176,
+     "id": 5660605814,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-navy-58": {
-   "hash": "ea98c8657cdd",
+   "hash": "cff464b0242d",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072217,
+     "id": 5660605819,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-navy-59": {
-   "hash": "d0d2aea8a6c5",
+   "hash": "8aa96e5c53e7",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072253,
+     "id": 5660605877,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-navy-60": {
-   "hash": "80723f32bc37",
+   "hash": "289a5115c9a1",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072277,
+     "id": 5660605911,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-stone-42": {
-   "hash": "ca090eb1575f",
+   "hash": "a7c3c5a001a3",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072347,
+     "id": 5660605913,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-stone-43": {
-   "hash": "de2533333a40",
+   "hash": "391df2ee687b",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072550,
+     "id": 5660605924,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-stone-44": {
-   "hash": "f2533e2bade1",
+   "hash": "26d8d1eeabd0",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072622,
+     "id": 5660605939,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-stone-55": {
-   "hash": "22d70bf6dfcd",
+   "hash": "21e891bac6d6",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660072703,
+     "id": 5660605945,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-stone-58": {
-   "hash": "262f73f4ed11",
+   "hash": "8d138a755e19",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660074592,
+     "id": 5660606321,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-stone-59": {
-   "hash": "635d99e878a3",
+   "hash": "2acfeec202c8",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660074642,
+     "id": 5660606416,
      "price": 29
     }
    ],
    "angles": 4
   },
   "hat-stone-60": {
-   "hash": "14e545ea5a92",
+   "hash": "33ad4296ed5c",
    "price": 29,
    "variants": [
     {
      "size": "One size",
-     "id": 5660074709,
+     "id": 5660606439,
      "price": 29
     }
    ],
