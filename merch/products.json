@@ -1033,7 +1033,8 @@
           "printful": [
             "Dark Green/Khaki"
           ],
-          "tone": "light"
+          "tone": "light",
+          "back": "#01784E"
         },
         {
           "key": "navykhaki",
@@ -1041,7 +1042,8 @@
           "printful": [
             "Navy/Khaki"
           ],
-          "tone": "light"
+          "tone": "light",
+          "back": "#333366"
         },
         {
           "key": "dustyrose",
