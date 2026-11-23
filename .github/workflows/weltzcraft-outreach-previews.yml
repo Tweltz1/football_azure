@@ -86,16 +86,22 @@ jobs:
               -H 'Content-Type: application/json' -H "X-Weltzcraft-Outreach: $K" -d "$body" || echo '{"error":"timeout"}')
             line=$(echo "$res" | jq -c --arg src "$src" '{src: $src, slug: .slug, error: .error, name: .answers.n, town: .answers.town, kind: .answers.what,
               addr: .answers.addr, phone: .answers.phone, email: .answers.email, photos: ((.copy.photos.gal // []) | length), expires: .expires,
-              found: (.facts | if . then {n, town, addr, phone, email} else null end)}' 2>/dev/null || jq -nc --arg src "$src" '{src: $src, error: "bad answer"}')
+              found: (.facts | if . then {n, town, addr, phone, email} else null end), meter: .meter}' 2>/dev/null || jq -nc --arg src "$src" '{src: $src, error: "bad answer"}')
             echo "RESULT $line"
             echo "$line" >> results.jsonl
             sleep 3
           done
           echo "Made $(jq -s '[.[] | select(.slug)] | length' results.jsonl) of $n"
+          # Every Gemini request this batch made (failed ones too), for the cost of the run.
+          jq -s '{previews_made: ([.[] | select(.slug)] | length), tried: length, gemini_requests: ([.[].meter.calls // 0] | add), failed_requests: ([.[].meter.failed // 0] | add),
+            search_requests: ([.[].meter.searchCalls // 0] | add), web_searches: ([.[].meter.searches // 0] | add),
+            input_tokens: ([.[].meter.inTok // 0] | add), output_tokens: ([.[].meter.outTok // 0] | add)}' results.jsonl | tee totals.json
 
       - name: Keep the results
         if: inputs.action == 'build'
         uses: actions/upload-artifact@v4
         with:
           name: outreach-previews
-          path: results.jsonl
+          path: |
+            results.jsonl
+            totals.json
