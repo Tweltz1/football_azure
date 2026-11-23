@@ -872,11 +872,6 @@
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/47134faa6ce4e538676426b3cf211948/classic-dad-hat-spruce-front-6b03a6b07bb38.jpg",
     "angles": 4
   },
-  "wild-black-a1": {
-    "hash": "1ab9fafdc63d",
-    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/55412d99d8598efde3db1a11f601a76a/classic-dad-hat-black-front-6b03a6ba4b5cb.jpg",
-    "angles": 4
-  },
   "wild-black-a2": {
     "hash": "849aee293a66",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/926fa9ab3e5c9219bf834cf605dd99d1/classic-dad-hat-black-front-6b03a6f8692e5.jpg",
@@ -1360,6 +1355,11 @@
   "hat-stone-60": {
     "hash": "14e545ea5a92",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c8f7e5d6939d1896f07bf2952bfd1751/classic-dad-hat-stone-front-6b03b4bce0310.jpg",
+    "angles": 4
+  },
+  "wild-black-a1": {
+    "hash": "a5f3a0377084",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/52b21dd5f7fb2ad97dbbf855843b4647/classic-dad-hat-black-front-6b03c42fac4fd.jpg",
     "angles": 4
   }
 }

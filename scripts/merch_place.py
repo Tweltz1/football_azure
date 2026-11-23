@@ -159,7 +159,8 @@ for prod in cfg['products']:
                     art.putalpha(a)
                     threads[f"{slug}--{ex['placement']}"] = [ethread]
                 ecan = Image.new('RGBA', (EW, EH), (0, 0, 0, 0))
-                etop = round(EH * ec['top']) if 'top' in ec else (EH - art.height) // 2
+                etop = (round(EH * ec['top']) if 'top' in ec else
+                        EH - art.height - round(EH * ec['bottom']) if 'bottom' in ec else (EH - art.height) // 2)
                 ecan.paste(art, ((EW - art.width) // 2, etop), art)
                 ecan.save(f"merch/print/placed/{slug}--{ex['placement']}.png", optimize=True)
             n += 1
