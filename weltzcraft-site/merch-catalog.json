@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T02:00:29.188Z",
+ "updated": "2026-11-23T02:06:35.706Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -3157,24 +3157,24 @@
    "angles": 4
   },
   "woodstwo-greenkhaki-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "962ce7fe44ba",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065628,
+     "id": 5660210808,
      "price": 33
     }
    ],
    "angles": 2
   },
   "woodstwo-navykhaki-h3": {
-   "hash": "4b64c547caaf",
+   "hash": "8e78beabb52b",
    "price": 33,
    "variants": [
     {
      "size": "One size",
-     "id": 5660065656,
+     "id": 5660210812,
      "price": 33
     }
    ],
