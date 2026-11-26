@@ -1,4 +1,4 @@
-# Backseat View
+# Stork View (formerly Backseat View)
 
 See and hear the back seat from the front seat, with a baby card on the CarPlay screen.
 
