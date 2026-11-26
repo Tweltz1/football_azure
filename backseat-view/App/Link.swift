@@ -10,6 +10,8 @@ enum Packet: UInt8 {
     case frame = 5    // camera -> driver: JPEG picture, about two a second
     case audio = 6    // camera -> driver: 16 kHz mono 16-bit PCM
     case relay = 7    // baby phone -> parent phone at home: InternetRelay.Pass JSON (room + key)
+    case talk = 8     // parent -> baby phone: the parent's voice, 16 kHz mono 16-bit PCM
+    case control = 9  // parent -> baby phone: ControlMessage JSON (soothing sounds)
 }
 
 struct StatusMessage: Codable {
@@ -17,6 +19,10 @@ struct StatusMessage: Codable {
     var level: Float
     var dark: Bool
     var battery: Float
+    /// Soothing sound playing on the baby phone (Soothing raw value), if any.
+    var music: String? = nil
+    /// The baby phone is playing the parent's voice right now.
+    var talking: Bool? = nil
 }
 
 enum BVLink {

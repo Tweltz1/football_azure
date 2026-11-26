@@ -20,6 +20,12 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   immediately on a mood change, with a chime when crying starts.
 
 ## Baby monitor at home (sound only)
+- **Talk back + soothing sounds (`App/Soothe.swift`).** Parent "Talk to the baby" sends its mic (`ParentMic`,
+  16 kHz) as `Packet.talk`; the baby phone plays it. Lullaby (music-box Twinkle Twinkle), Ocean and White noise
+  are synthesized on the baby phone and started with `Packet.control` (`ControlMessage`, off timer). The home
+  baby phone runs Apple voice processing (echo cancelling) so its own sounds don't read as the baby.
+- **Live indicator.** `LiveSoundRow` on the parent phone blinks while audio (or status level over the internet)
+  arrives and says "No sound for N s" otherwise.
 - **Pairing is AirDrop-style (no code).** The sending phone advertises its Bonjour service with a TXT
   record (`id`, `kind` baby/car). The watching phone lists nearby phones (`NearbyList`); tapping one sends a
   `JoinRequest`, the sending phone shows "… wants to connect" Allow / Don't Allow, and Allow returns a

@@ -1,3 +1,4 @@
+import AVFoundation
 import CryptoKit
 import Foundation
 
@@ -198,6 +199,14 @@ final class InternetRelay: NSObject, URLSessionWebSocketDelegate {
     }
 
     // MARK: Sound size (16 kHz on the local link, 8 kHz over the internet)
+
+    /// Loudness (RMS) of a float buffer, for the parent's live sound meter.
+    static func rms(_ buffer: AVAudioPCMBuffer) -> Float {
+        guard let data = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return 0 }
+        var sum: Float = 0
+        for i in 0..<Int(buffer.frameLength) { sum += data[i] * data[i] }
+        return (sum / Float(buffer.frameLength)).squareRoot()
+    }
 
     /// 16 kHz Int16 mono -> 8 kHz (average each pair of samples).
     static func shrink(_ pcm: Data) -> Data {

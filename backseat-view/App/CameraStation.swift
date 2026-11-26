@@ -44,6 +44,11 @@ final class CameraStation: ObservableObject {
     private var lastRelayStatus = Date.distantPast
     /// A parent phone is listening over the internet right now.
     @Published private(set) var remoteViewer = false
+    /// Soothing sound the parent started on this phone.
+    @Published private(set) var music: Soothing?
+    @Published private(set) var talking = false
+    private var musicUntil: Date?
+    private var lastTalk = Date.distantPast
     /// The car's own screen (Tesla browser), when this phone is the camera and the hotspot.
     let carScreen: CarScreen
 
@@ -111,6 +116,7 @@ final class CameraStation: ObservableObject {
             return
         }
         rig.rotation = rotation
+        rig.echoCancel = home
         rig.onFrame = { [weak self] jpeg, motion, brightness in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.gotFrame(jpeg, motion: motion, brightness: brightness) } }
         }
@@ -135,8 +141,16 @@ final class CameraStation: ObservableObject {
         listen()
         if home && InternetRelay.available {
             let relay = InternetRelay(pass: .mine)
-            relay.onPacket = { [weak self] type, _ in
-                MainActor.assumeIsolated { if type == .hello { self?.remoteListen = Date() } }
+            relay.onPacket = { [weak self] type, payload in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    switch type {
+                    case .hello: self.remoteListen = Date()
+                    case .talk: self.hearParent(InternetRelay.grow(payload))
+                    case .control: self.apply(payload)
+                    default: break
+                    }
+                }
             }
             relay.start()
             self.relay = relay
@@ -164,6 +178,9 @@ final class CameraStation: ObservableObject {
         ticker = nil
         listener?.cancel()
         listener = nil
+        music = nil
+        musicUntil = nil
+        talking = false
         request = nil
         requestLink = nil
         relay?.stop()
@@ -216,7 +233,13 @@ final class CameraStation: ObservableObject {
         links[id] = link
         link.onPacket = { [weak self, weak link] type, payload in
             MainActor.assumeIsolated {
-                guard let self, let link, type == .hello else { return }
+                guard let self, let link else { return }
+                if type == .talk || type == .control {
+                    guard self.paired.contains(id) else { return }
+                    if type == .talk { self.hearParent(payload) } else { self.apply(payload) }
+                    return
+                }
+                guard type == .hello else { return }
                 if let join = try? JSONDecoder().decode(JoinRequest.self, from: payload) {
                     if let token = join.token, Pairing.allowed[join.device] == token {
                         self.welcome(link, answer: nil)
@@ -253,6 +276,34 @@ final class CameraStation: ObservableObject {
             }
         }
         link.start()
+    }
+
+    // MARK: Talk back + soothing sounds (from the parent phone)
+
+    private func hearParent(_ pcm: Data) {
+        lastTalk = Date()
+        talking = true
+        rig.playTalk(pcm)
+    }
+
+    private func apply(_ payload: Data) {
+        guard let control = try? JSONDecoder().decode(ControlMessage.self, from: payload) else { return }
+        let sound = control.music.flatMap(Soothing.init(rawValue:))
+        let volume = control.volume ?? 0.5
+        if sound != music {
+            rig.setMusic(sound, volume: volume)
+            music = sound
+        } else {
+            rig.setMusicVolume(volume)
+        }
+        musicUntil = sound != nil ? control.minutes.map { Date().addingTimeInterval(Double($0) * 60) } : nil
+    }
+
+    /// Stop the soothing sound from this phone.
+    func stopMusic() {
+        rig.setMusic(nil, volume: 0)
+        music = nil
+        musicUntil = nil
     }
 
     /// Allow / Don't Allow for the phone that tapped this one.
@@ -350,7 +401,10 @@ final class CameraStation: ObservableObject {
         } else {
             mood = .quiet
         }
-        let status = StatusMessage(mood: mood, level: level, dark: tooDark, battery: UIDevice.current.batteryLevel)
+        if let musicUntil, now > musicUntil { stopMusic() }
+        if talking && now.timeIntervalSince(lastTalk) > 1.5 { talking = false }
+        let status = StatusMessage(mood: mood, level: level, dark: tooDark, battery: UIDevice.current.batteryLevel,
+                                   music: music?.rawValue, talking: talking)
         if let data = try? JSONEncoder().encode(status) {
             broadcast(.status, data)
             remoteViewer = relay != nil && now.timeIntervalSince(remoteListen) < 15
@@ -375,6 +429,12 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     private let soundQueue = DispatchQueue(label: "backseat.sound")
     private let ci = CIContext(options: [.cacheIntermediates: false])
     private let engine = AVAudioEngine()
+    /// Home baby phone: Apple's echo cancelling, so its own lullaby and the parent's voice
+    /// don't count as the baby making noise.
+    var echoCancel = false
+    private let talkPlayer = AVAudioPlayerNode()
+    private let musicPlayer = AVAudioPlayerNode()
+    private var musicCache: [Soothing: AVAudioPCMBuffer] = [:]
     private let cryListener = CryListener()
     private var analyzer: SNAudioStreamAnalyzer?
     private var lastFrameTime = 0.0
@@ -531,6 +591,16 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         try audio.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker])
         try audio.setActive(true)
         let input = engine.inputNode
+        if echoCancel {
+            try? input.setVoiceProcessingEnabled(true)
+            input.isVoiceProcessingAGCEnabled = false
+        }
+        if !engine.attachedNodes.contains(talkPlayer) {
+            engine.attach(talkPlayer)
+            engine.attach(musicPlayer)
+            engine.connect(talkPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
+            engine.connect(musicPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
+        }
         let inFormat = input.outputFormat(forBus: 0)
         guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else { return }
 
@@ -595,11 +665,34 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
         interruptionObserver = nil
         engine.inputNode.removeTap(onBus: 0)
+        talkPlayer.stop()
+        musicPlayer.stop()
         engine.stop()
         analyzer?.removeAllRequests()
         analyzer = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
+
+    /// Plays the parent's voice (16 kHz mono 16-bit) through this phone's speaker.
+    func playTalk(_ pcm: Data) {
+        guard engine.isRunning, let buffer = BabySpeaker.decode(pcm) else { return }
+        talkPlayer.volume = 1
+        talkPlayer.scheduleBuffer(buffer)
+        if !talkPlayer.isPlaying { talkPlayer.play() }
+    }
+
+    /// Starts (or with nil stops) a soothing sound, looping.
+    func setMusic(_ sound: Soothing?, volume: Float) {
+        musicPlayer.stop()
+        guard let sound, engine.isRunning else { return }
+        if musicCache[sound] == nil { musicCache[sound] = sound.makeBuffer() }
+        guard let buffer = musicCache[sound] else { return }
+        musicPlayer.volume = volume
+        musicPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
+        musicPlayer.play()
+    }
+
+    func setMusicVolume(_ volume: Float) { musicPlayer.volume = volume }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard !nightMode else { return }
