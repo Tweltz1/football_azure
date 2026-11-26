@@ -39,6 +39,8 @@ struct BabyActivityAttributes: ActivityAttributes {
         var updated: Date
         /// When the current mood started, so the card can say "Quiet for 12:03".
         var since: Date?
+        /// The picture stopped arriving (camera phone locked); sound and alerts may still be working.
+        var paused: Bool?
     }
 
     var seatName: String
