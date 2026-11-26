@@ -561,7 +561,6 @@ struct DriverScreen: View {
 /// "Show on the car's screen": for a Tesla (or any car with a web browser). See CarScreen.
 struct CarScreenCard: View {
     @ObservedObject var screen: CarScreen
-    @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -574,17 +573,22 @@ struct CarScreenCard: View {
                 }
                 Text("1. On this phone, turn on Personal Hotspot (Settings > Personal Hotspot > Allow Others to Join).")
                 Text("2. In the Tesla: Wi-Fi, join this phone's hotspot. You only do this once.")
-                Text("3. Open the Tesla's browser and go to:")
+                Text("3. In the Tesla's browser, go to:")
+                Text("weltzcraft.com/storkview/car")
+                    .font(.title3.weight(.bold))
+                    .textSelection(.enabled)
+                Text("The first time, it asks for this code:")
+                Text(screen.code.map { String($0) }.joined(separator: " "))
+                    .font(.system(size: 34, weight: .heavy, design: .rounded)).monospacedDigit()
+                Text("Bookmark it in the Tesla so next time it's one tap.")
                 if let link = screen.link {
-                    Text(link.replacingOccurrences(of: "http://", with: ""))
-                        .font(.title3.monospaced().weight(.bold))
+                    Text("Direct address: \(link.replacingOccurrences(of: "http://", with: ""))")
+                        .foregroundStyle(.secondary)
                         .textSelection(.enabled)
-                    Button(copied ? "Copied" : "Copy address") {
-                        UIPasteboard.general.string = link
-                        copied = true
+                    if !link.contains("172.20.10.1") {
+                        Text("This phone isn't sharing a hotspot right now, so use the direct address above.")
+                            .foregroundStyle(.orange)
                     }
-                    .font(.subheadline.weight(.semibold))
-                    Text("Bookmark it in the Tesla so next time it's one tap.")
                 } else {
                     Text("Waiting for the hotspot to turn on...").foregroundStyle(.orange)
                 }
