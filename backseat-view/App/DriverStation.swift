@@ -556,9 +556,9 @@ final class CarCard {
     func update(mood: BabyMood, picture: UIImage?, paused: Bool, force: Bool, alert: CardAlert?) -> String? {
         let now = Date()
         // iOS throttles Live Activity updates from a locked phone. At home (no CarPlay) refresh the
-        // picture every 10 s while locked so the card keeps updating instead of freezing.
+        // picture every 5 s while locked (Tyler asked for 5) so the card keeps updating instead of freezing.
         // Mood changes (force) still go out right away.
-        let every: TimeInterval = place != "Back seat" && UIApplication.shared.applicationState != .active ? 10 : 4
+        let every: TimeInterval = place != "Back seat" && UIApplication.shared.applicationState != .active ? 5 : 4
         guard force || now.timeIntervalSince(lastSent) >= every else { return nil }
         lastSent = now
         if mood != lastMood { lastMood = mood; moodSince = now }
