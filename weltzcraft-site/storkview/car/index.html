@@ -31,7 +31,7 @@ small{color:var(--dim);font-size:17px}
   <aside>
     <div id="mood" class="card offline"><div id="emoji">📵</div><div id="title">Connecting</div><div id="since"></div></div>
     <div class="card row"><span>Baby's sound</span><button id="snd" class="off">Off</button></div>
-    <div class="row"><small>Stork View. Glance only, like a mirror. Live picture while parked; while driving, a still photo every 5 seconds. Never leave a child alone in a car.</small><button id="forget" class="off" style="font-size:15px;padding:10px 14px;white-space:nowrap">Use another phone</button></div>
+    <div class="row"><small>Stork View. Glance only, like a mirror. Live picture (about 3 a second) while parked; while driving, a still photo every 5 seconds. Never leave a child alone in a car.</small><button id="forget" class="off" style="font-size:15px;padding:10px 14px;white-space:nowrap">Use another phone</button></div>
   </aside>
 </main>
 <div id="pair" class="cover hide">
@@ -136,10 +136,10 @@ $('go').onclick=function(){started=true;$('start').classList.add('hide');try{par
 var EMOJI={quiet:'😴',moving:'👋',noise:'🔊',fussing:'😣',crying:'😭',offline:'📵'};
 function fmt(s){s=Math.max(0,Math.floor(s));var m=Math.floor(s/60),r=s%60;return m+':'+(r<10?'0':'')+r}
 function show(){
-  var cur=st,stale=!roomKey||!st||Date.now()-lastData>12000;
+  var cur=st,stale=!roomKey||!st||Date.now()-lastData>6000;
   if(stale)cur={mood:'offline',title:roomKey?'iPhone not connected':'Not paired',since:0};
   $('mood').className='card '+cur.mood;$('emoji').textContent=EMOJI[cur.mood]||'🍼';$('title').textContent=cur.title;
-  $('since').textContent=cur.since?('for '+fmt(Date.now()/1000-cur.since)):(stale&&roomKey?'Open Stork View and turn on Show on a Tesla screen':'');
+  $('since').textContent=cur.since?('for '+fmt(Date.now()/1000-cur.since)):(stale&&roomKey?'Keep Stork View open on the iPhone with Show on a Tesla screen on':'');
   var note=$('note');
   if(stale||cur.paused){img.classList.add('hide');$('ph').classList.remove('hide');$('ph').textContent=cur.paused?'Picture paused. The camera phone may be locked.':'Waiting for the picture...';note.classList.add('hide');return}
   img.style.transform='rotate('+((cur.turns||0)*90)+'deg)';
