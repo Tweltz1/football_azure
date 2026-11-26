@@ -969,7 +969,7 @@ struct TalkAndSoothe: View {
             if let problem = station.micProblem { Text(problem).font(.caption).foregroundStyle(.orange) }
 
             Text("Soothing sounds on the baby phone").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                 ForEach(Soothing.allCases) { sound in
                     let on = station.babyMusic == sound
                     Button {
