@@ -444,6 +444,14 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     private var nightMode = false
     private var lastTiny: [Double] = []
     private var interruptionObserver: NSObjectProtocol?
+    private var configObserver: NSObjectProtocol?
+    private var watchdog: Timer?
+    private var usingVoice = false
+    private var micRestarts = 0
+    private let tapLock = NSLock()
+    private var lastTap = 0.0
+    private var currentMusic: Soothing?
+    private var musicVolume: Float = 0.5
 
     func startVideo(front: Bool, night: Bool = false) throws {
         session.beginConfiguration()
@@ -590,21 +598,61 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         let audio = AVAudioSession.sharedInstance()
         try audio.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker])
         try audio.setActive(true)
-        let input = engine.inputNode
-        if echoCancel {
-            try? input.setVoiceProcessingEnabled(true)
-            input.isVoiceProcessingAGCEnabled = false
+        do {
+            try startEngine(voice: echoCancel)
+        } catch where echoCancel {
+            // Echo cancelling wouldn't start on this phone: plain microphone instead.
+            try startEngine(voice: false)
         }
+        // A phone call or alarm stops the microphone; start it again when it's over.
+        if interruptionObserver == nil {
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+            ) { [weak self] note in
+                guard let self,
+                      let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+                try? AVAudioSession.sharedInstance().setActive(true)
+                self.restart()
+            }
+        }
+        // iOS stops the engine when the audio setup changes (speaker, headphones, echo cancelling
+        // settling in). Without this the microphone, talk-back and soothing sounds all go silent.
+        if configObserver == nil {
+            configObserver = NotificationCenter.default.addObserver(
+                forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+            ) { [weak self] _ in self?.restart() }
+        }
+        // Watchdog: if the microphone stops delivering sound, restart it, and if that doesn't
+        // help, drop echo cancelling (some phones go silent with it on).
+        watchdog?.invalidate()
+        watchdog = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.checkMic() }
+    }
+
+    /// Builds the microphone tap and starts the engine, with or without Apple's echo cancelling.
+    private func startEngine(voice: Bool) throws {
+        engine.stop()
+        let input = engine.inputNode
+        input.removeTap(onBus: 0)
+        if input.isVoiceProcessingEnabled != voice { try input.setVoiceProcessingEnabled(voice) }
+        if voice { input.isVoiceProcessingAGCEnabled = false }
+        usingVoice = voice
         if !engine.attachedNodes.contains(talkPlayer) {
             engine.attach(talkPlayer)
             engine.attach(musicPlayer)
-            engine.connect(talkPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
-            engine.connect(musicPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
         }
+        engine.disconnectNodeOutput(talkPlayer)
+        engine.disconnectNodeOutput(musicPlayer)
+        engine.connect(talkPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
+        engine.connect(musicPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
+        engine.mainMixerNode.outputVolume = 1
         let inFormat = input.outputFormat(forBus: 0)
-        guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else { return }
+        guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else {
+            throw NSError(domain: "BackseatView", code: 2, userInfo: [NSLocalizedDescriptionKey: "No microphone found"])
+        }
 
         // Apple's built-in sound classifier knows "baby_crying" and "crying_sobbing".
+        analyzer?.removeAllRequests()
         let analyzer = SNAudioStreamAnalyzer(format: inFormat)
         let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
         cryListener.onScore = { [weak self] score in self?.onCry?(score) }
@@ -614,9 +662,9 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         guard let outFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true),
               let converter = AVAudioConverter(from: inFormat, to: outFormat) else { return }
         let soundQueue = self.soundQueue
-        input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { [weak self] buffer, when in
             guard let self else { return }
+            self.tapLock.lock(); self.lastTap = CACurrentMediaTime(); self.tapLock.unlock()
             soundQueue.async { analyzer.analyze(buffer, atAudioFramePosition: when.sampleTime) }
 
             var rms: Float = 0
@@ -645,18 +693,43 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         }
         engine.prepare()
         try engine.start()
-        // A phone call or alarm stops the microphone; start it again when it's over.
-        if interruptionObserver == nil {
-            interruptionObserver = NotificationCenter.default.addObserver(
-                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
-            ) { [weak self] note in
-                guard let self,
-                      let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                      AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
-                try? AVAudioSession.sharedInstance().setActive(true)
-                if !self.engine.isRunning { self.engine.prepare(); try? self.engine.start() }
-            }
+        tapLock.lock(); lastTap = CACurrentMediaTime(); tapLock.unlock()
+        // Echo cancelling can steer sound to the quiet earpiece: use the loudspeaker.
+        if voice { try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker) }
+        resumeMusic()
+    }
+
+    /// Starts the engine again after iOS stopped it, and picks the soothing sound back up.
+    private func restart() {
+        guard watchdog != nil || interruptionObserver != nil else { return }
+        if usingVoice { try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker) }
+        guard !engine.isRunning else { return }
+        engine.prepare()
+        if (try? engine.start()) == nil {
+            try? startEngine(voice: usingVoice)
+            return
         }
+        resumeMusic()
+    }
+
+    private func checkMic() {
+        tapLock.lock(); let quiet = CACurrentMediaTime() - lastTap; tapLock.unlock()
+        guard quiet > 3 else { micRestarts = 0; return }
+        micRestarts += 1
+        if micRestarts >= 2 && usingVoice {
+            // Restarting didn't bring the microphone back: turn echo cancelling off.
+            try? startEngine(voice: false)
+        } else {
+            try? startEngine(voice: usingVoice)
+        }
+    }
+
+    private func resumeMusic() {
+        guard let currentMusic, let buffer = musicCache[currentMusic], engine.isRunning else { return }
+        musicPlayer.stop()
+        musicPlayer.volume = musicVolume
+        musicPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
+        musicPlayer.play()
     }
 
     func stop() {
@@ -664,6 +737,11 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         videoQueue.async { if running.isRunning { running.stopRunning() } }
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
         interruptionObserver = nil
+        if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
+        configObserver = nil
+        watchdog?.invalidate()
+        watchdog = nil
+        currentMusic = nil
         engine.inputNode.removeTap(onBus: 0)
         talkPlayer.stop()
         musicPlayer.stop()
@@ -675,6 +753,7 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
 
     /// Plays the parent's voice (16 kHz mono 16-bit) through this phone's speaker.
     func playTalk(_ pcm: Data) {
+        if !engine.isRunning { restart() }
         guard engine.isRunning, let buffer = BabySpeaker.decode(pcm) else { return }
         talkPlayer.volume = 1
         talkPlayer.scheduleBuffer(buffer)
@@ -684,15 +763,18 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     /// Starts (or with nil stops) a soothing sound, looping.
     func setMusic(_ sound: Soothing?, volume: Float) {
         musicPlayer.stop()
-        guard let sound, engine.isRunning else { return }
+        currentMusic = sound
+        musicVolume = volume
+        guard let sound else { return }
         if musicCache[sound] == nil { musicCache[sound] = sound.makeBuffer() }
-        guard let buffer = musicCache[sound] else { return }
+        if !engine.isRunning { restart() }
+        guard engine.isRunning, let buffer = musicCache[sound] else { return }
         musicPlayer.volume = volume
         musicPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
         musicPlayer.play()
     }
 
-    func setMusicVolume(_ volume: Float) { musicPlayer.volume = volume }
+    func setMusicVolume(_ volume: Float) { musicVolume = volume; musicPlayer.volume = volume }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard !nightMode else { return }
