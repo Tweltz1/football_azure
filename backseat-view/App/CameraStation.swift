@@ -432,7 +432,9 @@ final class CameraStation: ObservableObject {
         if let musicUntil, now > musicUntil { stopMusic() }
         if talking && now.timeIntervalSince(lastTalk) > 1.5 { talking = false }
         let status = StatusMessage(mood: mood, level: level, dark: tooDark, battery: UIDevice.current.batteryLevel,
-                                   music: music?.rawValue, talking: talking)
+                                   music: music?.rawValue, talking: talking,
+                                   charging: [.charging, .full].contains(UIDevice.current.batteryState),
+                                   hot: ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue)
         if let data = try? JSONEncoder().encode(status) {
             broadcast(.status, data)
             remoteViewer = relay != nil && now.timeIntervalSince(remoteListen) < 15

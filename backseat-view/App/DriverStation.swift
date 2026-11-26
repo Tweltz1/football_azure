@@ -74,6 +74,13 @@ final class DriverStation: ObservableObject {
     @Published private(set) var recordingSince: Date?
     @Published private(set) var hasRecording = Soothing.hasMine
     private var recorded = Data()
+    // Failsafes: each warning goes out once until things are fine again.
+    private var lastConnect = Date()
+    private var warnedSilent = false
+    private var warnedBattery = false
+    private var warnedHot = false
+    private var warnedVolume = false
+    private var lastDeadman = Date.distantPast
     @Published private(set) var micProblem: String?
     private let mic = ParentMic()
     private var lastLevelPublish = Date.distantPast
@@ -268,6 +275,7 @@ final class DriverStation: ObservableObject {
         relayUp = false
         route = nil
         speaker.stop()
+        BabyNotifier.disarm()
         card.end()
         connected = false
         hearing = false
@@ -478,6 +486,7 @@ final class DriverStation: ObservableObject {
             }
             localUp = true
             relayUp = false
+            if !connected { lastConnect = Date() }
             connected = true
             // Hand the baby phone the parent's own recording (only over the local link; it's big).
             if home { sendClip() }
@@ -522,6 +531,7 @@ final class DriverStation: ObservableObject {
             lastSeen = Date()
             guard let message = try? JSONDecoder().decode(StatusMessage.self, from: payload) else { return }
             cameraBattery = message.battery
+            if home { checkBabyPhone(message) }
             babyMusic = message.music.flatMap(Soothing.init(rawValue:))
             // Over the internet sound only comes on noise, so the status level is the live meter.
             if relayUp { noteSound(message.level) }
@@ -619,6 +629,55 @@ final class DriverStation: ObservableObject {
             handle(.frame, payload)
         default:
             handle(type, payload)
+        }
+    }
+
+    // MARK: Failsafes
+
+    private func failsafes() {
+        let now = Date()
+        // If iOS closes the app, this notification (pushed back every 20 s while running) goes off.
+        if running, now.timeIntervalSince(lastDeadman) >= 20 {
+            lastDeadman = now
+            BabyNotifier.armDeadman()
+        }
+        // Connected phone to phone (where sound comes all the time) but nothing heard for 30 s.
+        if connected, localUp, !talking, recordingSince == nil {
+            let heard = max(lastSound ?? .distantPast, lastConnect)
+            if now.timeIntervalSince(heard) > 30 {
+                if !warnedSilent {
+                    warnedSilent = true
+                    tell(title: "Not hearing the baby phone", body: "Connected, but no sound has come from the baby phone for 30 seconds. Check that Stork View is still listening on it.", kind: "silent")
+                }
+            } else {
+                warnedSilent = false
+            }
+        }
+        // Parent phone turned all the way down.
+        let volume = AVAudioSession.sharedInstance().outputVolume
+        if volume < 0.01 {
+            if !warnedVolume && connected {
+                warnedVolume = true
+                tell(title: "Your volume is all the way down", body: "Turn up this phone's volume to hear the baby.", kind: "volume")
+            }
+        } else if volume > 0.05 {
+            warnedVolume = false
+        }
+    }
+
+    private func checkBabyPhone(_ message: StatusMessage) {
+        let low = message.battery >= 0 && message.battery < 0.2 && message.charging == false
+        if low && !warnedBattery {
+            warnedBattery = true
+            tell(title: "Baby phone battery is low", body: "The baby phone is at \(Int(message.battery * 100))% and not charging. Plug it in so it keeps listening.", kind: "battery")
+        } else if message.charging == true || message.battery > 0.3 {
+            warnedBattery = false
+        }
+        if message.hot == true && !warnedHot {
+            warnedHot = true
+            tell(title: "Baby phone is getting hot", body: "Move it out of the sun or off the blanket, or turn its camera off. A hot phone may stop listening.", kind: "hot")
+        } else if message.hot == false {
+            warnedHot = false
         }
     }
 
@@ -753,6 +812,7 @@ final class DriverStation: ObservableObject {
 
     private func tick() {
         speaker.keepAlive()
+        if home { failsafes() }
         let since = lastSeen.map { Date().timeIntervalSince($0) } ?? 0
         if localUp, since > 8 { lostCamera() }
         if relayUp, since > 15 { lostRelay() }
@@ -951,6 +1011,22 @@ final class BabyNotifier: NSObject, UNUserNotificationCenterDelegate {
         case .denied: return false
         default: return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
         }
+    }
+
+    /// "Stork View stopped listening": goes off 90 s from now unless pushed back again. The app
+    /// pushes it back every 20 s while it runs, so it only fires if iOS closes the app.
+    static func armDeadman() {
+        let content = UNMutableNotificationContent()
+        content.title = "Stork View stopped listening"
+        content.body = "The baby monitor isn't running on this phone any more. Open Stork View to start it again."
+        content.sound = .default
+        content.threadIdentifier = "baby-monitor"
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 90, repeats: false)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "stork-stopped", content: content, trigger: trigger))
+    }
+
+    static func disarm() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["stork-stopped"])
     }
 
     func post(title: String, body: String, kind: String) {

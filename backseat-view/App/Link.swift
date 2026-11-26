@@ -24,6 +24,10 @@ struct StatusMessage: Codable {
     var music: String? = nil
     /// The baby phone is playing the parent's voice right now.
     var talking: Bool? = nil
+    /// Plugged in (charging or full).
+    var charging: Bool? = nil
+    /// iOS says the phone is getting hot.
+    var hot: Bool? = nil
 }
 
 enum BVLink {
