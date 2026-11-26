@@ -52,7 +52,7 @@ struct StartScreen: View {
                              detail: "An old iPhone or iPad mounted facing the baby.") { pick("camera") }
                 }
 
-                Text("Tip: put Backseat View on both phones. Each one picks its job here.")
+                Text("Tip: put Stork View on both phones. Each one picks its job here.")
                     .font(.footnote).foregroundStyle(.secondary)
                 StudioCredit().padding(.top, 4)
             }
@@ -283,7 +283,7 @@ struct BabyPhoneScreen: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("• Put this phone near the crib, out of the baby's reach, and plug it in.")
                             Text("• Both phones need the same Wi-Fi, or to be close enough for AirDrop.")
-                            Text("• Don't swipe Backseat View closed.")
+                            Text("• Don't swipe Stork View closed.")
                         }
                         .font(.footnote).foregroundStyle(.secondary)
                         .padding(.top, 6)
@@ -332,7 +332,7 @@ struct ListenScreen: View {
                     StatusPill(text: station.connected ? (station.hearing ? "Hearing the baby" : "Connected · quiet") : "Connecting…",
                                good: station.connected)
                     if station.picturePaused {
-                        Text("The picture paused, but you can still hear the baby. Open Backseat View on the baby phone and use Dark screen instead of locking it.")
+                        Text("The picture paused, but you can still hear the baby. Open Stork View on the baby phone and use Dark screen instead of locking it.")
                             .font(.footnote).foregroundStyle(.orange)
                     }
                     if station.connected && station.cameraTooDark && station.picture != nil {
@@ -343,7 +343,7 @@ struct ListenScreen: View {
                     }
                     if let problem = station.cardProblem { Text(problem).font(.footnote).foregroundStyle(.orange) }
                     if station.notificationsOff {
-                        Text("Notifications are off, so you'll only get the Lock Screen card chime. Turn them on in Settings > Notifications > Backseat View.")
+                        Text("Notifications are off, so you'll only get the Lock Screen card chime. Turn them on in Settings > Notifications > Stork View.")
                             .font(.footnote).foregroundStyle(.orange)
                     }
 
@@ -485,7 +485,7 @@ struct CameraScreen: View {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
                     CodeCard(code: station.code, hint: "On the driver's phone, pick Watch the back seat and type this code.")
-                    Text("Keep Backseat View open on this phone and plug it in. Mount it securely so it can't fly loose.")
+                    Text("Keep Stork View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
                     if station.running {
                         Button("Stop Camera", role: .destructive) { station.stop() }.frame(maxWidth: .infinity)
@@ -574,7 +574,7 @@ struct DriverSettings: View {
                     Link("Open the setup page", destination: URL(string: "https://weltzcraft.com/backseatview/camera/")!)
                 } header: { Text("Mini camera setup") }
                 Section {
-                    Text("With iOS 26, a Backseat View card appears on your CarPlay Dashboard while you're watching. It shows a small picture that refreshes every few seconds and says Quiet, Moving or Crying.")
+                    Text("With iOS 26, a Stork View card appears on your CarPlay Dashboard while you're watching. It shows a small picture that refreshes every few seconds and says Quiet, Moving or Crying.")
                     Text("Don't see it? Settings > General > CarPlay > your car: make sure Live Activities is on.")
                         .foregroundStyle(.secondary)
                 } header: { Text("Car screen") }

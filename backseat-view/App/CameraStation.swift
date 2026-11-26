@@ -69,7 +69,7 @@ final class CameraStation: ObservableObject {
         problem = nil
         if !audioOnly {
             guard await AVCaptureDevice.requestAccess(for: .video) else {
-                problem = "Camera access is off. Turn it on in Settings > Backseat View."
+                problem = "Camera access is off. Turn it on in Settings > Stork View."
                 return
             }
         }
@@ -77,7 +77,7 @@ final class CameraStation: ObservableObject {
             AVAudioApplication.requestRecordPermission { done.resume(returning: $0) }
         }
         if audioOnly && !micAllowed {
-            problem = "Microphone access is off, so this phone can't listen. Turn it on in Settings > Backseat View."
+            problem = "Microphone access is off, so this phone can't listen. Turn it on in Settings > Stork View."
             return
         }
         rig.rotation = rotation
@@ -92,7 +92,7 @@ final class CameraStation: ObservableObject {
         }
         do {
             if !audioOnly { try rig.startVideo(front: useFrontCamera) }
-            if micAllowed { try rig.startAudio() } else { problem = "Microphone is off, so crying can't be heard. Turn it on in Settings > Backseat View." }
+            if micAllowed { try rig.startAudio() } else { problem = "Microphone is off, so crying can't be heard. Turn it on in Settings > Stork View." }
         } catch {
             problem = audioOnly ? "The microphone couldn't start: \(error.localizedDescription)"
                                 : "Camera couldn't start: \(error.localizedDescription)"

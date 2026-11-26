@@ -318,7 +318,7 @@ final class DriverStation: ObservableObject {
             mood = .offline
             // At home the parent may be asleep: chime so they know the monitor stopped.
             if home {
-                tell(title: "Baby monitor lost the baby phone", body: "Check that Backseat View is still listening on the baby phone.", kind: "lost")
+                tell(title: "Baby monitor lost the baby phone", body: "Check that Stork View is still listening on the baby phone.", kind: "lost")
             } else {
                 pushCard(force: true)
             }
@@ -363,15 +363,15 @@ final class DriverStation: ObservableObject {
             let wasCrying = mood == .crying
             mood = newMood
             if !home {
-                pushCard(force: true, alert: newMood == .crying && cryAlerts ? (title: "Baby is crying", body: "Backseat View hears crying.") : nil)
+                pushCard(force: true, alert: newMood == .crying && cryAlerts ? (title: "Baby is crying", body: "Stork View hears crying.") : nil)
             } else if newMood == .crying && cryAlerts {
-                tell(title: "Baby is crying", body: "Backseat View hears crying in the baby's room.", kind: "cry")
+                tell(title: "Baby is crying", body: "Stork View hears crying in the baby's room.", kind: "cry")
             } else if newMood == .fussing && !wasCrying && fussAlerts {
-                tell(title: "Baby is fussing", body: "Backseat View has heard on-and-off sounds in the baby's room.", kind: "fuss")
+                tell(title: "Baby is fussing", body: "Stork View has heard on-and-off sounds in the baby's room.", kind: "fuss")
             } else if newMood == .moving && wasQuiet && motionAlerts {
-                tell(title: "Baby is moving", body: "Backseat View sees movement in the baby's room.", kind: "move")
+                tell(title: "Baby is moving", body: "Stork View sees movement in the baby's room.", kind: "move")
             } else if newMood == .noise && wasQuiet && noiseAlerts {
-                tell(title: "Sound in the baby's room", body: "Backseat View hears the baby.", kind: "noise")
+                tell(title: "Sound in the baby's room", body: "Stork View hears the baby.", kind: "noise")
             } else {
                 pushCard(force: true)
             }
@@ -556,9 +556,9 @@ final class CarCard {
     func update(mood: BabyMood, picture: UIImage?, paused: Bool, force: Bool, alert: CardAlert?) -> String? {
         let now = Date()
         // iOS throttles Live Activity updates from a locked phone. At home (no CarPlay) refresh the
-        // picture every 10 s while locked so the card keeps updating instead of freezing.
+        // picture every 5 s while locked (Tyler asked for 5) so the card keeps updating instead of freezing.
         // Mood changes (force) still go out right away.
-        let every: TimeInterval = place != "Back seat" && UIApplication.shared.applicationState != .active ? 10 : 4
+        let every: TimeInterval = place != "Back seat" && UIApplication.shared.applicationState != .active ? 5 : 4
         guard force || now.timeIntervalSince(lastSent) >= every else { return nil }
         lastSent = now
         if mood != lastMood { lastMood = mood; moodSince = now }
@@ -571,7 +571,7 @@ final class CarCard {
             return nil
         }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            return "Live Activities are off for Backseat View. Turn them on in Settings > Backseat View so the baby card can show on your Lock Screen and car screen."
+            return "Live Activities are off for Stork View. Turn them on in Settings > Stork View so the baby card can show on your Lock Screen and car screen."
         }
         do {
             activity = try Activity.request(attributes: BabyActivityAttributes(seatName: place), content: content, pushType: nil)
