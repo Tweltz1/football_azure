@@ -16,6 +16,9 @@ final class CameraStation: ObservableObject {
     @Published private(set) var preview: UIImage?
     @Published private(set) var mood: BabyMood = .quiet
     @Published private(set) var viewers = 0
+    /// Names of the connected parent phones, for "Connected to Tyler's iPhone".
+    @Published private(set) var viewerNames: [String] = []
+    private var linkNames: [ObjectIdentifier: String] = [:]
     @Published private(set) var running = false
     @Published private(set) var problem: String?
     @Published private(set) var tooDark = false
@@ -204,7 +207,7 @@ final class CameraStation: ObservableObject {
             var txt = NWTXTRecord()
             txt["id"] = Pairing.myID()
             txt["kind"] = home ? "baby" : "car"
-            listener.service = NWListener.Service(name: home ? "Baby Phone" : "Back-seat camera", type: BVLink.service, txtRecord: txt)
+            listener.service = NWListener.Service(name: Pairing.name(or: home ? "Baby Phone" : "Back-seat camera"), type: BVLink.service, txtRecord: txt)
             listener.newConnectionHandler = { [weak self] connection in
                 MainActor.assumeIsolated { self?.accept(connection) }
             }
@@ -242,7 +245,7 @@ final class CameraStation: ObservableObject {
                 guard type == .hello else { return }
                 if let join = try? JSONDecoder().decode(JoinRequest.self, from: payload) {
                     if let token = join.token, Pairing.allowed[join.device] == token {
-                        self.welcome(link, answer: nil)
+                        self.welcome(link, answer: nil, name: join.name)
                     } else if self.request == nil {
                         // Ask on this phone, like AirDrop. No answer in a minute counts as no.
                         self.request = (name: join.name, device: join.device)
@@ -270,7 +273,9 @@ final class CameraStation: ObservableObject {
                     }
                     self?.links[id] = nil
                     self?.paired.remove(id)
+                    self?.linkNames[id] = nil
                     self?.viewers = self?.paired.count ?? 0
+                    if let self { self.viewerNames = self.paired.compactMap { self.linkNames[$0] } }
                 default: break
                 }
             }
@@ -314,7 +319,14 @@ final class CameraStation: ObservableObject {
         if allow {
             let token = Pairing.randomHex(16)
             Pairing.allowed[request.device] = token
-            welcome(link, answer: JoinAnswer(id: Pairing.myID(), token: token))
+            if home {
+                // Remember the other phone both ways, so the two phones can swap jobs (this one
+                // as the parent phone tomorrow) without asking again.
+                var saved = Pairing.saved("baby")
+                saved[request.device] = token
+                Pairing.setSaved("baby", saved)
+            }
+            welcome(link, answer: JoinAnswer(id: Pairing.myID(), token: token), name: request.name)
         } else {
             deny(link)
         }
@@ -326,10 +338,12 @@ final class CameraStation: ObservableObject {
         links.values.forEach { $0.cancel() }
     }
 
-    private func welcome(_ link: FramedConnection, answer: JoinAnswer?) {
+    private func welcome(_ link: FramedConnection, answer: JoinAnswer?, name: String? = nil) {
         let id = ObjectIdentifier(link)
         paired.insert(id)
+        if let name { linkNames[id] = name }
         viewers = paired.count
+        viewerNames = paired.compactMap { linkNames[$0] }
         link.send(.welcome, answer.flatMap { try? JSONEncoder().encode($0) } ?? Data())
         // Hand the parent phone the internet backup's room + key (only ever over the local link).
         if home, InternetRelay.available, let pass = try? JSONEncoder().encode(InternetRelay.Pass.mine) {

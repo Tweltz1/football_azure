@@ -131,6 +131,15 @@ enum Pairing {
         return id
     }
 
+    /// The name this phone shows to the other phone (blank = "Baby Phone" / "Parent phone").
+    static var myName: String {
+        (UserDefaults.standard.string(forKey: "phoneName") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func name(or fallback: String) -> String {
+        myName.isEmpty ? fallback : String(myName.prefix(30))
+    }
+
     static func randomHex(_ bytes: Int) -> String {
         var raw = [UInt8](repeating: 0, count: bytes)
         _ = SecRandomCopyBytes(kSecRandomDefault, raw.count, &raw)

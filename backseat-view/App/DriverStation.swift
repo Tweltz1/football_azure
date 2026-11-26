@@ -394,7 +394,7 @@ final class DriverStation: ObservableObject {
                     self.route = Self.isDirect(link.connection.currentPath) ? .direct : .wifi
                     if let peer = self.linkPeer {
                         let token = Pairing.saved(self.kind)[peer]
-                        let join = JoinRequest(device: Pairing.myID(), name: self.home ? "Parent phone" : "Driver's phone", token: token)
+                        let join = JoinRequest(device: Pairing.myID(), name: Pairing.name(or: self.home ? "Parent phone" : "Driver's phone"), token: token)
                         if token == nil { self.status = "Tap Allow on the \(self.other)" }
                         link.send(.hello, (try? JSONEncoder().encode(join)) ?? Data())
                     } else {
@@ -467,6 +467,8 @@ final class DriverStation: ObservableObject {
                 var saved = Pairing.saved(kind)
                 saved[answer.id] = answer.token
                 Pairing.setSaved(kind, saved)
+                // Both ways, so the phones can swap jobs later without asking again.
+                if home { Pairing.allowed[answer.id] = answer.token }
                 hasSaved = true
                 if let browser { updateNearby(browser.browseResults) }
             }
