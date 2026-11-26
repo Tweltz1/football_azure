@@ -26,7 +26,7 @@ struct ContentView: View {
 
 struct BabyPhoneScreen: View {
     let onSwitch: (String) -> Void
-    @StateObject private var station = CameraStation(audioOnly: true)
+    @StateObject private var station = CameraStation(home: true)
     @State private var darkScreen = false
 
     var body: some View {
@@ -37,9 +37,31 @@ struct BabyPhoneScreen: View {
                         Image(systemName: "ear.fill").foregroundStyle(mint)
                         Text("Baby phone").font(.title2.bold())
                     }
-                    SoundPanel(mood: station.running ? station.mood : nil,
-                               level: station.running ? station.level : 0,
-                               caption: station.running ? "Listening for the baby" : "Tap Start Listening")
+                    if station.audioOnly {
+                        SoundPanel(mood: station.running ? station.mood : nil,
+                                   level: station.running ? station.level : 0,
+                                   caption: station.running ? "Listening for the baby" : "Tap Start Listening")
+                    } else {
+                        PicturePanel(image: station.preview, mood: station.running ? station.mood : nil, placeholder: "Tap Start Listening")
+                    }
+                    Toggle(isOn: Binding(get: { !station.audioOnly }, set: { on in Task { await station.setVideo(on) } })) {
+                        Label("Camera on (see the baby and spot movement)", systemImage: "video.fill")
+                    }
+                    if !station.audioOnly {
+                        Text("With the camera on, keep this phone unlocked with Backseat View open (use Dark screen). If it locks, the sound keeps going but the picture pauses.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if station.tooDark && station.running {
+                            Text("It's too dark for the camera to see much. Sound, crying and fussing alerts still work. A small night light helps.")
+                                .font(.footnote).foregroundStyle(.orange)
+                        }
+                        if station.running {
+                            HStack {
+                                Button { station.rotation = (station.rotation + 90) % 360 } label: { Label("Rotate", systemImage: "rotate.right") }
+                                Button { station.useFrontCamera.toggle() } label: { Label("Flip camera", systemImage: "arrow.triangle.2.circlepath.camera") }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Pairing code").font(.caption).foregroundStyle(.secondary)
@@ -64,7 +86,8 @@ struct BabyPhoneScreen: View {
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Put this phone near the crib, out of the baby's reach, and plug it in.")
-                        Text("You can lock this phone. It keeps listening (you'll see the orange microphone dot). Don't swipe Backseat View closed.")
+                        Text(station.audioOnly ? "You can lock this phone. It keeps listening (you'll see the orange microphone dot). Don't swipe Backseat View closed."
+                             : "Prop it up facing the crib, a few feet away. Don't swipe Backseat View closed.")
                         Text("Both phones need to be on the same Wi-Fi, or close enough for AirDrop.")
                     }
                     .font(.caption).foregroundStyle(.secondary)
@@ -75,7 +98,7 @@ struct BabyPhoneScreen: View {
             }
             if darkScreen {
                 Color.black.ignoresSafeArea()
-                    .overlay(Text("Listening. Tap to wake.").font(.footnote).foregroundStyle(.white.opacity(0.25)))
+                    .overlay(Text(station.audioOnly ? "Listening. Tap to wake." : "Camera and sound are on. Tap to wake.").font(.footnote).foregroundStyle(.white.opacity(0.25)))
                     .onTapGesture { darkScreen = false }
             }
         }
@@ -98,17 +121,32 @@ struct ListenScreen: View {
                     Image(systemName: "headphones").foregroundStyle(mint)
                     Text("Listen to the baby").font(.title2.bold())
                 }
-                SoundPanel(mood: station.running ? station.mood : nil, level: nil,
-                           caption: !station.running ? "Start Listening on the baby phone, then tap Listen here"
-                           : !station.connected ? station.status
-                           : station.hearing ? "You're hearing the baby's room" : "Quiet. The sound comes on when there's a noise.")
+                if station.connected, station.picture != nil {
+                    PicturePanel(image: station.picture, mood: station.mood, placeholder: "")
+                    Text(station.hearing ? "You're hearing the baby's room" : "Quiet. The sound comes on when there's a noise.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    if station.cameraTooDark {
+                        Text("It's dark in the baby's room, so the picture is hard to see. Sound alerts still work.").font(.footnote).foregroundStyle(.orange)
+                    }
+                } else {
+                    SoundPanel(mood: station.running ? station.mood : nil, level: nil,
+                               caption: !station.running ? "Start Listening on the baby phone, then tap Listen here"
+                               : !station.connected ? station.status
+                               : station.hearing ? "You're hearing the baby's room" : "Quiet. The sound comes on when there's a noise.")
+                }
                 if station.running {
                     Text(station.status).font(.footnote).foregroundStyle(.secondary)
                     if station.connected && station.cameraBattery >= 0 && station.cameraBattery < 0.2 {
                         Text("The baby phone's battery is low. Plug it in.").font(.footnote).foregroundStyle(.orange)
                     }
                     if let problem = station.cardProblem { Text(problem).font(.footnote).foregroundStyle(.orange) }
-                    Button("Stop", role: .destructive) { station.stop() }.buttonStyle(.bordered)
+                    HStack {
+                        if station.picture != nil {
+                            Button { station.turns += 1 } label: { Label("Rotate picture", systemImage: "rotate.right") }
+                        }
+                        Button("Stop", role: .destructive) { station.stop() }
+                    }
+                    .buttonStyle(.bordered)
                 } else {
                     Button { station.start(code: pairCode) } label: { Text("Listen").frame(maxWidth: .infinity) }
                         .buttonStyle(.borderedProminent).controlSize(.large)
@@ -148,6 +186,7 @@ struct ListenScreen: View {
                     Text("Notifications").font(.headline).padding(.top, 4)
                     Toggle("When the baby cries", isOn: Binding(get: { station.cryAlerts }, set: { station.cryAlerts = $0 }))
                     Toggle("When the baby fusses", isOn: Binding(get: { station.fussAlerts }, set: { station.fussAlerts = $0 }))
+                    Toggle("When the baby moves (camera on)", isOn: Binding(get: { station.motionAlerts }, set: { station.motionAlerts = $0 }))
                     Toggle("On any sound", isOn: Binding(get: { station.noiseAlerts }, set: { station.noiseAlerts = $0 }))
                     Text("Fussing means little sounds that keep coming back for a while (whimpers, grunts, babbling), not one bump. You always get a notification if the baby phone disconnects.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -159,7 +198,7 @@ struct ListenScreen: View {
                 .padding(16)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
-                Text("You can lock this phone and keep listening. A Baby's room card on your Lock Screen shows Quiet, Making sounds, Fussing or Crying.")
+                Text("You can lock this phone and keep listening. A Baby's room card on your Lock Screen shows Quiet, Making sounds, Moving, Fussing or Crying. Turn on the camera on the baby phone to see the baby here too.")
                     .font(.caption).foregroundStyle(.secondary)
                 Text("Not a medical or safety device. Check on your baby in person.")
                     .font(.caption).foregroundStyle(.secondary)
