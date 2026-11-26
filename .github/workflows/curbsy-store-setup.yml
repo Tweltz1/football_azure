@@ -4,7 +4,7 @@ name: Curbsy App Store setup
 
 on:
   push:
-    branches: ['claude/project-thread-bv36or']
+    branches: ['claude/project-thread-bv36or', 'claude/project-thread-1v1zpc']
     paths:
       - 'scripts/curbsy-store/**'
       - '.github/workflows/curbsy-store-setup.yml'
