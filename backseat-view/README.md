@@ -31,6 +31,10 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   (`BabyNotifier`, max one per kind per minute) for crying (Apple sound classifier), fussing (sounds in
   4+ different seconds of the last 20), optionally any sound, and always when the baby phone disconnects.
   Same Wi-Fi or AirDrop range needed.
+- **Camera on** (baby phone toggle, saved as `babyPhoneVideo`): the baby phone also sends the picture
+  (same frames as the car camera). The listening phone shows it, detects movement with the same
+  brightness-grid check, and notifies "Baby is moving" (on by default). The picture pauses if the
+  baby phone locks; sound keeps going.
 
 ## Why not live video on CarPlay?
 Apple doesn't allow apps to play video on the CarPlay screen while driving, and widgets refresh only a

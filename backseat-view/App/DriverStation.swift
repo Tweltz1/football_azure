@@ -55,6 +55,11 @@ final class DriverStation: ObservableObject {
     @Published private(set) var notificationsOff = false
     private let notifier = BabyNotifier()
 
+    var motionAlerts: Bool {
+        get { UserDefaults.standard.object(forKey: "homeMotionAlerts") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "homeMotionAlerts"); objectWillChange.send() }
+    }
+
     var noiseAlerts: Bool {
         get { UserDefaults.standard.object(forKey: "homeNoiseAlerts") as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: "homeNoiseAlerts"); objectWillChange.send() }
@@ -348,6 +353,8 @@ final class DriverStation: ObservableObject {
                 tell(title: "Baby is crying", body: "Backseat View hears crying in the baby's room.", kind: "cry")
             } else if newMood == .fussing && !wasCrying && fussAlerts {
                 tell(title: "Baby is fussing", body: "Backseat View has heard on-and-off sounds in the baby's room.", kind: "fuss")
+            } else if newMood == .moving && wasQuiet && motionAlerts {
+                tell(title: "Baby is moving", body: "Backseat View sees movement in the baby's room.", kind: "move")
             } else if newMood == .noise && wasQuiet && noiseAlerts {
                 tell(title: "Sound in the baby's room", body: "Backseat View hears the baby.", kind: "noise")
             } else {
@@ -375,7 +382,7 @@ final class DriverStation: ObservableObject {
 
     private func pushCard(force: Bool = false, alert: CardAlert? = nil) {
         guard running else { return }
-        let error = card.update(mood: mood, picture: showPictureInCar && !home ? picture : nil, force: force, alert: alert)
+        let error = card.update(mood: mood, picture: showPictureInCar || home ? picture : nil, force: force, alert: alert)
         if let error { cardProblem = error }
     }
 }

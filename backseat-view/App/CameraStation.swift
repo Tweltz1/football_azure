@@ -7,8 +7,10 @@ import UIKit
 
 /// Runs on the spare iPhone mounted in the back seat. Shares a small picture, the baby's
 /// sound and a Quiet / Moving / Crying guess with the driver's phone.
-/// With `audioOnly` it is the "baby phone" of the home sound monitor: microphone only, and it
-/// keeps listening with the screen locked (background audio mode).
+/// With `home` it is the "baby phone" of the home monitor. With `audioOnly` (the default there) it's
+/// microphone only and keeps listening with the screen locked (background audio mode); with the
+/// camera on it also sends the picture, which pauses while the phone is locked (iOS rule) but the
+/// sound keeps going.
 @MainActor
 final class CameraStation: ObservableObject {
     @Published private(set) var preview: UIImage?
@@ -20,7 +22,8 @@ final class CameraStation: ObservableObject {
     @Published private(set) var level: Float = 0
 
     let code: String
-    let audioOnly: Bool
+    let home: Bool
+    private(set) var audioOnly: Bool
     private let rig = CaptureRig()
     private var listener: NWListener?
     private var links: [ObjectIdentifier: FramedConnection] = [:]
@@ -31,8 +34,9 @@ final class CameraStation: ObservableObject {
     private var motionStreak = 0
     private var ticker: Timer?
 
-    init(audioOnly: Bool = false) {
-        self.audioOnly = audioOnly
+    init(home: Bool = false) {
+        self.home = home
+        audioOnly = home && !UserDefaults.standard.bool(forKey: "babyPhoneVideo")
         let defaults = UserDefaults.standard
         if let saved = defaults.string(forKey: "cameraCode"), saved.count == 4 {
             code = saved
@@ -104,6 +108,19 @@ final class CameraStation: ObservableObject {
         }
     }
 
+    /// Home baby phone: switch the camera on or off (restarts the phone's side; the listening
+    /// phone reconnects by itself).
+    func setVideo(_ on: Bool) async {
+        guard home else { return }
+        UserDefaults.standard.set(on, forKey: "babyPhoneVideo")
+        let wasRunning = running
+        stop()
+        audioOnly = !on
+        preview = nil
+        objectWillChange.send()
+        if wasRunning { await start() }
+    }
+
     func stop() {
         ticker?.invalidate()
         ticker = nil
@@ -123,7 +140,7 @@ final class CameraStation: ObservableObject {
     private func listen() {
         do {
             let listener = try NWListener(using: BVLink.parameters())
-            listener.service = NWListener.Service(name: audioOnly ? "Baby Phone" : "Backseat Camera", type: BVLink.service)
+            listener.service = NWListener.Service(name: home ? "Baby Phone" : "Backseat Camera", type: BVLink.service)
             listener.newConnectionHandler = { [weak self] connection in
                 MainActor.assumeIsolated { self?.accept(connection) }
             }
@@ -202,7 +219,7 @@ final class CameraStation: ObservableObject {
         let now = Date()
         if now.timeIntervalSince(lastCry) < 4 {
             mood = .crying
-        } else if audioOnly && now.timeIntervalSince(lastNoise) < 6 {
+        } else if home && now.timeIntervalSince(lastNoise) < 6 {
             mood = .noise
         } else if now.timeIntervalSince(lastMotion) < 8 {
             mood = .moving
