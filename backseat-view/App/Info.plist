@@ -29,5 +29,6 @@
 <key>NSCameraUsageDescription</key><string>On the back-seat camera phone, the camera shows the back seat on your phone and car screen.</string>
 <key>NSMicrophoneUsageDescription</key><string>On the back-seat camera or the baby phone, the microphone lets you hear the baby and spot crying and other sounds.</string>
 <key>NSSupportsLiveActivities</key><true/>
+<key>ITSAppUsesNonExemptEncryption</key><false/>
 <key>UIBackgroundModes</key><array><string>audio</string></array>
 </dict></plist>
