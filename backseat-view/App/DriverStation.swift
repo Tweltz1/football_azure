@@ -553,9 +553,9 @@ final class DriverStation: ObservableObject {
                         self.tell(title: "Baby monitor lost the baby phone", body: "Check that Stork View is still listening on the baby phone, and that Wi-Fi and Bluetooth are on on both phones.", kind: "lost")
                     }
                 }
-            } else {
-                pushCard(force: true)
             }
+            // Show "Not connected" on the card right away (the chime above still waits).
+            pushCard(force: true)
         }
     }
 
@@ -716,6 +716,10 @@ final class DriverStation: ObservableObject {
             } else {
                 pushCard(force: true)
             }
+        } else {
+            // Keep the card fresh even with no picture coming (sound-only, or picture paused), so its
+            // "updated" time moves and a dropped update fixes itself within a few seconds.
+            pushCard()
         }
     }
 
@@ -897,6 +901,12 @@ final class CarCard {
         }
     }
 
+    /// The newest card waiting to go out, and whether a send is already running. Updates go out one
+    /// at a time and only the newest is kept, so an older update can never land after a newer one
+    /// and leave the card on an old mood.
+    private var pending: (content: ActivityContent<BabyActivityAttributes.ContentState>, alert: AlertConfiguration?)?
+    private var sending = false
+
     /// Returns a message for the user when the card can't be shown.
     func update(mood: BabyMood, picture: UIImage?, paused: Bool, force: Bool, alert: CardAlert?) -> String? {
         let now = Date()
@@ -910,11 +920,19 @@ final class CarCard {
         let state = BabyActivityAttributes.ContentState(mood: mood, thumb: picture.flatMap(Self.tinyJPEG), updated: now,
                                                         since: mood == .offline ? nil : moodSince, paused: paused)
         let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(60))
-        if let activity {
+        // The card was swiped away or ended by iOS (they last 8 hours at most): start a fresh one.
+        if let activity, activity.activityState == .ended || activity.activityState == .dismissed {
+            self.activity = nil
+        }
+        if activity != nil {
             let sound = alert.map { AlertConfiguration(title: "\($0.title)", body: "\($0.body)", sound: .default) }
-            Task { await activity.update(content, alertConfiguration: sound) }
+            // Keep an alert that hasn't gone out yet even if a newer picture replaces its state.
+            pending = (content, sound ?? pending?.alert)
+            sendNext()
             return nil
         }
+        // A new card can only be started while the app is on screen. Until then the next update tries again.
+        guard UIApplication.shared.applicationState == .active else { return nil }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             return "Live Activities are off for Stork View. Turn them on in Settings > Stork View so the baby card can show on your Lock Screen and car screen."
         }
@@ -926,9 +944,21 @@ final class CarCard {
         }
     }
 
+    private func sendNext() {
+        guard !sending, let activity, let next = pending else { return }
+        pending = nil
+        sending = true
+        Task { @MainActor in
+            await activity.update(next.content, alertConfiguration: next.alert)
+            self.sending = false
+            self.sendNext()
+        }
+    }
+
     func end() {
         guard let activity else { return }
         self.activity = nil
+        pending = nil
         lastSent = .distantPast
         Task { await activity.end(nil, dismissalPolicy: .immediate) }
     }
