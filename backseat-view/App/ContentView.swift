@@ -18,6 +18,7 @@ struct ContentView: View {
         NavigationStack {
             switch mode {
             case "camera": CameraScreen { mode = "" }
+            case "tesla": CameraScreen(tesla: true) { mode = "" }
             case "babyphone": BabyPhoneScreen { mode = "" }
             case "listen": ListenScreen { mode = "" }
             case "driver": DriverScreen { mode = "" }
@@ -50,10 +51,12 @@ struct StartScreen: View {
                 }
 
                 ModeGroup(title: "In the car", symbol: "car.fill") {
-                    ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
-                             detail: "Driver's phone. Baby card on CarPlay and the Lock Screen.") { pick("driver") }
+                    ModeCard(symbol: "car.fill", color: mint, title: "Show on a Tesla",
+                             detail: "Uses this iPhone's camera. Mount it facing the baby and see them on the Tesla screen.") { pick("tesla") }
                     ModeCard(symbol: "video.fill", color: peach, title: "Back-seat camera",
-                             detail: "An old iPhone or iPad mounted facing the baby.") { pick("camera") }
+                             detail: "Uses this iPhone's camera, facing the baby. Watch on the driver's phone or a Tesla.") { pick("camera") }
+                    ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
+                             detail: "Driver's phone. Shows another phone's camera on CarPlay and the Lock Screen.") { pick("driver") }
                 }
 
                 Text("Tip: put Stork View on both phones. Each one picks its job here.")
@@ -557,6 +560,8 @@ struct SoundPanel: View {
 // MARK: Car: back-seat camera phone
 
 struct CameraScreen: View {
+    /// Opened from "Show on a Tesla": switches the car screen on and puts its steps first.
+    var tesla = false
     let back: () -> Void
     @StateObject private var station = CameraStation()
     @State private var darkScreen = false
@@ -566,8 +571,12 @@ struct CameraScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     PicturePanel(image: station.preview, mood: station.running ? station.mood : nil, placeholder: "Tap Start Camera")
-                    StatusPill(text: station.viewers == 0 ? "Waiting for the driver's phone" : "Connected to the driver's phone",
-                               good: station.viewers > 0)
+                    if tesla {
+                        CarScreenCard(screen: station.carScreen)
+                    } else {
+                        StatusPill(text: station.viewers == 0 ? "Waiting for the driver's phone" : "Connected to the driver's phone",
+                                   good: station.viewers > 0)
+                    }
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
                     if station.tooDark && station.running {
                         Text("It's too dark to see much. Sound and crying alerts still work.").font(.footnote).foregroundStyle(.orange)
@@ -584,8 +593,10 @@ struct CameraScreen: View {
                     } else {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
-                    TapHint(name: "Back-seat camera", hint: "On the driver's phone, pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
-                    CarScreenCard(screen: station.carScreen)
+                    if !tesla {
+                        TapHint(name: "Back-seat camera", hint: "On the driver's phone, pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
+                        CarScreenCard(screen: station.carScreen)
+                    }
                     Text("Keep Stork View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
                     if station.running {
@@ -600,9 +611,15 @@ struct CameraScreen: View {
         }
         .statusBarHidden(darkScreen)
         .toolbar(darkScreen ? .hidden : .visible, for: .navigationBar)
-        .modeToolbar("Back-seat camera", back: { station.stop(); back() })
+        .modeToolbar(tesla ? "Tesla screen" : "Back-seat camera", back: { station.stop(); back() })
         .joinAlert(station)
-        .task { await station.start() }
+        .task {
+            if tesla && !station.carScreen.wanted {
+                station.carScreen.wanted = true
+                station.carScreen.objectWillChange.send()
+            }
+            await station.start()
+        }
     }
 }
 
