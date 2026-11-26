@@ -2,12 +2,21 @@ import ActivityKit
 import AVFoundation
 import Network
 import UIKit
+import UserNotifications
 
 /// Runs on the driver's iPhone. Finds the camera phone, shows its picture, plays the baby's
 /// sound through the car, and keeps the baby card on the CarPlay Dashboard / Lock Screen up to date.
 /// Playing the baby's sound is also what keeps the app running while the phone is locked.
+/// With `home` it is the parent's side of the home sound monitor: it listens to the baby phone,
+/// either all the time or only when there's a noise, and the card says "Baby's room".
 @MainActor
 final class DriverStation: ObservableObject {
+    enum SoundMode: String, CaseIterable {
+        case always, noiseOnly
+
+        var title: String { self == .always ? "All the time" : "Only when there's a noise" }
+    }
+
     @Published private(set) var picture: UIImage?
     @Published private(set) var mood: BabyMood = .offline
     @Published private(set) var status = "Not started"
@@ -17,6 +26,39 @@ final class DriverStation: ObservableObject {
     @Published private(set) var cameraBattery: Float = -1
     @Published private(set) var cameraTooDark = false
     @Published private(set) var cardProblem: String?
+    /// Home monitor: true while the baby's sound is coming through (always true in "All the time").
+    @Published private(set) var hearing = false
+
+    let home: Bool
+    private var other: String { home ? "baby phone" : "camera" }
+
+    init(home: Bool = false) {
+        self.home = home
+        card = CarCard(place: home ? "Baby's room" : "Back seat")
+    }
+
+    var soundMode: SoundMode {
+        get { SoundMode(rawValue: UserDefaults.standard.string(forKey: "homeSoundMode") ?? "") ?? .noiseOnly }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "homeSoundMode"); objectWillChange.send() }
+    }
+
+    var sensitivity: SoundGate.Sensitivity {
+        get { SoundGate.Sensitivity(rawValue: UserDefaults.standard.object(forKey: "homeSensitivity") as? Int ?? 1) ?? .medium }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "homeSensitivity"); gate.sensitivity = newValue; objectWillChange.send() }
+    }
+
+    var fussAlerts: Bool {
+        get { UserDefaults.standard.object(forKey: "homeFussAlerts") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "homeFussAlerts"); objectWillChange.send() }
+    }
+
+    @Published private(set) var notificationsOff = false
+    private let notifier = BabyNotifier()
+
+    var noiseAlerts: Bool {
+        get { UserDefaults.standard.object(forKey: "homeNoiseAlerts") as? Bool ?? false }
+        set { UserDefaults.standard.set(newValue, forKey: "homeNoiseAlerts"); objectWillChange.send() }
+    }
 
     var showPictureInCar: Bool {
         get { UserDefaults.standard.object(forKey: "showPictureInCar") as? Bool ?? true }
@@ -40,7 +82,8 @@ final class DriverStation: ObservableObject {
     }
 
     private let speaker = BabySpeaker()
-    private let card = CarCard()
+    private let card: CarCard
+    private let gate = SoundGate()
     private let watcher = BabyWatcher(format: BabySpeaker.format)
     private var lastCry = Date.distantPast
     private var lastMotion = Date.distantPast
@@ -57,9 +100,17 @@ final class DriverStation: ObservableObject {
     func start(code: String) {
         guard !running else { return }
         self.code = code
+        gate.reset()
+        gate.sensitivity = sensitivity
+        if home {
+            Task { [weak self] in
+                let allowed = await BabyNotifier.ask()
+                self?.notificationsOff = !allowed
+            }
+        }
         wrongCode.removeAll()
         running = true
-        status = "Looking for the camera..."
+        status = "Looking for the \(other)..."
         speaker.volume = volume
         speaker.start()
         lastCry = .distantPast
@@ -97,6 +148,7 @@ final class DriverStation: ObservableObject {
         speaker.stop()
         card.end()
         connected = false
+        hearing = false
         mood = .offline
         picture = nil
         status = "Not started"
@@ -130,7 +182,7 @@ final class DriverStation: ObservableObject {
         guard running, link == nil else { return }
         guard let result = results.first(where: { !wrongCode.contains($0.endpoint) }) else {
             tryHotspotAddresses()
-            if !results.isEmpty { status = "Found a camera, but its code doesn't match. Check the code." }
+            if !results.isEmpty { status = "Found a \(other), but its code doesn't match. Check the code." }
             return
         }
         connect(to: result.endpoint)
@@ -139,7 +191,7 @@ final class DriverStation: ObservableObject {
     /// iPhone Personal Hotspot hands out 172.20.10.2-14. If Bonjour doesn't find the mini camera
     /// within a few seconds, knock on each of those addresses directly.
     private func tryHotspotAddresses() {
-        guard running, link == nil, hotspotTries.isEmpty, Date().timeIntervalSince(lookingSince) > 4 else { return }
+        guard !home, running, link == nil, hotspotTries.isEmpty, Date().timeIntervalSince(lookingSince) > 4 else { return }
         for last in 2...14 {
             let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host("172.20.10.\(last)"), port: 8765)
             let tcp = NWProtocolTCP.Options()
@@ -169,17 +221,26 @@ final class DriverStation: ObservableObject {
     }
 
     private func connect(to endpoint: NWEndpoint) {
-        status = "Connecting to the camera..."
+        status = "Connecting to the \(other)..."
         let link = FramedConnection(NWConnection(to: endpoint, using: BVLink.parameters()))
         self.link = link
         linkEndpoint = endpoint
         let speaker = self.speaker
         let watcher = self.watcher
+        let gate = self.gate
         link.onPacket = { [weak self] type, payload in
             if type == .audio {
                 if let sound = BabySpeaker.decode(payload) {
-                    speaker.play(sound)
                     watcher.hear(sound)
+                    gate.listen(to: sound)
+                    MainActor.assumeIsolated {
+                        guard let self else { return }
+                        if self.home && self.soundMode == .noiseOnly {
+                            gate.pass(sound).forEach(speaker.play)
+                        } else {
+                            speaker.play(sound)
+                        }
+                    }
                 }
                 return
             }
@@ -210,7 +271,8 @@ final class DriverStation: ObservableObject {
             status = "Connected"
         case .denied:
             if let linkEndpoint { wrongCode.insert(linkEndpoint) }
-            status = "That camera wants a different code. Check the code on the camera iPhone or iPad."
+            status = home ? "That baby phone wants a different code. Check the code on the baby phone."
+                          : "That camera wants a different code. Check the code on the camera iPhone or iPad."
             dropLink()
         case .frame:
             lastSeen = Date()
@@ -235,11 +297,17 @@ final class DriverStation: ObservableObject {
     private func lostCamera() {
         dropLink()
         guard running else { return }
-        if connected { status = "Lost the camera. Reconnecting..." }
+        if connected { status = "Lost the \(other). Reconnecting..." }
         connected = false
+        hearing = false
         if mood != .offline {
             mood = .offline
-            pushCard(force: true)
+            // At home the parent may be asleep: chime so they know the monitor stopped.
+            if home {
+                tell(title: "Baby monitor lost the baby phone", body: "Check that Backseat View is still listening on the baby phone.", kind: "lost")
+            } else {
+                pushCard(force: true)
+            }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             MainActor.assumeIsolated {
@@ -257,17 +325,34 @@ final class DriverStation: ObservableObject {
         if running, link == nil, let browser { pickCamera(from: browser.browseResults) }
         guard connected else { return }
         let now = Date()
+        hearing = !home || soundMode == .always || gate.isOpen
         let newMood: BabyMood
         if now.timeIntervalSince(lastCry) < 4 {
             newMood = .crying
+        } else if home && gate.isFussing {
+            newMood = .fussing
+        } else if home && now.timeIntervalSince(gate.lastNoise) < 6 {
+            newMood = .noise
         } else if now.timeIntervalSince(lastMotion) < 8 {
             newMood = .moving
         } else {
             newMood = .quiet
         }
         if newMood != mood {
+            let wasQuiet = mood == .quiet
+            let wasCrying = mood == .crying
             mood = newMood
-            pushCard(force: true, alert: newMood == .crying && cryAlerts)
+            if !home {
+                pushCard(force: true, alert: newMood == .crying && cryAlerts ? (title: "Baby is crying", body: "Backseat View hears crying.") : nil)
+            } else if newMood == .crying && cryAlerts {
+                tell(title: "Baby is crying", body: "Backseat View hears crying in the baby's room.", kind: "cry")
+            } else if newMood == .fussing && !wasCrying && fussAlerts {
+                tell(title: "Baby is fussing", body: "Backseat View has heard on-and-off sounds in the baby's room.", kind: "fuss")
+            } else if newMood == .noise && wasQuiet && noiseAlerts {
+                tell(title: "Sound in the baby's room", body: "Backseat View hears the baby.", kind: "noise")
+            } else {
+                pushCard(force: true)
+            }
         }
     }
 
@@ -277,9 +362,20 @@ final class DriverStation: ObservableObject {
         return UIImage(cgImage: cg, scale: 1, orientation: orientation)
     }
 
-    private func pushCard(force: Bool = false, alert: Bool = false) {
+    /// Home monitor: a real phone notification (shows even with the app open), or the card's
+    /// own chime if notifications are turned off.
+    private func tell(title: String, body: String, kind: String) {
+        if notificationsOff {
+            pushCard(force: true, alert: (title: title, body: body))
+        } else {
+            notifier.post(title: title, body: body, kind: kind)
+            pushCard(force: true)
+        }
+    }
+
+    private func pushCard(force: Bool = false, alert: CardAlert? = nil) {
         guard running else { return }
-        let error = card.update(mood: mood, picture: showPictureInCar ? picture : nil, force: force, alert: alert)
+        let error = card.update(mood: mood, picture: showPictureInCar && !home ? picture : nil, force: force, alert: alert)
         if let error { cardProblem = error }
     }
 }
@@ -376,13 +472,56 @@ final class BabySpeaker {
     }
 }
 
+/// Phone notifications for the home monitor: crying, fussing, any sound, and a lost baby phone.
+/// The same kind isn't repeated within a minute so a long cry doesn't buzz nonstop.
+final class BabyNotifier: NSObject, UNUserNotificationCenterDelegate {
+    private var lastSent: [String: Date] = [:]
+
+    override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    static func ask() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral: return true
+        case .denied: return false
+        default: return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+        }
+    }
+
+    func post(title: String, body: String, kind: String) {
+        let now = Date()
+        if let last = lastSent[kind], now.timeIntervalSince(last) < 60 { return }
+        lastSent[kind] = now
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        content.threadIdentifier = "baby-monitor"
+        let request = UNNotificationRequest(identifier: "baby-\(kind)-\(Int(now.timeIntervalSince1970))", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .sound, .list]
+    }
+}
+
+/// Title and text of the alert that pops up with a card update.
+typealias CardAlert = (title: String, body: String)
+
 /// The baby card (Live Activity). CarPlay in iOS 26 shows it on the Dashboard by itself.
 @MainActor
 final class CarCard {
     private var activity: Activity<BabyActivityAttributes>?
     private var lastSent = Date.distantPast
+    private let place: String
 
-    init() {
+    init(place: String) {
+        self.place = place
         // Clear any card left behind by an earlier run.
         for old in Activity<BabyActivityAttributes>.activities {
             Task { await old.end(nil, dismissalPolicy: .immediate) }
@@ -390,22 +529,22 @@ final class CarCard {
     }
 
     /// Returns a message for the user when the card can't be shown.
-    func update(mood: BabyMood, picture: UIImage?, force: Bool, alert: Bool) -> String? {
+    func update(mood: BabyMood, picture: UIImage?, force: Bool, alert: CardAlert?) -> String? {
         let now = Date()
         guard force || now.timeIntervalSince(lastSent) >= 4 else { return nil }
         lastSent = now
         let state = BabyActivityAttributes.ContentState(mood: mood, thumb: picture.flatMap(Self.tinyJPEG), updated: now)
         let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(60))
         if let activity {
-            let sound = alert ? AlertConfiguration(title: "Baby is crying", body: "Backseat View hears crying.", sound: .default) : nil
+            let sound = alert.map { AlertConfiguration(title: "\($0.title)", body: "\($0.body)", sound: .default) }
             Task { await activity.update(content, alertConfiguration: sound) }
             return nil
         }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            return "Live Activities are off for Backseat View. Turn them on in Settings > Backseat View so the baby card can show in your car."
+            return "Live Activities are off for Backseat View. Turn them on in Settings > Backseat View so the baby card can show on your Lock Screen and car screen."
         }
         do {
-            activity = try Activity.request(attributes: BabyActivityAttributes(seatName: "Back seat"), content: content, pushType: nil)
+            activity = try Activity.request(attributes: BabyActivityAttributes(seatName: place), content: content, pushType: nil)
             return nil
         } catch {
             return "The baby card couldn't start: \(error.localizedDescription)"

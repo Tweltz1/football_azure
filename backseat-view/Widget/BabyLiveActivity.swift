@@ -9,8 +9,8 @@ private let mint = Color(red: 0.51, green: 0.87, blue: 0.73)
 private func moodColor(_ mood: BabyMood) -> Color {
     switch mood {
     case .quiet: return mint
-    case .moving: return .yellow
-    case .crying: return .orange
+    case .moving, .noise: return .yellow
+    case .crying, .fussing: return .orange
     case .offline: return .gray
     }
 }
@@ -19,7 +19,7 @@ private func moodColor(_ mood: BabyMood) -> Color {
 struct BabyLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: BabyActivityAttributes.self) { context in
-            BabyCardView(state: context.state)
+            BabyCardView(state: context.state, place: context.attributes.seatName)
                 .activityBackgroundTint(cardBackground)
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
@@ -31,7 +31,7 @@ struct BabyLiveActivity: Widget {
                     MoodLabel(mood: context.state.mood, big: true)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("Back seat · updated \(context.state.updated, style: .relative) ago")
+                    Text("\(context.attributes.seatName) · updated \(context.state.updated, style: .relative) ago")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -50,6 +50,7 @@ struct BabyLiveActivity: Widget {
 struct BabyCardView: View {
     @Environment(\.activityFamily) private var family
     let state: BabyActivityAttributes.ContentState
+    let place: String
 
     var body: some View {
         if family == .small {
@@ -58,7 +59,7 @@ struct BabyCardView: View {
                 BabyThumb(data: state.thumb, size: 52)
                 VStack(alignment: .leading, spacing: 2) {
                     MoodLabel(mood: state.mood, big: true)
-                    Text("Back seat").font(.caption2).foregroundStyle(.white.opacity(0.7))
+                    Text(place).font(.caption2).foregroundStyle(.white.opacity(0.7))
                 }
                 Spacer(minLength: 0)
             }

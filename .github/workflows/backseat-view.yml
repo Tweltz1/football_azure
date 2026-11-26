@@ -6,6 +6,7 @@ on:
       - feature/backseat-view-carplay-widget
       - claude/project-thread-6lgsrr
       - claude/project-thread-ujg0zh
+      - claude/project-thread-1v1zpc
     paths:
       - "backseat-view/**"
       - ".github/workflows/backseat-view.yml"
