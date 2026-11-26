@@ -35,7 +35,7 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   `CameraStation(audioOnly: true)`) sends microphone sound only, advertises as "Baby Phone" on the same
   Bonjour service with its own 4-digit code, and keeps listening while locked (background audio mode).
 - The **listening phone** (`ListenScreen`, `DriverStation(home: true)`) plays the sound either
-  **All the time** or **Only when there's a noise** (default). `SoundGate` (`App/Listening.swift`) calls
+  **Baby only** (`BabyGate`: plays only once Apple's sound classifier hears crying, whimpering, babbling or laughing, keeping the last 2 s; cuts TV, talk, echo and the soothing sound), **Any noise** (default) or **All sounds**. `SoundGate` (`App/Listening.swift`) calls
   it a noise when loudness beats the sensitivity level and 3x the room's background hum, keeps the
   last 0.5 s so the start isn't cut off, and keeps the sound on for 8 s after the last noise.
 - Lock Screen card "Baby's room" says Quiet / Making sounds / Fussing / Crying. Phone notifications

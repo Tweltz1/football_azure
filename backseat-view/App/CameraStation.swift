@@ -840,11 +840,18 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
 /// Receives the sound classifier's results and reports the crying confidence (0...1).
 final class CryListener: NSObject, SNResultsObserving {
     var onScore: ((Double) -> Void)?
+    /// How sure the classifier is that this is the baby at all (crying, whimpering, laughing, babbling).
+    var onBaby: ((Double) -> Void)?
+    /// Baby sounds Apple's built-in classifier knows. Any it doesn't know just score 0.
+    static let babyLabels = ["baby_crying", "crying_sobbing", "baby_laughter", "whimpering", "babbling", "giggling", "screaming"]
 
     func request(_ request: SNRequest, didProduce result: SNResult) {
         guard let result = result as? SNClassificationResult else { return }
         let baby = result.classification(forIdentifier: "baby_crying")?.confidence ?? 0
         let sobbing = result.classification(forIdentifier: "crying_sobbing")?.confidence ?? 0
         onScore?(max(baby, sobbing))
+        if let onBaby {
+            onBaby(Self.babyLabels.map { result.classification(forIdentifier: $0)?.confidence ?? 0 }.max() ?? 0)
+        }
     }
 }

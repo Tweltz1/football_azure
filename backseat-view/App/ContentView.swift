@@ -451,8 +451,7 @@ struct ListenScreen: View {
                             Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
                         }
                         Picker("Hear the baby", selection: Binding(get: { station.soundMode }, set: { station.soundMode = $0 })) {
-                            Text("Only on noise").tag(DriverStation.SoundMode.noiseOnly)
-                            Text("All the time").tag(DriverStation.SoundMode.always)
+                            ForEach(DriverStation.SoundMode.allCases, id: \.self) { Text($0.short).tag($0) }
                         }
                         .pickerStyle(.segmented)
                     }
@@ -509,7 +508,7 @@ struct ListenSettings: View {
                         ForEach(SoundGate.Sensitivity.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                 } header: { Text("Sound") } footer: {
-                    Text("\"Only when there's a noise\" stays silent until the baby makes a sound, then plays it live (with the first moment kept) for a few seconds.")
+                    Text("\"Baby sounds only\" stays silent until the phone recognizes the baby (crying, whimpering, babbling, laughing), so TV, talking, fans, echo and the soothing sound stay quiet. \"Any noise\" plays any sound louder than the room's hum. Both keep the first moment and play live for a few seconds after.")
                 }
                 Section {
                     Toggle("Crying", isOn: Binding(get: { station.cryAlerts }, set: { station.cryAlerts = $0 }))

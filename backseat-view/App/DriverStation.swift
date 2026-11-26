@@ -12,9 +12,23 @@ import UserNotifications
 @MainActor
 final class DriverStation: ObservableObject {
     enum SoundMode: String, CaseIterable {
-        case always, noiseOnly
+        case babyOnly, noiseOnly, always
 
-        var title: String { self == .always ? "All the time" : "Only when there's a noise" }
+        var title: String {
+            switch self {
+            case .babyOnly: return "Baby sounds only"
+            case .noiseOnly: return "Any noise"
+            case .always: return "All the time"
+            }
+        }
+
+        var short: String {
+            switch self {
+            case .babyOnly: return "Baby only"
+            case .noiseOnly: return "Any noise"
+            case .always: return "All sounds"
+            }
+        }
     }
 
     @Published private(set) var picture: UIImage?
@@ -137,6 +151,7 @@ final class DriverStation: ObservableObject {
     private let card: CarCard
     private let gate = SoundGate()
     private let watcher = BabyWatcher(format: BabySpeaker.format)
+    private let babyGate = BabyGate()
     private var lastCry = Date.distantPast
     private var lastMotion = Date.distantPast
     private var motionStreak = 0
@@ -205,9 +220,14 @@ final class DriverStation: ObservableObject {
         lastCry = .distantPast
         lastMotion = .distantPast
         lookingSince = Date()
+        babyGate.reset()
         watcher.onCry = { [weak self] score in
             guard score > 0.5 else { return }
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.lastCry = Date() } }
+        }
+        watcher.onBaby = { [weak self] score in
+            guard score > 0.3 else { return }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.babyGate.lastBaby = Date() } }
         }
         watcher.onPicture = { [weak self] motion, brightness in
             DispatchQueue.main.async {
@@ -658,8 +678,12 @@ final class DriverStation: ObservableObject {
         watcher.hear(sound)
         gate.listen(to: sound)
         // While the parent talks, don't play the room back (it would echo their own voice).
+        let babyPart = babyGate.pass(sound)
         if talking {
             _ = gate.pass(sound)
+        } else if home && soundMode == .babyOnly {
+            _ = gate.pass(sound)
+            babyPart.forEach(speaker.play)
         } else if home && soundMode == .noiseOnly {
             gate.pass(sound).forEach(speaker.play)
         } else {
@@ -686,7 +710,13 @@ final class DriverStation: ObservableObject {
             picturePaused = true
             pushCard(force: true)
         }
-        hearing = !home || soundMode == .always || gate.isOpen
+        if now.timeIntervalSince(lastCry) < 4 { babyGate.lastBaby = max(babyGate.lastBaby, lastCry) }
+        switch soundMode {
+        case _ where !home: hearing = true
+        case .always: hearing = true
+        case .noiseOnly: hearing = gate.isOpen
+        case .babyOnly: hearing = babyGate.isOpen
+        }
         let newMood: BabyMood
         if now.timeIntervalSince(lastCry) < 4 {
             newMood = .crying

@@ -6,6 +6,7 @@ import SoundAnalysis
 /// so any camera (the mini camera or an old iPhone/iPad) gets the same alerts.
 final class BabyWatcher {
     var onCry: ((Double) -> Void)?
+    var onBaby: ((Double) -> Void)?
     var onPicture: ((_ motion: Double, _ brightness: Double) -> Void)?
 
     private let soundQueue = DispatchQueue(label: "backseat.ears")
@@ -24,6 +25,7 @@ final class BabyWatcher {
         }
         self.analyzer = analyzer
         listener.onScore = { [weak self] score in self?.onCry?(score) }
+        listener.onBaby = { [weak self] score in self?.onBaby?(score) }
     }
 
     func hear(_ buffer: AVAudioPCMBuffer) {
@@ -159,5 +161,37 @@ final class SoundGate {
         var sum: Float = 0
         for i in 0..<Int(buffer.frameLength) { sum += samples[i] * samples[i] }
         return (sum / Float(buffer.frameLength)).squareRoot()
+    }
+}
+
+/// "Baby sounds only": holds the room's sound back (keeping the last 2 seconds) and plays it only
+/// once Apple's sound classifier hears the baby (crying, whimpering, laughing, babbling), so TV,
+/// talking, fans, the soothing sound and echoes stay quiet. Used from the main queue only.
+final class BabyGate {
+    /// How long the sound stays on after the baby was last heard.
+    var hold: TimeInterval = 6
+    var lastBaby = Date.distantPast
+    private var recent: [AVAudioPCMBuffer] = []
+
+    var isOpen: Bool { Date().timeIntervalSince(lastBaby) < hold }
+
+    func pass(_ buffer: AVAudioPCMBuffer) -> [AVAudioPCMBuffer] {
+        if isOpen {
+            let out = recent + [buffer]
+            recent.removeAll()
+            return out
+        }
+        // The classifier needs about a second of sound to decide, so keep 2 s to play the start too.
+        recent.append(buffer)
+        var frames = recent.reduce(0) { $0 + Int($1.frameLength) }
+        while frames > 32_000 {
+            frames -= Int(recent.removeFirst().frameLength)
+        }
+        return []
+    }
+
+    func reset() {
+        lastBaby = .distantPast
+        recent.removeAll()
     }
 }
