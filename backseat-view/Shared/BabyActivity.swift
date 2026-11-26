@@ -37,6 +37,8 @@ struct BabyActivityAttributes: ActivityAttributes {
         var mood: BabyMood
         var thumb: Data?
         var updated: Date
+        /// When the current mood started, so the card can say "Quiet for 12:03".
+        var since: Date?
     }
 
     var seatName: String

@@ -525,6 +525,8 @@ typealias CardAlert = (title: String, body: String)
 final class CarCard {
     private var activity: Activity<BabyActivityAttributes>?
     private var lastSent = Date.distantPast
+    private var lastMood: BabyMood?
+    private var moodSince = Date()
     private let place: String
 
     init(place: String) {
@@ -540,7 +542,9 @@ final class CarCard {
         let now = Date()
         guard force || now.timeIntervalSince(lastSent) >= 4 else { return nil }
         lastSent = now
-        let state = BabyActivityAttributes.ContentState(mood: mood, thumb: picture.flatMap(Self.tinyJPEG), updated: now)
+        if mood != lastMood { lastMood = mood; moodSince = now }
+        let state = BabyActivityAttributes.ContentState(mood: mood, thumb: picture.flatMap(Self.tinyJPEG), updated: now,
+                                                        since: mood == .offline ? nil : moodSince)
         let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(60))
         if let activity {
             let sound = alert.map { AlertConfiguration(title: "\($0.title)", body: "\($0.body)", sound: .default) }
