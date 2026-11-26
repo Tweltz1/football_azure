@@ -10,7 +10,7 @@ private func moodColor(_ mood: BabyMood) -> Color {
     switch mood {
     case .quiet: return mint
     case .moving, .noise: return .yellow
-    case .crying: return .orange
+    case .crying, .fussing: return .orange
     case .offline: return .gray
     }
 }

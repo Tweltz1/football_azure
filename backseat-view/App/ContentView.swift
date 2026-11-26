@@ -145,13 +145,21 @@ struct ListenScreen: View {
                         Slider(value: Binding(get: { Double(station.volume) }, set: { station.volume = Float($0) }), in: 0...1)
                         Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
                     }
-                    Toggle("Alert when the baby cries", isOn: Binding(get: { station.cryAlerts }, set: { station.cryAlerts = $0 }))
-                    Toggle("Alert on any sound", isOn: Binding(get: { station.noiseAlerts }, set: { station.noiseAlerts = $0 }))
+                    Text("Notifications").font(.headline).padding(.top, 4)
+                    Toggle("When the baby cries", isOn: Binding(get: { station.cryAlerts }, set: { station.cryAlerts = $0 }))
+                    Toggle("When the baby fusses", isOn: Binding(get: { station.fussAlerts }, set: { station.fussAlerts = $0 }))
+                    Toggle("On any sound", isOn: Binding(get: { station.noiseAlerts }, set: { station.noiseAlerts = $0 }))
+                    Text("Fussing means little sounds that keep coming back for a while (whimpers, grunts, babbling), not one bump. You always get a notification if the baby phone disconnects.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if station.notificationsOff {
+                        Text("Notifications are off for Backseat View, so you'll only get the Lock Screen card chime. Turn them on in Settings > Notifications > Backseat View.")
+                            .font(.footnote).foregroundStyle(.orange)
+                    }
                 }
                 .padding(16)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
 
-                Text("You can lock this phone and keep listening. A Baby's room card on your Lock Screen shows Quiet, Making sounds or Crying, and you get an alert if the baby phone disconnects.")
+                Text("You can lock this phone and keep listening. A Baby's room card on your Lock Screen shows Quiet, Making sounds, Fussing or Crying.")
                     .font(.caption).foregroundStyle(.secondary)
                 Text("Not a medical or safety device. Check on your baby in person.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -175,7 +183,7 @@ struct SoundPanel: View {
         VStack(spacing: 14) {
             Image(systemName: mood?.symbol ?? "ear")
                 .font(.system(size: 56))
-                .foregroundStyle(mood == .crying ? .orange : mood == .noise ? .yellow : mint)
+                .foregroundStyle(mood == .crying || mood == .fussing ? .orange : mood == .noise ? .yellow : mint)
             if let mood { Text(mood.title).font(.title.bold()).foregroundStyle(.white) }
             Text(caption).font(.callout).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.center)
             if let level {

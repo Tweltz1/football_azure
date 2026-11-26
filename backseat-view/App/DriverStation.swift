@@ -2,6 +2,7 @@ import ActivityKit
 import AVFoundation
 import Network
 import UIKit
+import UserNotifications
 
 /// Runs on the driver's iPhone. Finds the camera phone, shows its picture, plays the baby's
 /// sound through the car, and keeps the baby card on the CarPlay Dashboard / Lock Screen up to date.
@@ -45,6 +46,14 @@ final class DriverStation: ObservableObject {
         get { SoundGate.Sensitivity(rawValue: UserDefaults.standard.object(forKey: "homeSensitivity") as? Int ?? 1) ?? .medium }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "homeSensitivity"); gate.sensitivity = newValue; objectWillChange.send() }
     }
+
+    var fussAlerts: Bool {
+        get { UserDefaults.standard.object(forKey: "homeFussAlerts") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "homeFussAlerts"); objectWillChange.send() }
+    }
+
+    @Published private(set) var notificationsOff = false
+    private let notifier = BabyNotifier()
 
     var noiseAlerts: Bool {
         get { UserDefaults.standard.object(forKey: "homeNoiseAlerts") as? Bool ?? false }
@@ -93,6 +102,12 @@ final class DriverStation: ObservableObject {
         self.code = code
         gate.reset()
         gate.sensitivity = sensitivity
+        if home {
+            Task { [weak self] in
+                let allowed = await BabyNotifier.ask()
+                self?.notificationsOff = !allowed
+            }
+        }
         wrongCode.removeAll()
         running = true
         status = "Looking for the \(other)..."
@@ -288,7 +303,11 @@ final class DriverStation: ObservableObject {
         if mood != .offline {
             mood = .offline
             // At home the parent may be asleep: chime so they know the monitor stopped.
-            pushCard(force: true, alert: home ? (title: "Baby monitor lost the baby phone", body: "Check that Backseat View is still listening on the baby phone.") : nil)
+            if home {
+                tell(title: "Baby monitor lost the baby phone", body: "Check that Backseat View is still listening on the baby phone.", kind: "lost")
+            } else {
+                pushCard(force: true)
+            }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             MainActor.assumeIsolated {
@@ -310,6 +329,8 @@ final class DriverStation: ObservableObject {
         let newMood: BabyMood
         if now.timeIntervalSince(lastCry) < 4 {
             newMood = .crying
+        } else if home && gate.isFussing {
+            newMood = .fussing
         } else if home && now.timeIntervalSince(gate.lastNoise) < 6 {
             newMood = .noise
         } else if now.timeIntervalSince(lastMotion) < 8 {
@@ -319,14 +340,19 @@ final class DriverStation: ObservableObject {
         }
         if newMood != mood {
             let wasQuiet = mood == .quiet
+            let wasCrying = mood == .crying
             mood = newMood
-            var alert: CardAlert?
-            if newMood == .crying && cryAlerts {
-                alert = ("Baby is crying", "Backseat View hears crying.")
+            if !home {
+                pushCard(force: true, alert: newMood == .crying && cryAlerts ? (title: "Baby is crying", body: "Backseat View hears crying.") : nil)
+            } else if newMood == .crying && cryAlerts {
+                tell(title: "Baby is crying", body: "Backseat View hears crying in the baby's room.", kind: "cry")
+            } else if newMood == .fussing && !wasCrying && fussAlerts {
+                tell(title: "Baby is fussing", body: "Backseat View has heard on-and-off sounds in the baby's room.", kind: "fuss")
             } else if newMood == .noise && wasQuiet && noiseAlerts {
-                alert = ("Sound in the baby's room", "Backseat View hears the baby.")
+                tell(title: "Sound in the baby's room", body: "Backseat View hears the baby.", kind: "noise")
+            } else {
+                pushCard(force: true)
             }
-            pushCard(force: true, alert: alert)
         }
     }
 
@@ -334,6 +360,17 @@ final class DriverStation: ObservableObject {
         guard let cg = image.cgImage else { return image }
         let orientation: UIImage.Orientation = [.up, .right, .down, .left][turns % 4]
         return UIImage(cgImage: cg, scale: 1, orientation: orientation)
+    }
+
+    /// Home monitor: a real phone notification (shows even with the app open), or the card's
+    /// own chime if notifications are turned off.
+    private func tell(title: String, body: String, kind: String) {
+        if notificationsOff {
+            pushCard(force: true, alert: (title: title, body: body))
+        } else {
+            notifier.post(title: title, body: body, kind: kind)
+            pushCard(force: true)
+        }
     }
 
     private func pushCard(force: Bool = false, alert: CardAlert? = nil) {
@@ -432,6 +469,44 @@ final class BabySpeaker {
             self.lock.lock(); self.queued -= 1; self.lock.unlock()
         }
         if !player.isPlaying { player.play() }
+    }
+}
+
+/// Phone notifications for the home monitor: crying, fussing, any sound, and a lost baby phone.
+/// The same kind isn't repeated within a minute so a long cry doesn't buzz nonstop.
+final class BabyNotifier: NSObject, UNUserNotificationCenterDelegate {
+    private var lastSent: [String: Date] = [:]
+
+    override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    static func ask() async -> Bool {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral: return true
+        case .denied: return false
+        default: return (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+        }
+    }
+
+    func post(title: String, body: String, kind: String) {
+        let now = Date()
+        if let last = lastSent[kind], now.timeIntervalSince(last) < 60 { return }
+        lastSent[kind] = now
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        content.threadIdentifier = "baby-monitor"
+        let request = UNNotificationRequest(identifier: "baby-\(kind)-\(Int(now.timeIntervalSince1970))", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .sound, .list]
     }
 }
 

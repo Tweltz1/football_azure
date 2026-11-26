@@ -27,8 +27,10 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   **All the time** or **Only when there's a noise** (default). `SoundGate` (`App/Listening.swift`) calls
   it a noise when loudness beats the sensitivity level and 3x the room's background hum, keeps the
   last 0.5 s so the start isn't cut off, and keeps the sound on for 8 s after the last noise.
-- Lock Screen card "Baby's room" says Quiet / Making sounds / Crying, alerts on crying (and optionally on
-  any sound), and alerts if the baby phone disconnects. Same Wi-Fi or AirDrop range needed.
+- Lock Screen card "Baby's room" says Quiet / Making sounds / Fussing / Crying. Phone notifications
+  (`BabyNotifier`, max one per kind per minute) for crying (Apple sound classifier), fussing (sounds in
+  4+ different seconds of the last 20), optionally any sound, and always when the baby phone disconnects.
+  Same Wi-Fi or AirDrop range needed.
 
 ## Why not live video on CarPlay?
 Apple doesn't allow apps to play video on the CarPlay screen while driving, and widgets refresh only a

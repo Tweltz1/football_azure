@@ -97,6 +97,8 @@ final class SoundGate {
     /// How long the sound stays on after the last noise.
     var hold: TimeInterval = 8
     private(set) var lastNoise = Date.distantPast
+    /// Whole seconds (since 1970) that had a noise in them, for spotting fussing.
+    private var noisySeconds: [Int] = []
     private var recent: [AVAudioPCMBuffer] = []
     private var loudStreak = 0
     /// Slowly follows the room's background hum (fan, white-noise machine) so it doesn't count as noise.
@@ -110,11 +112,24 @@ final class SoundGate {
         let loud = rms > max(sensitivity.threshold, floor * 3)
         // Two loud chunks in a row (about 0.2 s): one alone is usually a click or bump.
         loudStreak = loud ? loudStreak + 1 : 0
-        if loudStreak >= 2 { lastNoise = Date() }
+        if loudStreak >= 2 {
+            lastNoise = Date()
+            let second = Int(lastNoise.timeIntervalSince1970)
+            if noisySeconds.last != second { noisySeconds.append(second) }
+            noisySeconds.removeAll { second - $0 > 20 }
+        }
         return loudStreak >= 2
     }
 
     var isOpen: Bool { Date().timeIntervalSince(lastNoise) < hold }
+
+    /// Fussing: sounds in at least 4 different seconds out of the last 20, and still going.
+    /// One bang or cough doesn't count; whimpering, grunting and on-and-off fussing does.
+    var isFussing: Bool {
+        let now = Int(Date().timeIntervalSince1970)
+        guard now - Int(lastNoise.timeIntervalSince1970) < 8 else { return false }
+        return noisySeconds.filter { now - $0 <= 20 }.count >= 4
+    }
 
     /// The sound to play now in "only when there's a noise" mode.
     func pass(_ buffer: AVAudioPCMBuffer) -> [AVAudioPCMBuffer] {
@@ -135,6 +150,7 @@ final class SoundGate {
         lastNoise = .distantPast
         recent.removeAll()
         loudStreak = 0
+        noisySeconds.removeAll()
         floor = 0.004
     }
 

@@ -3,13 +3,14 @@ import Foundation
 
 /// What the back-seat camera phone thinks the baby is doing.
 enum BabyMood: String, Codable, Hashable {
-    case quiet, moving, noise, crying, offline
+    case quiet, moving, noise, fussing, crying, offline
 
     var title: String {
         switch self {
         case .quiet: return "Quiet"
         case .moving: return "Moving"
         case .noise: return "Making sounds"
+        case .fussing: return "Fussing"
         case .crying: return "Crying"
         case .offline: return "Not connected"
         }
@@ -20,6 +21,7 @@ enum BabyMood: String, Codable, Hashable {
         case .quiet: return "moon.zzz.fill"
         case .moving: return "figure.wave"
         case .noise: return "waveform"
+        case .fussing: return "exclamationmark.bubble.fill"
         case .crying: return "speaker.wave.3.fill"
         case .offline: return "wifi.slash"
         }
