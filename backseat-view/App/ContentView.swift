@@ -612,6 +612,10 @@ struct CarScreenCard: View {
                 Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Keep Stork View open on this phone.")
                     .foregroundStyle(.secondary)
                 if let problem = screen.problem { Text(problem).foregroundStyle(.orange) }
+                if let state = screen.serverState { Text(state).foregroundStyle(.secondary) }
+                if let check = screen.selfCheck {
+                    Text(check).foregroundStyle(check.hasPrefix("Self-check OK") ? Color.green : Color.orange)
+                }
                 if screen.allowedCount > 0 {
                     Button("Disconnect all car screens (\(screen.allowedCount))", role: .destructive) { screen.forgetAll() }
                         .font(.footnote.weight(.semibold))
