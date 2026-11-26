@@ -329,7 +329,7 @@ struct ListenScreen: View {
                 }
 
                 if station.running {
-                    StatusPill(text: station.connected ? (station.hearing ? "Hearing the baby" : "Connected · quiet") + (station.direct ? " · phone to phone" : "") : "Connecting…",
+                    StatusPill(text: station.connected ? (station.hearing ? "Hearing the baby" : "Connected · quiet") + (station.route?.label.map { " · \($0)" } ?? "") : "Connecting…",
                                good: station.connected)
                     if station.picturePaused {
                         Text("The picture paused, but you can still hear the baby. Open Stork View on the baby phone and use Dark screen instead of locking it.")
@@ -376,6 +376,12 @@ struct ListenScreen: View {
                         .opacity(pairCode.count == 4 ? 1 : 0.5)
                     Text("Lock this phone any time. A Baby's room card stays on your Lock Screen, and alerts come through.")
                         .font(.caption).foregroundStyle(.secondary)
+                    if InternetRelay.available {
+                        Label(station.awayReady ? "Ready to listen away from home too, over cellular or any Wi-Fi."
+                                                : "Connect once at home, then you can listen away from home too.",
+                              systemImage: "globe")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
             .padding()
@@ -411,6 +417,13 @@ struct ListenSettings: View {
                     Toggle("Any sound", isOn: Binding(get: { station.noiseAlerts }, set: { station.noiseAlerts = $0 }))
                 } header: { Text("Notify me when the baby is…") } footer: {
                     Text("Fussing means little sounds that keep coming back, not one bump. You always get a notification if the baby phone disconnects.")
+                }
+                if InternetRelay.available {
+                    Section {
+                        Label(station.awayReady ? "Ready" : "Connect once at home first", systemImage: "globe")
+                    } header: { Text("Away from home") } footer: {
+                        Text("Home Wi-Fi comes first, then phone to phone. If neither works (you're out), Stork View connects over the internet. It's encrypted on the phones, the picture is smaller, and sound only comes when there's a noise, to save data.")
+                    }
                 }
                 Section {
                     Text("Not a medical or safety device. Check on your baby in person.")
@@ -520,7 +533,7 @@ struct DriverScreen: View {
                              mood: station.running ? station.mood : nil,
                              placeholder: station.running ? station.status : "Switch the camera on, then tap Watch")
                 if station.running {
-                    StatusPill(text: station.connected ? (station.direct ? "Connected · phone to phone" : "Connected") : station.status, good: station.connected)
+                    StatusPill(text: station.connected ? (station.route?.label.map { "Connected · \($0)" } ?? "Connected") : station.status, good: station.connected)
                     if station.cameraTooDark && station.connected {
                         Text("It's dark back there, so the picture is hard to see. You can still hear the baby.").font(.footnote).foregroundStyle(.orange)
                     }

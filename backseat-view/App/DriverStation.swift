@@ -30,13 +30,37 @@ final class DriverStation: ObservableObject {
     @Published private(set) var hearing = false
     /// Pictures were coming in but stopped (usually the camera phone locked). Sound may still be live.
     @Published private(set) var picturePaused = false
-    /// True when the phones talk straight to each other (Apple peer-to-peer Wi-Fi, like AirDrop)
-    /// instead of through the home Wi-Fi router. Happens by itself when the router drops.
-    @Published private(set) var direct = false
+    /// How the phones are connected right now.
+    enum Route: Equatable {
+        /// Through the home Wi-Fi router.
+        case wifi
+        /// Straight to each other (Apple peer-to-peer Wi-Fi, like AirDrop). Happens by itself when the router drops.
+        case direct
+        /// Over the internet relay (parent phone away from home, on cellular or other Wi-Fi).
+        case internet
+
+        var label: String? {
+            switch self {
+            case .wifi: return nil
+            case .direct: return "phone to phone"
+            case .internet: return "over the internet"
+            }
+        }
+    }
+
+    @Published private(set) var route: Route?
     /// Short pop-up text when the connection route changes ("Now connected phone to phone").
     @Published private(set) var routeNotice: String?
-    /// The route of the last working connection, to spot a switch after a Wi-Fi drop.
-    private var lastRouteDirect: Bool?
+    /// The route of the last working connection, to spot a switch.
+    private var lastRoute: Route?
+    /// Local link (Wi-Fi or phone to phone) is up and paired.
+    private var localUp = false
+    /// Internet backup is bringing the baby phone's packets.
+    private var relayUp = false
+    private var relay: InternetRelay?
+    private var lastListenSent = Date.distantPast
+    /// This parent phone has the baby phone's internet pass (it gets it the first time they connect at home).
+    @Published private(set) var awayReady = InternetRelay.Pass.saved != nil
     private var lastFrame: Date?
     private var lostSince: Date?
 
@@ -114,7 +138,7 @@ final class DriverStation: ObservableObject {
     private var ticker: Timer?
 
     func start(code: String) {
-        lastRouteDirect = nil
+        lastRoute = nil
         guard !running else { return }
         self.code = code
         gate.reset()
@@ -148,6 +172,7 @@ final class DriverStation: ObservableObject {
             }
         }
         browse()
+        startRelay()
         ticker = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -162,6 +187,11 @@ final class DriverStation: ObservableObject {
         browser?.cancel()
         browser = nil
         dropLink()
+        relay?.stop()
+        relay = nil
+        localUp = false
+        relayUp = false
+        route = nil
         speaker.stop()
         card.end()
         connected = false
@@ -244,34 +274,20 @@ final class DriverStation: ObservableObject {
         let link = FramedConnection(NWConnection(to: endpoint, using: BVLink.parameters()))
         self.link = link
         linkEndpoint = endpoint
-        let speaker = self.speaker
-        let watcher = self.watcher
-        let gate = self.gate
         link.onPacket = { [weak self] type, payload in
-            if type == .audio {
-                if let sound = BabySpeaker.decode(payload) {
-                    watcher.hear(sound)
-                    gate.listen(to: sound)
-                    MainActor.assumeIsolated {
-                        guard let self else { return }
-                        if self.home && self.soundMode == .noiseOnly {
-                            gate.pass(sound).forEach(speaker.play)
-                        } else {
-                            speaker.play(sound)
-                        }
-                    }
-                }
-                return
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if type == .audio { self.takeAudio(payload); return }
+                if type == .frame { self.watcher.look(at: payload) }
+                self.handle(type, payload)
             }
-            if type == .frame { watcher.look(at: payload) }
-            MainActor.assumeIsolated { self?.handle(type, payload) }
         }
         link.onState = { [weak self, weak link] state in
             MainActor.assumeIsolated {
                 guard let self, let link, link === self.link else { return }
                 switch state {
                 case .ready:
-                    self.direct = Self.isDirect(link.connection.currentPath)
+                    self.route = Self.isDirect(link.connection.currentPath) ? .direct : .wifi
                     link.send(.hello, Data(self.code.utf8))
                 case .failed, .cancelled:
                     self.lostCamera()
@@ -295,8 +311,9 @@ final class DriverStation: ObservableObject {
         link.connection.pathUpdateHandler = { [weak self, weak link] path in
             MainActor.assumeIsolated {
                 guard let self, let link, link === self.link else { return }
-                self.direct = Self.isDirect(path)
-                if self.connected { self.announceRoute() }
+                guard self.localUp else { return }
+                self.route = Self.isDirect(path) ? .direct : .wifi
+                self.announceRoute()
             }
         }
         link.start()
@@ -304,9 +321,15 @@ final class DriverStation: ObservableObject {
 
     /// Pops up "Now connected ..." when the route differs from the last working one.
     private func announceRoute() {
-        defer { lastRouteDirect = direct }
-        guard let before = lastRouteDirect, before != direct else { return }
-        let text = direct ? "Wi-Fi dropped. Now connected phone to phone." : "Now connected over Wi-Fi again."
+        guard let route else { return }
+        defer { lastRoute = route }
+        guard let before = lastRoute, before != route else { return }
+        let text: String
+        switch route {
+        case .direct: text = before == .wifi ? "Wi-Fi dropped. Now connected phone to phone." : "Now connected phone to phone."
+        case .internet: text = "Now connected over the internet."
+        case .wifi: text = "Now connected over Wi-Fi again."
+        }
         routeNotice = text
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             MainActor.assumeIsolated { if self.routeNotice == text { self.routeNotice = nil } }
@@ -329,11 +352,23 @@ final class DriverStation: ObservableObject {
     private func handle(_ type: Packet, _ payload: Data) {
         switch type {
         case .welcome:
+            localUp = true
+            relayUp = false
             connected = true
             lostSince = nil
             lastSeen = Date()
-            status = direct ? "Connected phone to phone" : "Connected"
+            if route == nil || route == .internet { route = .wifi }
+            status = route == .direct ? "Connected phone to phone" : "Connected"
             announceRoute()
+        case .relay:
+            guard home, let pass = try? JSONDecoder().decode(InternetRelay.Pass.self, from: payload) else { return }
+            if InternetRelay.Pass.saved != pass {
+                InternetRelay.Pass.saved = pass
+                awayReady = true
+                relay?.stop()
+                relay = nil
+                startRelay()
+            }
         case .denied:
             if let linkEndpoint { wrongCode.insert(linkEndpoint) }
             status = home ? "That baby phone wants a different code. Check the code on the baby phone."
@@ -351,6 +386,11 @@ final class DriverStation: ObservableObject {
             lastSeen = Date()
             guard let message = try? JSONDecoder().decode(StatusMessage.self, from: payload) else { return }
             cameraBattery = message.battery
+            // Over the internet the sound only comes when there's a noise, so also trust the baby phone's own guess.
+            if relayUp {
+                if message.mood == .crying { lastCry = Date() }
+                if message.mood == .moving { lastMotion = Date() }
+            }
         default:
             break
         }
@@ -365,11 +405,29 @@ final class DriverStation: ObservableObject {
 
     private func lostCamera() {
         dropLink()
+        localUp = false
         guard running else { return }
         if connected { status = "Lost the \(other). Reconnecting..." }
+        if !relayUp { wentOffline() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            MainActor.assumeIsolated {
+                guard self.running, self.link == nil, let browser = self.browser else { return }
+                self.pickCamera(from: browser.browseResults)
+            }
+        }
+    }
+
+    private func lostRelay() {
+        relayUp = false
+        guard running, !localUp else { return }
+        status = "Lost the \(other). Reconnecting..."
+        wentOffline()
+    }
+
+    private func wentOffline() {
         connected = false
         hearing = false
-        direct = false
+        route = nil
         if mood != .offline {
             mood = .offline
             if home {
@@ -387,20 +445,65 @@ final class DriverStation: ObservableObject {
                 pushCard(force: true)
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            MainActor.assumeIsolated {
-                guard self.running, self.link == nil, let browser = self.browser else { return }
-                self.pickCamera(from: browser.browseResults)
-            }
+    }
+
+    // MARK: Internet backup (home monitor, parent phone away from home)
+
+    private func startRelay() {
+        guard home, relay == nil, let pass = InternetRelay.Pass.saved, InternetRelay.available else { return }
+        let relay = InternetRelay(pass: pass)
+        relay.onPacket = { [weak self] type, payload in
+            MainActor.assumeIsolated { self?.fromRelay(type, payload) }
+        }
+        relay.start()
+        self.relay = relay
+    }
+
+    private func fromRelay(_ type: Packet, _ payload: Data) {
+        // The local link wins whenever it works (faster, no data use).
+        guard running, !localUp, [.status, .frame, .audio].contains(type) else { return }
+        if !relayUp {
+            relayUp = true
+            connected = true
+            lostSince = nil
+            lastSeen = Date()
+            route = .internet
+            status = "Connected over the internet"
+            announceRoute()
+        }
+        switch type {
+        case .audio:
+            takeAudio(InternetRelay.grow(payload))
+        case .frame:
+            watcher.look(at: payload)
+            handle(.frame, payload)
+        default:
+            handle(type, payload)
+        }
+    }
+
+    private func takeAudio(_ payload: Data) {
+        guard let sound = BabySpeaker.decode(payload) else { return }
+        watcher.hear(sound)
+        gate.listen(to: sound)
+        if home && soundMode == .noiseOnly {
+            gate.pass(sound).forEach(speaker.play)
+        } else {
+            speaker.play(sound)
         }
     }
 
     private func tick() {
         speaker.keepAlive()
-        if connected, let lastSeen, Date().timeIntervalSince(lastSeen) > 8 {
-            lostCamera()
-        }
+        let since = lastSeen.map { Date().timeIntervalSince($0) } ?? 0
+        if localUp, since > 8 { lostCamera() }
+        if relayUp, since > 15 { lostRelay() }
         if running, link == nil, let browser { pickCamera(from: browser.browseResults) }
+        // Away from home: tell the baby phone (through the internet relay) to send.
+        if let relay, relay.joined, !localUp, Date().timeIntervalSince(lastListenSent) >= 4 {
+            lastListenSent = Date()
+            relay.send(.hello)
+        }
         guard connected else { return }
         let now = Date()
         // Never leave an old picture up looking live: drop it once frames stop for 10 s.
