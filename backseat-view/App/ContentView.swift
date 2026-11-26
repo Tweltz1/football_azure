@@ -558,10 +558,13 @@ struct DriverScreen: View {
     }
 }
 
+private func spaced(_ number: String) -> String {
+    number.count == 6 ? "\(number.prefix(3)) \(number.suffix(3))" : number
+}
+
 /// "Show on the car's screen": for a Tesla (or any car with a web browser). See CarScreen.
 struct CarScreenCard: View {
     @ObservedObject var screen: CarScreen
-    @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -574,27 +577,40 @@ struct CarScreenCard: View {
                 }
                 Text("1. On this phone, turn on Personal Hotspot (Settings > Personal Hotspot > Allow Others to Join).")
                 Text("2. In the Tesla: Wi-Fi, join this phone's hotspot. You only do this once.")
-                Text("3. Open the Tesla's browser and go to:")
+                Text("3. In the Tesla's browser, go to:")
+                Text("weltzcraft.com/storkview/car")
+                    .font(.title3.weight(.bold))
+                    .textSelection(.enabled)
+                Text("The first time, the car screen shows a 6-digit number and this phone asks you to Allow it. Only allow it if the numbers match.")
+                Text("Bookmark it in the Tesla so next time it's one tap.")
                 if let link = screen.link {
-                    Text(link.replacingOccurrences(of: "http://", with: ""))
-                        .font(.title3.monospaced().weight(.bold))
+                    Text("Direct address: \(link.replacingOccurrences(of: "http://", with: ""))")
+                        .foregroundStyle(.secondary)
                         .textSelection(.enabled)
-                    Button(copied ? "Copied" : "Copy address") {
-                        UIPasteboard.general.string = link
-                        copied = true
+                    if !link.contains("172.20.10.1") {
+                        Text("This phone isn't sharing a hotspot right now, so use the direct address above.")
+                            .foregroundStyle(.orange)
                     }
-                    .font(.subheadline.weight(.semibold))
-                    Text("Bookmark it in the Tesla so next time it's one tap.")
                 } else {
                     Text("Waiting for the hotspot to turn on...").foregroundStyle(.orange)
                 }
                 Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Keep Stork View open on this phone.")
                     .foregroundStyle(.secondary)
                 if let problem = screen.problem { Text(problem).foregroundStyle(.orange) }
+                if screen.allowedCount > 0 {
+                    Button("Disconnect all car screens (\(screen.allowedCount))", role: .destructive) { screen.forgetAll() }
+                        .font(.footnote.weight(.semibold))
+                }
             }
         }
         .font(.footnote)
         .card()
+        .alert("Allow this car screen?", isPresented: Binding(get: { screen.pendingNumber != nil }, set: { if !$0 { screen.deny() } })) {
+            Button("Allow") { screen.allow() }
+            Button("Don't Allow", role: .cancel) { screen.deny() }
+        } message: {
+            Text("Only tap Allow if your car screen shows \(spaced(screen.pendingNumber ?? "")). It will then see the back seat.")
+        }
         .onAppear { if screen.wanted { screen.start() } }
         .onDisappear { screen.stop() }
     }
