@@ -69,6 +69,7 @@ final class DriverStation: ObservableObject {
 
     init(home: Bool = false) {
         self.home = home
+        carScreen = CarScreen()
         card = CarCard(place: home ? "Baby's room" : "Back seat")
     }
 
@@ -136,6 +137,8 @@ final class DriverStation: ObservableObject {
     private var wrongCode: Set<NWEndpoint> = []
     private var code = ""
     private var ticker: Timer?
+    /// The car's own screen (Tesla browser). This phone plays the baby's sound itself.
+    let carScreen: CarScreen
 
     func start(code: String) {
         lastRoute = nil
@@ -201,6 +204,7 @@ final class DriverStation: ObservableObject {
         picturePaused = false
         lastFrame = nil
         status = "Not started"
+        carScreen.show(mood: .offline, paused: false, phoneSound: true)
         UIApplication.shared.isIdleTimerDisabled = false
     }
 
@@ -378,6 +382,7 @@ final class DriverStation: ObservableObject {
             lastSeen = Date()
             if let image = UIImage(data: payload) {
                 picture = turned(image)
+                if !home { carScreen.show(picture: payload) }
                 lastFrame = Date()
                 picturePaused = false
             }
@@ -484,6 +489,7 @@ final class DriverStation: ObservableObject {
 
     private func takeAudio(_ payload: Data) {
         guard let sound = BabySpeaker.decode(payload) else { return }
+        if !home { carScreen.hear(payload) }
         watcher.hear(sound)
         gate.listen(to: sound)
         if home && soundMode == .noiseOnly {
@@ -563,6 +569,7 @@ final class DriverStation: ObservableObject {
     }
 
     private func pushCard(force: Bool = false, alert: CardAlert? = nil) {
+        if !home { carScreen.show(mood: running ? mood : .offline, paused: picturePaused, turns: turns, phoneSound: true) }
         guard running else { return }
         let error = card.update(mood: mood, picture: showPictureInCar || home ? picture : nil, paused: picturePaused, force: force, alert: alert)
         if let error { cardProblem = error }

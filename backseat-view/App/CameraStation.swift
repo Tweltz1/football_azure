@@ -41,9 +41,12 @@ final class CameraStation: ObservableObject {
     private var lastRelayStatus = Date.distantPast
     /// A parent phone is listening over the internet right now.
     @Published private(set) var remoteViewer = false
+    /// The car's own screen (Tesla browser), when this phone is the camera and the hotspot.
+    let carScreen: CarScreen
 
     init(home: Bool = false) {
         self.home = home
+        carScreen = CarScreen()
         audioOnly = home && !UserDefaults.standard.bool(forKey: "babyPhoneVideo")
         let defaults = UserDefaults.standard
         if let saved = defaults.string(forKey: "cameraCode"), saved.count == 4 {
@@ -152,6 +155,7 @@ final class CameraStation: ObservableObject {
         rig.stop()
         UIApplication.shared.isIdleTimerDisabled = false
         running = false
+        carScreen.show(mood: .offline, paused: false, phoneSound: false)
     }
 
     // MARK: Network
@@ -230,6 +234,7 @@ final class CameraStation: ObservableObject {
         motionStreak = motion > 0.05 ? motionStreak + 1 : 0
         if motionStreak >= 2 { lastMotion = Date() }
         broadcast(.frame, jpeg)
+        if !home { carScreen.show(picture: jpeg) }
         if remoteViewer, Date().timeIntervalSince(lastRelayFrame) >= 4, let small = Self.small(jpeg) {
             lastRelayFrame = Date()
             relay?.send(.frame, small)
@@ -256,6 +261,7 @@ final class CameraStation: ObservableObject {
         if remoteViewer, Date().timeIntervalSince(lastNoise) < 8 {
             relay?.send(.audio, InternetRelay.shrink(pcm))
         }
+        if !home { carScreen.hear(pcm) }
     }
 
     private func tick() {
@@ -278,6 +284,7 @@ final class CameraStation: ObservableObject {
                 relay?.send(.status, data)
             }
         }
+        if !home { carScreen.show(mood: mood, paused: false, phoneSound: false) }
     }
 }
 

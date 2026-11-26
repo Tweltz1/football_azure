@@ -499,6 +499,7 @@ struct CameraScreen: View {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
                     CodeCard(code: station.code, hint: "On the driver's phone, pick Watch the back seat and type this code.")
+                    CarScreenCard(screen: station.carScreen)
                     Text("Keep Stork View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
                     if station.running {
@@ -559,6 +560,7 @@ struct DriverScreen: View {
                     Text("Using the mini camera? Setup steps are under the gear button.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                CarScreenCard(screen: station.carScreen)
                 Text("Glance only, like a mirror. Not a medical or safety device. Never leave a child alone in a car.")
                     .font(.caption).foregroundStyle(.secondary)
             }
@@ -568,6 +570,48 @@ struct DriverScreen: View {
         .routeBanner(station.routeNotice)
         .modeToolbar("Back seat", back: { station.stop(); back() }, settings: { showSettings = true })
         .sheet(isPresented: $showSettings) { DriverSettings(station: station) }
+    }
+}
+
+/// "Show on the car's screen": for a Tesla (or any car with a web browser). See CarScreen.
+struct CarScreenCard: View {
+    @ObservedObject var screen: CarScreen
+    @State private var copied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle(isOn: Binding(get: { screen.wanted }, set: { screen.wanted = $0; screen.objectWillChange.send() })) {
+                Label("Show on a Tesla screen", systemImage: "car.fill").font(.headline)
+            }
+            if screen.on {
+                if screen.carWatching {
+                    StatusPill(text: "The car screen is showing the back seat", good: true)
+                }
+                Text("1. On this phone, turn on Personal Hotspot (Settings > Personal Hotspot > Allow Others to Join).")
+                Text("2. In the Tesla: Wi-Fi, join this phone's hotspot. You only do this once.")
+                Text("3. Open the Tesla's browser and go to:")
+                if let link = screen.link {
+                    Text(link.replacingOccurrences(of: "http://", with: ""))
+                        .font(.title3.monospaced().weight(.bold))
+                        .textSelection(.enabled)
+                    Button(copied ? "Copied" : "Copy address") {
+                        UIPasteboard.general.string = link
+                        copied = true
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    Text("Bookmark it in the Tesla so next time it's one tap.")
+                } else {
+                    Text("Waiting for the hotspot to turn on...").foregroundStyle(.orange)
+                }
+                Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Keep Stork View open on this phone.")
+                    .foregroundStyle(.secondary)
+                if let problem = screen.problem { Text(problem).foregroundStyle(.orange) }
+            }
+        }
+        .font(.footnote)
+        .card()
+        .onAppear { if screen.wanted { screen.start() } }
+        .onDisappear { screen.stop() }
     }
 }
 
