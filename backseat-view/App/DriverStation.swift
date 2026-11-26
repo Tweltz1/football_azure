@@ -555,7 +555,11 @@ final class CarCard {
     /// Returns a message for the user when the card can't be shown.
     func update(mood: BabyMood, picture: UIImage?, paused: Bool, force: Bool, alert: CardAlert?) -> String? {
         let now = Date()
-        guard force || now.timeIntervalSince(lastSent) >= 4 else { return nil }
+        // iOS throttles Live Activity updates from a locked phone. At home (no CarPlay) refresh the
+        // picture every 10 s while locked so the card keeps updating instead of freezing.
+        // Mood changes (force) still go out right away.
+        let every: TimeInterval = place != "Back seat" && UIApplication.shared.applicationState != .active ? 10 : 4
+        guard force || now.timeIntervalSince(lastSent) >= every else { return nil }
         lastSent = now
         if mood != lastMood { lastMood = mood; moodSince = now }
         let state = BabyActivityAttributes.ContentState(mood: mood, thumb: picture.flatMap(Self.tinyJPEG), updated: now,
