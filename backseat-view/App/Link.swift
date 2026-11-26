@@ -9,6 +9,7 @@ enum Packet: UInt8 {
     case status = 4   // camera -> driver: StatusMessage JSON, once a second
     case frame = 5    // camera -> driver: JPEG picture, about two a second
     case audio = 6    // camera -> driver: 16 kHz mono 16-bit PCM
+    case relay = 7    // baby phone -> parent phone at home: InternetRelay.Pass JSON (room + key)
 }
 
 struct StatusMessage: Codable {

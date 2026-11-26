@@ -33,6 +33,14 @@ final class CameraStation: ObservableObject {
     private var lastNoise = Date.distantPast
     private var motionStreak = 0
     private var ticker: Timer?
+    /// Internet backup (home baby phone only): waits in its room and sends only while a parent
+    /// phone away from home says it's listening.
+    private var relay: InternetRelay?
+    private var remoteListen = Date.distantPast
+    private var lastRelayFrame = Date.distantPast
+    private var lastRelayStatus = Date.distantPast
+    /// A parent phone is listening over the internet right now.
+    @Published private(set) var remoteViewer = false
     /// The car's own screen (Tesla browser), when this phone is the camera and the hotspot.
     let carScreen: CarScreen
 
@@ -106,6 +114,14 @@ final class CameraStation: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = !audioOnly
         running = true
         listen()
+        if home && InternetRelay.available {
+            let relay = InternetRelay(pass: .mine)
+            relay.onPacket = { [weak self] type, _ in
+                MainActor.assumeIsolated { if type == .hello { self?.remoteListen = Date() } }
+            }
+            relay.start()
+            self.relay = relay
+        }
         ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
@@ -129,6 +145,9 @@ final class CameraStation: ObservableObject {
         ticker = nil
         listener?.cancel()
         listener = nil
+        relay?.stop()
+        relay = nil
+        remoteViewer = false
         links.values.forEach { $0.cancel() }
         links.removeAll()
         paired.removeAll()
@@ -178,6 +197,10 @@ final class CameraStation: ObservableObject {
                     self.paired.insert(id)
                     self.viewers = self.paired.count
                     link.send(.welcome)
+                    // Hand the parent phone the internet backup's room + key (only ever over the local link).
+                    if self.home, InternetRelay.available, let pass = try? JSONEncoder().encode(InternetRelay.Pass.mine) {
+                        link.send(.relay, pass)
+                    }
                 } else {
                     link.send(.denied)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1) { link.cancel() }
@@ -212,12 +235,32 @@ final class CameraStation: ObservableObject {
         if motionStreak >= 2 { lastMotion = Date() }
         broadcast(.frame, jpeg)
         if !home { carScreen.show(picture: jpeg) }
+        if remoteViewer, Date().timeIntervalSince(lastRelayFrame) >= 4, let small = Self.small(jpeg) {
+            lastRelayFrame = Date()
+            relay?.send(.frame, small)
+        }
+    }
+
+    /// A smaller, lower-quality picture for the internet backup (about 8-12 KB).
+    private static func small(_ jpeg: Data) -> Data? {
+        guard let image = UIImage(data: jpeg) else { return nil }
+        let scale = 320 / max(image.size.width, image.size.height, 1)
+        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }.jpegData(compressionQuality: 0.45)
     }
 
     private func gotAudio(_ pcm: Data, rms: Float) {
         level = rms
         if rms > SoundGate.Sensitivity.medium.threshold { lastNoise = Date() }
         broadcast(.audio, pcm)
+        // Over the internet, sound only goes while there's a noise (and 8 s after), at 8 kHz.
+        if remoteViewer, Date().timeIntervalSince(lastNoise) < 8 {
+            relay?.send(.audio, InternetRelay.shrink(pcm))
+        }
         if !home { carScreen.hear(pcm) }
     }
 
@@ -233,7 +276,14 @@ final class CameraStation: ObservableObject {
             mood = .quiet
         }
         let status = StatusMessage(mood: mood, level: level, dark: tooDark, battery: UIDevice.current.batteryLevel)
-        if let data = try? JSONEncoder().encode(status) { broadcast(.status, data) }
+        if let data = try? JSONEncoder().encode(status) {
+            broadcast(.status, data)
+            remoteViewer = relay != nil && now.timeIntervalSince(remoteListen) < 15
+            if remoteViewer, now.timeIntervalSince(lastRelayStatus) >= 2 {
+                lastRelayStatus = now
+                relay?.send(.status, data)
+            }
+        }
         if !home { carScreen.show(mood: mood, paused: false, phoneSound: false) }
     }
 }

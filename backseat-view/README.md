@@ -31,6 +31,21 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   (`BabyNotifier`, max one per kind per minute) for crying (Apple sound classifier), fussing (sounds in
   4+ different seconds of the last 20), optionally any sound, and always when the baby phone disconnects.
   Same Wi-Fi or AirDrop range needed.
+- **Wi-Fi drop backup.** Home Wi-Fi is used first. If the router drops, `viabilityUpdateHandler` notices
+  in ~2 s and the parent phone reconnects; Bonjour also advertises over Apple peer-to-peer Wi-Fi (AWDL,
+  what AirDrop uses), so it comes back phone to phone with no router. A pop-up (`RouteBanner`) says
+  "Now connected phone to phone" / "over Wi-Fi again" (a notification if the app is in the background),
+  and the lost-baby-phone alert waits 15 s so a quick switch doesn't wake you. Needs Wi-Fi + Bluetooth
+  switched on (not just joined to a network) and roughly AirDrop range.
+- **Away from home (internet backup, `App/Relay.swift`).** If neither Wi-Fi nor phone to phone works,
+  both phones use a private room on Supabase Realtime broadcast (shared hobby project; URL + public site
+  key written into Info.plist by backseat-view.yml as `StorkRelayURL`/`StorkRelayKey`, and
+  `tools/relay_test.mjs` checks the relay every build). The baby phone makes a random room + AES-256
+  key and hands them to the parent phone only over the local link (`Packet.relay`), so pair once at
+  home. Everything is AES-GCM encrypted on the phone. The parent says "listening" every 4 s; only then
+  does the baby phone send: status every 2 s, a 320 px picture every 4 s, sound only during noise at
+  8 kHz. Rough data use about 5-10 MB an hour when quiet. Free Supabase allows 5 GB of egress a month
+  across the hobby apps.
 - **Camera on** (baby phone toggle, saved as `babyPhoneVideo`): the baby phone also sends the picture
   (same frames as the car camera). The listening phone shows it, detects movement with the same
   brightness-grid check, and notifies "Baby is moving" (on by default). The picture pauses if the
