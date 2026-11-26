@@ -30,7 +30,15 @@ final class DriverStation: ObservableObject {
     @Published private(set) var hearing = false
     /// Pictures were coming in but stopped (usually the camera phone locked). Sound may still be live.
     @Published private(set) var picturePaused = false
+    /// True when the phones talk straight to each other (Apple peer-to-peer Wi-Fi, like AirDrop)
+    /// instead of through the home Wi-Fi router. Happens by itself when the router drops.
+    @Published private(set) var direct = false
+    /// Short pop-up text when the connection route changes ("Now connected phone to phone").
+    @Published private(set) var routeNotice: String?
+    /// The route of the last working connection, to spot a switch after a Wi-Fi drop.
+    private var lastRouteDirect: Bool?
     private var lastFrame: Date?
+    private var lostSince: Date?
 
     let home: Bool
     private var other: String { home ? "baby phone" : "camera" }
@@ -106,6 +114,7 @@ final class DriverStation: ObservableObject {
     private var ticker: Timer?
 
     func start(code: String) {
+        lastRouteDirect = nil
         guard !running else { return }
         self.code = code
         gate.reset()
@@ -262,6 +271,7 @@ final class DriverStation: ObservableObject {
                 guard let self, let link, link === self.link else { return }
                 switch state {
                 case .ready:
+                    self.direct = Self.isDirect(link.connection.currentPath)
                     link.send(.hello, Data(self.code.utf8))
                 case .failed, .cancelled:
                     self.lostCamera()
@@ -270,15 +280,60 @@ final class DriverStation: ObservableObject {
                 }
             }
         }
+        // If the Wi-Fi router drops, the old route dies quietly. Notice within ~2 s and reconnect,
+        // which picks the direct phone-to-phone route (Bonjour also advertises over peer-to-peer Wi-Fi).
+        link.connection.viabilityUpdateHandler = { [weak self, weak link] viable in
+            guard !viable else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                MainActor.assumeIsolated {
+                    guard let self, let link, link === self.link,
+                          link.connection.currentPath?.status != .satisfied || !Self.viable(link) else { return }
+                    self.lostCamera()
+                }
+            }
+        }
+        link.connection.pathUpdateHandler = { [weak self, weak link] path in
+            MainActor.assumeIsolated {
+                guard let self, let link, link === self.link else { return }
+                self.direct = Self.isDirect(path)
+                if self.connected { self.announceRoute() }
+            }
+        }
         link.start()
+    }
+
+    /// Pops up "Now connected ..." when the route differs from the last working one.
+    private func announceRoute() {
+        defer { lastRouteDirect = direct }
+        guard let before = lastRouteDirect, before != direct else { return }
+        let text = direct ? "Wi-Fi dropped. Now connected phone to phone." : "Now connected over Wi-Fi again."
+        routeNotice = text
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            MainActor.assumeIsolated { if self.routeNotice == text { self.routeNotice = nil } }
+        }
+        if home, UIApplication.shared.applicationState != .active {
+            tell(title: "Baby monitor still connected", body: text, kind: "route")
+        }
+    }
+
+    private static func viable(_ link: FramedConnection) -> Bool {
+        link.connection.state == .ready && link.connection.currentPath?.status == .satisfied
+    }
+
+    /// Apple's peer-to-peer Wi-Fi shows up as an "awdl"/"llw" interface.
+    private static func isDirect(_ path: NWPath?) -> Bool {
+        guard let path else { return false }
+        return path.availableInterfaces.first.map { $0.name.hasPrefix("awdl") || $0.name.hasPrefix("llw") } ?? false
     }
 
     private func handle(_ type: Packet, _ payload: Data) {
         switch type {
         case .welcome:
             connected = true
+            lostSince = nil
             lastSeen = Date()
-            status = "Connected"
+            status = direct ? "Connected phone to phone" : "Connected"
+            announceRoute()
         case .denied:
             if let linkEndpoint { wrongCode.insert(linkEndpoint) }
             status = home ? "That baby phone wants a different code. Check the code on the baby phone."
@@ -314,11 +369,20 @@ final class DriverStation: ObservableObject {
         if connected { status = "Lost the \(other). Reconnecting..." }
         connected = false
         hearing = false
+        direct = false
         if mood != .offline {
             mood = .offline
-            // At home the parent may be asleep: chime so they know the monitor stopped.
             if home {
-                tell(title: "Baby monitor lost the baby phone", body: "Check that Stork View is still listening on the baby phone.", kind: "lost")
+                // At home the parent may be asleep: chime so they know the monitor stopped. Wait a bit
+                // first, because a Wi-Fi drop usually reconnects phone to phone within a few seconds.
+                let since = Date()
+                lostSince = since
+                DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+                    MainActor.assumeIsolated {
+                        guard self.running, !self.connected, self.lostSince == since else { return }
+                        self.tell(title: "Baby monitor lost the baby phone", body: "Check that Stork View is still listening on the baby phone, and that Wi-Fi and Bluetooth are on on both phones.", kind: "lost")
+                    }
+                }
             } else {
                 pushCard(force: true)
             }

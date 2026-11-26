@@ -31,6 +31,13 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   (`BabyNotifier`, max one per kind per minute) for crying (Apple sound classifier), fussing (sounds in
   4+ different seconds of the last 20), optionally any sound, and always when the baby phone disconnects.
   Same Wi-Fi or AirDrop range needed.
+- **Wi-Fi drop backup.** Home Wi-Fi is used first. If the router drops, `viabilityUpdateHandler` notices
+  in ~2 s and the parent phone reconnects; Bonjour also advertises over Apple peer-to-peer Wi-Fi (AWDL,
+  what AirDrop uses), so it comes back phone to phone with no router. A pop-up (`RouteBanner`) says
+  "Now connected phone to phone" / "over Wi-Fi again" (a notification if the app is in the background),
+  and the lost-baby-phone alert waits 15 s so a quick switch doesn't wake you. Needs Wi-Fi + Bluetooth
+  switched on (not just joined to a network) and roughly AirDrop range. No cellular route: that would
+  need an internet relay server.
 - **Camera on** (baby phone toggle, saved as `babyPhoneVideo`): the baby phone also sends the picture
   (same frames as the car camera). The listening phone shows it, detects movement with the same
   brightness-grid check, and notifies "Baby is moving" (on by default). The picture pauses if the

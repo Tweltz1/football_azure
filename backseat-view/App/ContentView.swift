@@ -329,7 +329,7 @@ struct ListenScreen: View {
                 }
 
                 if station.running {
-                    StatusPill(text: station.connected ? (station.hearing ? "Hearing the baby" : "Connected · quiet") : "Connecting…",
+                    StatusPill(text: station.connected ? (station.hearing ? "Hearing the baby" : "Connected · quiet") + (station.direct ? " · phone to phone" : "") : "Connecting…",
                                good: station.connected)
                     if station.picturePaused {
                         Text("The picture paused, but you can still hear the baby. Open Stork View on the baby phone and use Dark screen instead of locking it.")
@@ -381,6 +381,7 @@ struct ListenScreen: View {
             .padding()
         }
         .scrollDismissesKeyboard(.interactively)
+        .routeBanner(station.routeNotice)
         .modeToolbar("Parent phone", back: { station.stop(); back() }, settings: { showSettings = true })
         .sheet(isPresented: $showSettings) { ListenSettings(station: station) }
     }
@@ -519,7 +520,7 @@ struct DriverScreen: View {
                              mood: station.running ? station.mood : nil,
                              placeholder: station.running ? station.status : "Switch the camera on, then tap Watch")
                 if station.running {
-                    StatusPill(text: station.connected ? "Connected" : station.status, good: station.connected)
+                    StatusPill(text: station.connected ? (station.direct ? "Connected · phone to phone" : "Connected") : station.status, good: station.connected)
                     if station.cameraTooDark && station.connected {
                         Text("It's dark back there, so the picture is hard to see. You can still hear the baby.").font(.footnote).foregroundStyle(.orange)
                     }
@@ -551,6 +552,7 @@ struct DriverScreen: View {
             .padding()
         }
         .scrollDismissesKeyboard(.interactively)
+        .routeBanner(station.routeNotice)
         .modeToolbar("Back seat", back: { station.stop(); back() }, settings: { showSettings = true })
         .sheet(isPresented: $showSettings) { DriverSettings(station: station) }
     }
@@ -635,4 +637,32 @@ struct StudioCredit: View {
         .tint(.secondary)
         .frame(maxWidth: .infinity)
     }
+}
+
+/// Small pop-up at the top that says how the phones are connected now (Wi-Fi or phone to phone).
+struct RouteBanner: ViewModifier {
+    let text: String?
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .top) {
+            if let text {
+                Label(text, systemImage: text.contains("phone to phone") ? "iphone.radiowaves.left.and.right" : "wifi")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(navy.opacity(0.95), in: Capsule())
+                    .shadow(radius: 6)
+                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .accessibilityAddTraits(.isStaticText)
+            }
+        }
+        .animation(.spring(duration: 0.35), value: text)
+    }
+}
+
+extension View {
+    func routeBanner(_ text: String?) -> some View { modifier(RouteBanner(text: text)) }
 }
