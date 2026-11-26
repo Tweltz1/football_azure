@@ -22,8 +22,8 @@ aside{flex:1 1 38%;display:flex;flex-direction:column;gap:20px;min-width:280px}
 button{font:inherit;font-weight:700;border:0;border-radius:18px;padding:16px 22px;background:var(--mint);color:var(--navy)}
 button.off{background:rgba(255,255,255,.14);color:var(--ink)}
 small{color:var(--dim);font-size:17px}
-#start,#ask{position:fixed;inset:0;background:rgba(8,18,36,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;text-align:center;padding:24px}
-#ask input{font:800 56px monospace;width:5.5ch;text-align:center;border-radius:18px;border:0;padding:8px}
+#start,#ask{position:fixed;inset:0;background:#0a1428;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;text-align:center;padding:24px}
+
 .hide{display:none!important}
 #park{position:fixed;width:2px;height:2px;opacity:.01;pointer-events:none;bottom:0;right:0}
 @media (max-width:800px){main{flex-direction:column}#pic{flex:0 0 52vh}}
@@ -37,18 +37,31 @@ small{color:var(--dim);font-size:17px}
   </aside>
 </main>
 <div id="start"><div style="font-size:90px">🍼</div><div style="font-size:34px;font-weight:800">Stork View</div><button id="go">Tap to start</button></div>
-<div id="ask" class="hide"><div style="font-size:30px;font-weight:800">Type the car screen code shown in Stork View on your iPhone</div><input id="codein" inputmode="numeric" maxlength="4"><button id="codego">Show the back seat</button><small id="askmsg"></small></div>
+<div id="ask" class="hide"><div style="font-size:30px;font-weight:800">Look at Stork View on your iPhone</div><div>Tap <b>Allow</b> if it shows this number:</div><div id="num" style="font:800 96px/1 monospace;letter-spacing:.08em"></div><small id="askmsg">Waiting for your iPhone...</small></div>
 <video id="park" muted playsinline loop autoplay src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMzbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAl10cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHVbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABgG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAUBzdGJsAAAAuHN0c2QAAAAAAAAAAQAAAKhhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAALmF2Y0MBQsAK/+EAFmdCwArZHsBEAAADAAQAAAMAEDxImSABAAVoy4PLIAAAABBwYXNwAAAAAQAAAAEAAAAUYnRydAAAAAAAAAqAAAAKgAAAABhzdHRzAAAAAAAAAAEAAAAEAAAgAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAAEAAAAAQAAACRzdHN6AAAAAAAAAAAAAAAEAAACgwAAAAoAAAAKAAAACQAAABRzdGNvAAAAAAAAAAEAAANjAAAAYnVkdGEAAABabWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcmFwcGwAAAAAAAAAAAAAAAAtaWxzdAAAACWpdG9vAAAAHWRhdGEAAAABAAAAAExhdmY2MC4xNi4xMDAAAAAIZnJlZQAAAqhtZGF0AAACcAYF//9s3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE2NCByMzEwOCAzMWUxOWY5IC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAyMyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTAgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MToweDExMSBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MCBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0wIHdlaWdodHA9MCBrZXlpbnQ9MjUwIGtleWludF9taW49MiBzY2VuZWN1dD00MCBpbnRyYV9yZWZyZXNoPTAgcmNfbG9va2FoZWFkPTQwIHJjPWNyZiBtYnRyZWU9MSBjcmY9MjMuMCBxY29tcD0wLjYwIHFwbWluPTAgcXBtYXg9NjkgcXBzdGVwPTQgaXBfcmF0aW89MS40MCBhcT0xOjEuMDAAgAAAAAtliIQFPJigAD+/gAAAAAZBmjgKeoAAAAAGQZpUAp6gAAAABUGaYBL1"></video>
 <script>
-var q=new URLSearchParams(location.search),code=q.get('c')||'';
-try{if(!code)code=localStorage.getItem('storkCode')||'';}catch(e){}
+var key='';try{key=localStorage.getItem('storkKey')||''}catch(e){}
 var $=function(i){return document.getElementById(i)};
 var img=$('img'),park=$('park'),parked=false,lastT=-1,stillSince=0,st=null,started=false;
 var EMOJI={quiet:'😴',moving:'👋',noise:'🔊',fussing:'😣',crying:'😭',offline:'📵'};
 var ctx=null,soundOn=false,seq=0,nextAt=0,soundTold=false;
-function api(p){return p+(p.indexOf('?')<0?'?':'&')+'c='+encodeURIComponent(code)+'&t='+Date.now()}
-function askCode(msg){$('ask').classList.remove('hide');$('askmsg').textContent=msg||''}
-$('codego').onclick=function(){code=$('codein').value.replace(/\D/g,'');try{localStorage.setItem('storkCode',code)}catch(e){}$('ask').classList.add('hide');poll()};
+function api(p){return p+(p.indexOf('?')<0?'?':'&')+'k='+encodeURIComponent(key)+'&t='+Date.now()}
+// Pairing: show a 6-digit number; the iPhone shows the same number and asks Allow. Only then does
+// this browser get a key, which it keeps so next time it connects by itself.
+var pairing=false;
+function pair(){
+  if(pairing)return;pairing=true;key='';try{localStorage.removeItem('storkKey')}catch(e){}
+  var n=String(Math.floor(Math.random()*1e6));while(n.length<6)n='0'+n;
+  $('num').textContent=n.slice(0,3)+' '+n.slice(3);$('askmsg').textContent='Waiting for your iPhone...';$('ask').classList.remove('hide');
+  var tick=setInterval(function(){
+    fetch('/pair?n='+n+'&t='+Date.now()).then(function(r){return r.json()}).then(function(a){
+      if(a.state==='ok'){clearInterval(tick);key=a.key;try{localStorage.setItem('storkKey',key)}catch(e){}$('ask').classList.add('hide');pairing=false;poll()}
+      else if(a.state==='denied'){clearInterval(tick);$('askmsg').textContent='Not allowed on the iPhone. Reload this page to try again.'}
+      else if(a.state==='busy'){$('askmsg').textContent='Another screen is already asking. Answer it on the iPhone first.'}
+      else{$('askmsg').textContent='Waiting for your iPhone...'}
+    }).catch(function(){$('askmsg').textContent="Can't reach the iPhone. Is this car on the iPhone's hotspot, with Show on a Tesla screen turned on?"});
+  },1500);
+}
 $('go').onclick=function(){started=true;$('start').classList.add('hide');try{park.play()}catch(e){}
   try{ctx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}};
 $('snd').onclick=function(){setSound(!soundOn)};
@@ -71,7 +84,8 @@ function show(){
 }
 function chime(){if(!ctx)return;try{var o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.25,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+1.2);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+1.2)}catch(e){}}
 function poll(){
-  fetch(api('/status')).then(function(r){if(r.status===401){askCode('');throw 0}if(r.status===429){askCode('Too many wrong codes. Wait a few minutes.');throw 0}return r.json()})
+  if(pairing)return;
+  fetch(api('/status')).then(function(r){if(r.status===401){pair();throw 0}return r.json()})
   .then(function(s){var was=st&&st.mood;st=s;if(s.mood==='crying'&&was&&was!=='crying')chime();show()})
   .catch(function(){if(!st||st.mood!=='offline'){st={mood:'offline',title:'Phone not reachable',since:0}}show()});
 }
@@ -100,7 +114,7 @@ setInterval(function(){
     var now=ctx.currentTime;if(nextAt<now||nextAt-now>1.2)nextAt=now+.15;src.start(nextAt);nextAt+=buf.duration;
   }).catch(function(){});
 },300);
-if(!code)askCode('');poll();
+if(!key)pair();else poll();
 </script></body></html>
 """#
 }

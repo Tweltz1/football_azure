@@ -558,6 +558,10 @@ struct DriverScreen: View {
     }
 }
 
+private func spaced(_ number: String) -> String {
+    number.count == 6 ? "\(number.prefix(3)) \(number.suffix(3))" : number
+}
+
 /// "Show on the car's screen": for a Tesla (or any car with a web browser). See CarScreen.
 struct CarScreenCard: View {
     @ObservedObject var screen: CarScreen
@@ -577,9 +581,7 @@ struct CarScreenCard: View {
                 Text("weltzcraft.com/storkview/car")
                     .font(.title3.weight(.bold))
                     .textSelection(.enabled)
-                Text("The first time, it asks for this code:")
-                Text(screen.code.map { String($0) }.joined(separator: " "))
-                    .font(.system(size: 34, weight: .heavy, design: .rounded)).monospacedDigit()
+                Text("The first time, the car screen shows a 6-digit number and this phone asks you to Allow it. Only allow it if the numbers match.")
                 Text("Bookmark it in the Tesla so next time it's one tap.")
                 if let link = screen.link {
                     Text("Direct address: \(link.replacingOccurrences(of: "http://", with: ""))")
@@ -595,10 +597,20 @@ struct CarScreenCard: View {
                 Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Keep Stork View open on this phone.")
                     .foregroundStyle(.secondary)
                 if let problem = screen.problem { Text(problem).foregroundStyle(.orange) }
+                if screen.allowedCount > 0 {
+                    Button("Disconnect all car screens (\(screen.allowedCount))", role: .destructive) { screen.forgetAll() }
+                        .font(.footnote.weight(.semibold))
+                }
             }
         }
         .font(.footnote)
         .card()
+        .alert("Allow this car screen?", isPresented: Binding(get: { screen.pendingNumber != nil }, set: { if !$0 { screen.deny() } })) {
+            Button("Allow") { screen.allow() }
+            Button("Don't Allow", role: .cancel) { screen.deny() }
+        } message: {
+            Text("Only tap Allow if your car screen shows \(spaced(screen.pendingNumber ?? "")). It will then see the back seat.")
+        }
         .onAppear { if screen.wanted { screen.start() } }
         .onDisappear { screen.stop() }
     }

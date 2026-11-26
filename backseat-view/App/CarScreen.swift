@@ -1,10 +1,13 @@
 import Darwin
 import Foundation
 import Network
+import Security
 
 /// Shows the back seat on a car's own screen (a Tesla, or any car with a web browser).
 /// The phone runs a tiny web server; the car joins this phone's Personal Hotspot and opens
-/// http://172.20.10.1:8080/?c=<code> in its browser. No internet or Stork View server is involved.
+/// http://172.20.10.1:8080/ (or weltzcraft.com/storkview/car) in its browser.
+/// The first time, the car's page shows a 6-digit number and the phone asks "Allow this car screen?";
+/// only after Allow does that browser get a long random key, which it keeps for next time. No internet or Stork View server is involved.
 ///
 /// While the car is parked the page shows the live picture (about 2 a second). Tesla pauses all
 /// video once the car leaves Park; the page watches a tiny hidden video for that and, while driving,
@@ -18,7 +21,9 @@ final class CarScreen: ObservableObject {
     @Published private(set) var carWatching = false
     @Published private(set) var problem: String?
 
-    let code: String
+    /// A car screen waiting for Allow on this phone: the 6-digit number it shows.
+    @Published private(set) var pendingNumber: String?
+    @Published private(set) var allowedCount = 0
     private var listener: NWListener?
     private var addressTimer: Timer?
     private var lastRequest = Date.distantPast
@@ -32,16 +37,43 @@ final class CarScreen: ObservableObject {
     private var phoneSound = false
     private var sounds: [(seq: Int, pcm: Data)] = []
     private var soundSeq = 0
-    private var wrongTries: [String: (count: Int, since: Date)] = [:]
+    private var pending: (number: String, since: Date)?
+    private var answered: [String: String] = [:] // number -> key, or "" for denied
+    private var keys: Set<String>
 
     init() {
-        let defaults = UserDefaults.standard
-        if let saved = defaults.string(forKey: "carScreenCode"), saved.count == 4 {
-            code = saved
-        } else {
-            code = String(format: "%04d", Int.random(in: 0...9999))
-            defaults.set(code, forKey: "carScreenCode")
-        }
+        keys = Set(UserDefaults.standard.stringArray(forKey: "carScreenKeys") ?? [])
+        allowedCount = keys.count
+    }
+
+    func allow() {
+        guard let number = pending?.number else { return }
+        var bytes = [UInt8](repeating: 0, count: 24)
+        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        let key = bytes.map { String(format: "%02x", $0) }.joined()
+        keys.insert(key)
+        saveKeys()
+        answered[number] = key
+        pending = nil
+        pendingNumber = nil
+    }
+
+    func deny() {
+        guard let number = pending?.number else { return }
+        answered[number] = ""
+        pending = nil
+        pendingNumber = nil
+    }
+
+    /// Disconnect every car screen allowed so far (each will have to ask again).
+    func forgetAll() {
+        keys.removeAll()
+        saveKeys()
+    }
+
+    private func saveKeys() {
+        UserDefaults.standard.set(Array(keys), forKey: "carScreenKeys")
+        allowedCount = keys.count
     }
 
     var wanted: Bool {
@@ -49,7 +81,7 @@ final class CarScreen: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "carScreenOn"); newValue ? start() : stop() }
     }
 
-    var link: String? { address.map { "http://\($0):\(Self.port)/?c=\(code)" } }
+    var link: String? { address.map { "http://\($0):\(Self.port)/" } }
 
     // MARK: Feeding the page
 
@@ -112,6 +144,10 @@ final class CarScreen: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.refreshAddress()
+                if let waiting = self.pending, Date().timeIntervalSince(waiting.since) > 120 {
+                    self.pending = nil
+                    self.pendingNumber = nil
+                }
                 let watching = Date().timeIntervalSince(self.lastRequest) < 5
                 if watching != self.carWatching { self.carWatching = watching }
             }
@@ -182,29 +218,41 @@ final class CarScreen: ObservableObject {
         let parts = URLComponents(string: "http://phone" + target)
         let path = parts?.path ?? "/"
         let query = Dictionary((parts?.queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { a, _ in a })
-        let who: String = {
-            if case .hostPort(let host, _) = connection.endpoint { return "\(host)" }
-            return "?"
-        }()
 
         if path == "/" || path == "/index.html" {
             return send(connection, status: "200 OK", type: "text/html; charset=utf-8", body: Data(CarScreenPage.html.utf8))
         }
         if path == "/favicon.ico" { return send(connection, status: "404 Not Found", type: "text/plain", body: Data()) }
 
-        // Everything else needs the car screen code. Too many wrong codes from one device: wait 5 min.
+        // Pairing: the page shows a 6-digit number; this phone shows it too and asks Allow / Don't allow.
+        // Only one request can wait at a time, and an unanswered one expires after 2 minutes.
         let now = Date()
-        if let tries = wrongTries[who], tries.count >= 5, now.timeIntervalSince(tries.since) < 300 {
-            return send(connection, status: "429 Too Many Requests", type: "text/plain", body: Data("wait".utf8))
+        if path == "/pair" {
+            let number = query["n"] ?? ""
+            guard number.count == 6, number.allSatisfy(\.isNumber) else {
+                return send(connection, status: "400 Bad Request", type: "text/plain", body: Data())
+            }
+            if let answer = answered[number] {
+                answered[number] = nil
+                let state = answer.isEmpty ? "denied" : "ok"
+                let body = try? JSONSerialization.data(withJSONObject: ["state": state, "key": answer])
+                return send(connection, status: "200 OK", type: "application/json", body: body ?? Data())
+            }
+            if let waiting = pending, waiting.number != number, now.timeIntervalSince(waiting.since) < 120 {
+                return send(connection, status: "200 OK", type: "application/json", body: Data(#"{"state":"busy"}"#.utf8))
+            }
+            if pending?.number != number {
+                pending = (number, now)
+                pendingNumber = number
+                if answered.count > 20 { answered.removeAll() }
+            }
+            return send(connection, status: "200 OK", type: "application/json", body: Data(#"{"state":"waiting"}"#.utf8))
         }
-        guard query["c"] == code else {
-            var tries = wrongTries[who] ?? (0, now)
-            if now.timeIntervalSince(tries.since) >= 300 { tries = (0, now) }
-            tries.count += 1
-            wrongTries[who] = tries
-            return send(connection, status: "401 Unauthorized", type: "text/plain", body: Data("code".utf8))
+
+        // Everything else needs a key this phone handed out with Allow.
+        guard let key = query["k"], key.count == 48, keys.contains(key) else {
+            return send(connection, status: "401 Unauthorized", type: "text/plain", body: Data("pair".utf8))
         }
-        wrongTries[who] = nil
         lastRequest = now
         if !carWatching { carWatching = true }
 
