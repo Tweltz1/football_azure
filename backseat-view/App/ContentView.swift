@@ -5,6 +5,10 @@ private let mint = Color(red: 0.51, green: 0.87, blue: 0.73)
 private let peach = Color(red: 1.0, green: 0.62, blue: 0.52)
 private let sky = Color(red: 0.55, green: 0.72, blue: 1.0)
 private let sun = Color(red: 1.0, green: 0.82, blue: 0.45)
+/// Text-and-button color: mint is too pale on white, so light mode uses a deep teal.
+private let accent = Color(UIColor { $0.userInterfaceStyle == .dark
+    ? UIColor(red: 0.51, green: 0.87, blue: 0.73, alpha: 1)
+    : UIColor(red: 0.0, green: 0.45, blue: 0.38, alpha: 1) })
 
 /// Start menu: four modes. The app reopens in the last mode used; each mode has a back button.
 struct ContentView: View {
@@ -20,7 +24,7 @@ struct ContentView: View {
             default: StartScreen { mode = $0 }
             }
         }
-        .tint(mint)
+        .tint(accent)
     }
 }
 
@@ -161,7 +165,7 @@ struct NearbyList: View {
                 Button { tap(item) } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "iphone.radiowaves.left.and.right")
-                            .font(.title2).foregroundStyle(mint)
+                            .font(.title2).foregroundStyle(accent)
                             .frame(width: 44, height: 44)
                             .background(mint.opacity(0.15), in: Circle())
                         VStack(alignment: .leading, spacing: 2) {
@@ -188,7 +192,7 @@ struct TapHint: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "dot.radiowaves.left.and.right").font(.title2).foregroundStyle(mint)
+            Image(systemName: "dot.radiowaves.left.and.right").font(.title2).foregroundStyle(accent)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Shows up nearby as “\(name)”").font(.headline)
                 Text(hint).font(.footnote).foregroundStyle(.secondary)
@@ -442,7 +446,7 @@ struct ListenScreen: View {
                                 .buttonStyle(.bordered)
                         }
                         Spacer()
-                        Button("Stop", role: .destructive) { station.stop(); station.look() }.buttonStyle(.bordered)
+                        Button("Stop", role: .destructive) { station.stop(); station.look() }.buttonStyle(.bordered).tint(.red)
                     }
                 } else {
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
@@ -615,7 +619,7 @@ struct DriverScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 PicturePanel(image: station.connected ? station.picture : nil,
                              mood: station.running ? station.mood : nil,
-                             placeholder: station.running ? station.status : "Switch the camera on, then tap Watch")
+                             placeholder: station.running ? station.status : "Open Stork View on the camera iPhone, then tap it below")
                 if station.running {
                     StatusPill(text: station.connected ? (station.route?.label.map { "Connected · \($0)" } ?? "Connected") : station.status, good: station.connected)
                     if station.cameraTooDark && station.connected {
@@ -635,16 +639,18 @@ struct DriverScreen: View {
                         Button { station.turns += 1 } label: { Label("Rotate", systemImage: "rotate.right") }
                             .buttonStyle(.bordered)
                         Spacer()
-                        Button("Stop", role: .destructive) { station.stop(); station.look() }.buttonStyle(.bordered)
+                        Button("Stop", role: .destructive) { station.stop(); station.look() }.buttonStyle(.bordered).tint(.red)
                     }
                 } else {
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
-                    BigButton(title: "Watch", symbol: "eye.fill") { station.start(code: pairCode) }
-                    NearbyList(title: "Nearby camera phones",
-                               empty: "Looking… Using an old iPhone as the camera? Open Stork View on it and pick Back-seat camera.",
+                    if station.hasSaved {
+                        BigButton(title: "Watch", symbol: "eye.fill") { station.start(code: pairCode) }
+                    }
+                    NearbyList(title: "Nearby camera iPhones",
+                               empty: "Looking… On the camera iPhone, open Stork View and pick Back-seat camera.",
                                items: station.nearby) { station.start(code: pairCode, target: $0.id) }
-                    Text("Using the mini camera? Setup steps are under the gear button.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Button("Using the mini camera instead? Connect to it") { station.start(code: pairCode) }
+                        .font(.footnote)
                 }
                 CarScreenCard(screen: station.carScreen)
                 Text("Glance only, like a mirror. Not a medical or safety device. Never leave a child alone in a car.")
