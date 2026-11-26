@@ -422,6 +422,15 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
             if session.canAddOutput(depth) { session.addOutput(depth) }
             depth.setDelegate(self, callbackQueue: videoQueue)
             depth.connection(with: .depthData)?.isEnabled = true
+            // Sharpest depth the camera offers (more detail on the face).
+            let best = device.activeFormat.supportedDepthDataFormats
+                .filter { [kCVPixelFormatType_DepthFloat32, kCVPixelFormatType_DisparityFloat32]
+                    .contains(CMFormatDescriptionGetMediaSubType($0.formatDescription)) }
+                .max { CMVideoFormatDescriptionGetDimensions($0.formatDescription).width < CMVideoFormatDescriptionGetDimensions($1.formatDescription).width }
+            if let best, (try? device.lockForConfiguration()) != nil {
+                device.activeDepthDataFormat = best
+                device.unlockForConfiguration()
+            }
         }
         session.commitConfiguration()
         let running = self.session
@@ -442,23 +451,79 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
             CVPixelBufferUnlockBaseAddress(map, .readOnly)
             return
         }
-        var gray = [UInt8](repeating: 0, count: width * height)
-        let near: Float = 1 / 0.3, far: Float = 1 / 2.5
+        // Distance in meters per pixel (0 = no reading).
+        let count = width * height
+        var z = [Float](repeating: 0, count: count)
         for y in 0..<height {
             let row = base.advanced(by: y * rowBytes).assumingMemoryBound(to: Float32.self)
             for x in 0..<width {
                 let d = row[x]
-                guard d.isFinite, d > 0 else { continue }
-                let t = min(max((d - far) / (near - far), 0), 1)
-                gray[y * width + x] = UInt8(30 + 225 * t)
+                if d.isFinite, d > 0.2 { z[y * width + x] = 1 / d }
             }
         }
         CVPixelBufferUnlockBaseAddress(map, .readOnly)
+        let gray = Self.nightPicture(z, width: width, height: height)
         guard let provider = CGDataProvider(data: Data(gray) as CFData),
               let cg = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
                                space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: 0),
                                provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { return }
         process(CIImage(cgImage: cg), now: now, night: true)
+    }
+
+    /// Night view picture from distances: the contrast is fitted to the nearest ~50 cm (the baby, not
+    /// the car behind), and relief shading lit from the upper left brings out eyes, nose and mouth.
+    static func nightPicture(_ z: [Float], width: Int, height: Int) -> [UInt8] {
+        let count = width * height
+        var gray = [UInt8](repeating: 0, count: count)
+        // Nearest thing in view (3rd percentile, so a few stray dots don't count).
+        var sample = [Float]()
+        sample.reserveCapacity(count / 16)
+        var i = 0
+        while i < count { if z[i] > 0 { sample.append(z[i]) }; i += 16 }
+        guard sample.count > 20 else { return gray }
+        sample.sort()
+        let near = sample[sample.count * 3 / 100]
+        let span: Float = 0.5
+
+        // Light 3x3 smoothing so sensor noise doesn't look like texture.
+        var smooth = z
+        for y in 1..<(height - 1) {
+            for x in 1..<(width - 1) {
+                let c = y * width + x
+                guard z[c] > 0 else { continue }
+                var sum: Float = 0, n: Float = 0
+                for dy in -1...1 {
+                    for dx in -1...1 {
+                        let v = z[c + dy * width + dx]
+                        if v > 0, abs(v - z[c]) < 0.05 { sum += v; n += 1 }
+                    }
+                }
+                smooth[c] = sum / n
+            }
+        }
+
+        // Shading: surface tilt from neighbouring distances, lit from the upper left and front.
+        let light: (Float, Float, Float) = (-0.45, -0.55, 0.7)
+        let pixelAngle: Float = 1.0 / Float(width) // about 57 degrees across the picture
+        let relief: Float = 2.5 // exaggerate small bumps (eyes, mouth)
+        for y in 1..<(height - 1) {
+            for x in 1..<(width - 1) {
+                let c = y * width + x
+                let d = smooth[c]
+                guard d > 0 else { continue }
+                let l = smooth[c - 1], r = smooth[c + 1], u = smooth[c - width], b = smooth[c + width]
+                let step = d * pixelAngle * 2
+                let gx = (l > 0 && r > 0) ? (r - l) / step * relief : 0
+                let gy = (u > 0 && b > 0) ? (b - u) / step * relief : 0
+                let norm = (gx * gx + gy * gy + 1).squareRoot()
+                let shade = max(0, (-gx * light.0 - gy * light.1 + light.2) / norm)
+                let closeness = min(max(1 - (d - near) / span, 0), 1)
+                // Things far behind the baby fade to dark so the face stands out.
+                let value = closeness * (0.25 + 0.75 * shade)
+                gray[c] = UInt8(min(255, 20 + 235 * value))
+            }
+        }
+        return gray
     }
 
     func startAudio() throws {
