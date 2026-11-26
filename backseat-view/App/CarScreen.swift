@@ -48,7 +48,7 @@ final class CarScreen: ObservableObject {
     var wantsFastPictures: Bool { on && carWatching && parked }
 
     var wanted: Bool {
-        get { UserDefaults.standard.bool(forKey: "carScreenOn") }
+        get { UserDefaults.standard.object(forKey: "carScreenOn") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "carScreenOn"); newValue ? start() : stop() }
     }
 
