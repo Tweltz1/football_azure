@@ -19,6 +19,17 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   ActivityKit caps the state at 4 KB; this avoids needing an App Group. Refresh about every 4 seconds,
   immediately on a mood change, with a chime when crying starts.
 
+## Baby monitor at home (sound only)
+- Two phones, picked from the "Baby monitor at home" card. The **baby phone** (`BabyPhoneScreen`,
+  `CameraStation(audioOnly: true)`) sends microphone sound only, advertises as "Baby Phone" on the same
+  Bonjour service with its own 4-digit code, and keeps listening while locked (background audio mode).
+- The **listening phone** (`ListenScreen`, `DriverStation(home: true)`) plays the sound either
+  **All the time** or **Only when there's a noise** (default). `SoundGate` (`App/Listening.swift`) calls
+  it a noise when loudness beats the sensitivity level and 3x the room's background hum, keeps the
+  last 0.5 s so the start isn't cut off, and keeps the sound on for 8 s after the last noise.
+- Lock Screen card "Baby's room" says Quiet / Making sounds / Crying, alerts on crying (and optionally on
+  any sound), and alerts if the baby phone disconnects. Same Wi-Fi or AirDrop range needed.
+
 ## Why not live video on CarPlay?
 Apple doesn't allow apps to play video on the CarPlay screen while driving, and widgets refresh only a
 few times an hour. The Live Activity card is the fastest-updating thing an ordinary app can put there.

@@ -7,6 +7,8 @@ import UIKit
 
 /// Runs on the spare iPhone mounted in the back seat. Shares a small picture, the baby's
 /// sound and a Quiet / Moving / Crying guess with the driver's phone.
+/// With `audioOnly` it is the "baby phone" of the home sound monitor: microphone only, and it
+/// keeps listening with the screen locked (background audio mode).
 @MainActor
 final class CameraStation: ObservableObject {
     @Published private(set) var preview: UIImage?
@@ -18,16 +20,19 @@ final class CameraStation: ObservableObject {
     @Published private(set) var level: Float = 0
 
     let code: String
+    let audioOnly: Bool
     private let rig = CaptureRig()
     private var listener: NWListener?
     private var links: [ObjectIdentifier: FramedConnection] = [:]
     private var paired: Set<ObjectIdentifier> = []
     private var lastCry = Date.distantPast
     private var lastMotion = Date.distantPast
+    private var lastNoise = Date.distantPast
     private var motionStreak = 0
     private var ticker: Timer?
 
-    init() {
+    init(audioOnly: Bool = false) {
+        self.audioOnly = audioOnly
         let defaults = UserDefaults.standard
         if let saved = defaults.string(forKey: "cameraCode"), saved.count == 4 {
             code = saved
@@ -58,12 +63,18 @@ final class CameraStation: ObservableObject {
     func start() async {
         guard !running else { return }
         problem = nil
-        guard await AVCaptureDevice.requestAccess(for: .video) else {
-            problem = "Camera access is off. Turn it on in Settings > Backseat View."
-            return
+        if !audioOnly {
+            guard await AVCaptureDevice.requestAccess(for: .video) else {
+                problem = "Camera access is off. Turn it on in Settings > Backseat View."
+                return
+            }
         }
         let micAllowed = await withCheckedContinuation { done in
             AVAudioApplication.requestRecordPermission { done.resume(returning: $0) }
+        }
+        if audioOnly && !micAllowed {
+            problem = "Microphone access is off, so this phone can't listen. Turn it on in Settings > Backseat View."
+            return
         }
         rig.rotation = rotation
         rig.onFrame = { [weak self] jpeg, motion, brightness in
@@ -76,14 +87,16 @@ final class CameraStation: ObservableObject {
             DispatchQueue.main.async { MainActor.assumeIsolated { if score > 0.5 { self?.lastCry = Date() } } }
         }
         do {
-            try rig.startVideo(front: useFrontCamera)
+            if !audioOnly { try rig.startVideo(front: useFrontCamera) }
             if micAllowed { try rig.startAudio() } else { problem = "Microphone is off, so crying can't be heard. Turn it on in Settings > Backseat View." }
         } catch {
-            problem = "Camera couldn't start: \(error.localizedDescription)"
+            problem = audioOnly ? "The microphone couldn't start: \(error.localizedDescription)"
+                                : "Camera couldn't start: \(error.localizedDescription)"
             return
         }
         UIDevice.current.isBatteryMonitoringEnabled = true
-        UIApplication.shared.isIdleTimerDisabled = true
+        // The baby phone may be locked (it keeps listening); the camera has to stay on screen.
+        UIApplication.shared.isIdleTimerDisabled = !audioOnly
         running = true
         listen()
         ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -110,7 +123,7 @@ final class CameraStation: ObservableObject {
     private func listen() {
         do {
             let listener = try NWListener(using: BVLink.parameters())
-            listener.service = NWListener.Service(name: "Backseat Camera", type: BVLink.service)
+            listener.service = NWListener.Service(name: audioOnly ? "Baby Phone" : "Backseat Camera", type: BVLink.service)
             listener.newConnectionHandler = { [weak self] connection in
                 MainActor.assumeIsolated { self?.accept(connection) }
             }
@@ -181,6 +194,7 @@ final class CameraStation: ObservableObject {
 
     private func gotAudio(_ pcm: Data, rms: Float) {
         level = rms
+        if rms > SoundGate.Sensitivity.medium.threshold { lastNoise = Date() }
         broadcast(.audio, pcm)
     }
 
@@ -188,6 +202,8 @@ final class CameraStation: ObservableObject {
         let now = Date()
         if now.timeIntervalSince(lastCry) < 4 {
             mood = .crying
+        } else if audioOnly && now.timeIntervalSince(lastNoise) < 6 {
+            mood = .noise
         } else if now.timeIntervalSince(lastMotion) < 8 {
             mood = .moving
         } else {
@@ -214,6 +230,7 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private var analyzer: SNAudioStreamAnalyzer?
     private var lastFrameTime = 0.0
     private var lastTiny: [Double] = []
+    private var interruptionObserver: NSObjectProtocol?
 
     func startVideo(front: Bool) throws {
         session.beginConfiguration()
@@ -291,11 +308,25 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         }
         engine.prepare()
         try engine.start()
+        // A phone call or alarm stops the microphone; start it again when it's over.
+        if interruptionObserver == nil {
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+            ) { [weak self] note in
+                guard let self,
+                      let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+                try? AVAudioSession.sharedInstance().setActive(true)
+                if !self.engine.isRunning { self.engine.prepare(); try? self.engine.start() }
+            }
+        }
     }
 
     func stop() {
         let running = self.session
         videoQueue.async { if running.isRunning { running.stopRunning() } }
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+        interruptionObserver = nil
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         analyzer?.removeAllRequests()

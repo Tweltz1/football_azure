@@ -24,10 +24,10 @@
 <string>UIInterfaceOrientationLandscapeLeft</string>
 <string>UIInterfaceOrientationLandscapeRight</string>
 </array>
-<key>NSLocalNetworkUsageDescription</key><string>Backseat View connects your phone straight to the back-seat camera phone nearby.</string>
+<key>NSLocalNetworkUsageDescription</key><string>Backseat View connects your phone straight to the back-seat camera or the baby phone nearby.</string>
 <key>NSBonjourServices</key><array><string>_backseatview._tcp</string></array>
 <key>NSCameraUsageDescription</key><string>On the back-seat camera phone, the camera shows the back seat on your phone and car screen.</string>
-<key>NSMicrophoneUsageDescription</key><string>On the back-seat camera phone, the microphone lets you hear the baby and spot crying.</string>
+<key>NSMicrophoneUsageDescription</key><string>On the back-seat camera or the baby phone, the microphone lets you hear the baby and spot crying and other sounds.</string>
 <key>NSSupportsLiveActivities</key><true/>
 <key>UIBackgroundModes</key><array><string>audio</string></array>
 </dict></plist>

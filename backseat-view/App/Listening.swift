@@ -67,3 +67,81 @@ final class BabyWatcher {
         }
     }
 }
+
+/// Decides when the baby's sound is loud enough to count as "a noise", and (in "only when there's
+/// a noise" mode) holds the sound back until then. Keeps the last half second so the start of the
+/// noise isn't cut off. Used from the main queue only.
+final class SoundGate {
+    enum Sensitivity: Int, CaseIterable {
+        case low, medium, high
+
+        /// RMS loudness (0...1) of a 16 kHz chunk that counts as a noise.
+        var threshold: Float {
+            switch self {
+            case .low: return 0.05
+            case .medium: return 0.025
+            case .high: return 0.012
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .low: return "Loud sounds only"
+            case .medium: return "Normal"
+            case .high: return "Small sounds too"
+            }
+        }
+    }
+
+    var sensitivity: Sensitivity = .medium
+    /// How long the sound stays on after the last noise.
+    var hold: TimeInterval = 8
+    private(set) var lastNoise = Date.distantPast
+    private var recent: [AVAudioPCMBuffer] = []
+    private var loudStreak = 0
+    /// Slowly follows the room's background hum (fan, white-noise machine) so it doesn't count as noise.
+    private var floor: Float = 0.004
+
+    /// Returns true when this chunk is part of a noise.
+    @discardableResult
+    func listen(to buffer: AVAudioPCMBuffer) -> Bool {
+        let rms = Self.loudness(buffer)
+        floor = rms < floor ? floor * 0.9 + rms * 0.1 : floor * 0.998 + rms * 0.002
+        let loud = rms > max(sensitivity.threshold, floor * 3)
+        // Two loud chunks in a row (about 0.2 s): one alone is usually a click or bump.
+        loudStreak = loud ? loudStreak + 1 : 0
+        if loudStreak >= 2 { lastNoise = Date() }
+        return loudStreak >= 2
+    }
+
+    var isOpen: Bool { Date().timeIntervalSince(lastNoise) < hold }
+
+    /// The sound to play now in "only when there's a noise" mode.
+    func pass(_ buffer: AVAudioPCMBuffer) -> [AVAudioPCMBuffer] {
+        if isOpen {
+            let out = recent + [buffer]
+            recent.removeAll()
+            return out
+        }
+        recent.append(buffer)
+        var frames = recent.reduce(0) { $0 + Int($1.frameLength) }
+        while frames > 8_000 || recent.count > 5 {
+            frames -= Int(recent.removeFirst().frameLength)
+        }
+        return []
+    }
+
+    func reset() {
+        lastNoise = .distantPast
+        recent.removeAll()
+        loudStreak = 0
+        floor = 0.004
+    }
+
+    static func loudness(_ buffer: AVAudioPCMBuffer) -> Float {
+        guard let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return 0 }
+        var sum: Float = 0
+        for i in 0..<Int(buffer.frameLength) { sum += samples[i] * samples[i] }
+        return (sum / Float(buffer.frameLength)).squareRoot()
+    }
+}
