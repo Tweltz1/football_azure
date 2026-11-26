@@ -20,6 +20,9 @@ final class CameraStation: ObservableObject {
     @Published private(set) var problem: String?
     @Published private(set) var tooDark = false
     @Published private(set) var level: Float = 0
+    /// A nearby phone tapped this one and is waiting for Allow / Don't Allow.
+    @Published private(set) var request: (name: String, device: String)?
+    private var requestLink: FramedConnection?
 
     let code: String
     let home: Bool
@@ -145,6 +148,8 @@ final class CameraStation: ObservableObject {
         ticker = nil
         listener?.cancel()
         listener = nil
+        request = nil
+        requestLink = nil
         relay?.stop()
         relay = nil
         remoteViewer = false
@@ -163,7 +168,10 @@ final class CameraStation: ObservableObject {
     private func listen() {
         do {
             let listener = try NWListener(using: BVLink.parameters())
-            listener.service = NWListener.Service(name: home ? "Baby Phone" : "Backseat Camera", type: BVLink.service)
+            var txt = NWTXTRecord()
+            txt["id"] = Pairing.myID()
+            txt["kind"] = home ? "baby" : "car"
+            listener.service = NWListener.Service(name: home ? "Baby Phone" : "Back-seat camera", type: BVLink.service, txtRecord: txt)
             listener.newConnectionHandler = { [weak self] connection in
                 MainActor.assumeIsolated { self?.accept(connection) }
             }
@@ -193,17 +201,23 @@ final class CameraStation: ObservableObject {
         link.onPacket = { [weak self, weak link] type, payload in
             MainActor.assumeIsolated {
                 guard let self, let link, type == .hello else { return }
-                if String(decoding: payload, as: UTF8.self) == self.code {
-                    self.paired.insert(id)
-                    self.viewers = self.paired.count
-                    link.send(.welcome)
-                    // Hand the parent phone the internet backup's room + key (only ever over the local link).
-                    if self.home, InternetRelay.available, let pass = try? JSONEncoder().encode(InternetRelay.Pass.mine) {
-                        link.send(.relay, pass)
+                if let join = try? JSONDecoder().decode(JoinRequest.self, from: payload) {
+                    if let token = join.token, Pairing.allowed[join.device] == token {
+                        self.welcome(link, answer: nil)
+                    } else if self.request == nil {
+                        // Ask on this phone, like AirDrop. No answer in a minute counts as no.
+                        self.request = (name: join.name, device: join.device)
+                        self.requestLink = link
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
+                            MainActor.assumeIsolated { if self.requestLink === link { self.answer(false) } }
+                        }
+                    } else {
+                        self.deny(link)
                     }
+                } else if String(decoding: payload, as: UTF8.self) == self.code {
+                    self.welcome(link, answer: nil)
                 } else {
-                    link.send(.denied)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { link.cancel() }
+                    self.deny(link)
                 }
             }
         }
@@ -211,6 +225,10 @@ final class CameraStation: ObservableObject {
             MainActor.assumeIsolated {
                 switch state {
                 case .failed, .cancelled:
+                    if let asking = self?.requestLink, ObjectIdentifier(asking) == id {
+                        self?.request = nil
+                        self?.requestLink = nil
+                    }
                     self?.links[id] = nil
                     self?.paired.remove(id)
                     self?.viewers = self?.paired.count ?? 0
@@ -219,6 +237,42 @@ final class CameraStation: ObservableObject {
             }
         }
         link.start()
+    }
+
+    /// Allow / Don't Allow for the phone that tapped this one.
+    func answer(_ allow: Bool) {
+        guard let request, let link = requestLink else { return }
+        self.request = nil
+        requestLink = nil
+        if allow {
+            let token = Pairing.randomHex(16)
+            Pairing.allowed[request.device] = token
+            welcome(link, answer: JoinAnswer(id: Pairing.myID(), token: token))
+        } else {
+            deny(link)
+        }
+    }
+
+    /// Forget every phone this one allowed (they'll have to ask again).
+    func forgetPhones() {
+        Pairing.allowed = [:]
+        links.values.forEach { $0.cancel() }
+    }
+
+    private func welcome(_ link: FramedConnection, answer: JoinAnswer?) {
+        let id = ObjectIdentifier(link)
+        paired.insert(id)
+        viewers = paired.count
+        link.send(.welcome, answer.flatMap { try? JSONEncoder().encode($0) } ?? Data())
+        // Hand the parent phone the internet backup's room + key (only ever over the local link).
+        if home, InternetRelay.available, let pass = try? JSONEncoder().encode(InternetRelay.Pass.mine) {
+            link.send(.relay, pass)
+        }
+    }
+
+    private func deny(_ link: FramedConnection) {
+        link.send(.denied)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { link.cancel() }
     }
 
     private func broadcast(_ type: Packet, _ payload: Data) {

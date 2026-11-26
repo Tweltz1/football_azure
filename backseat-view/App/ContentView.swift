@@ -5,6 +5,10 @@ private let mint = Color(red: 0.51, green: 0.87, blue: 0.73)
 private let peach = Color(red: 1.0, green: 0.62, blue: 0.52)
 private let sky = Color(red: 0.55, green: 0.72, blue: 1.0)
 private let sun = Color(red: 1.0, green: 0.82, blue: 0.45)
+/// Text-and-button color: mint is too pale on white, so light mode uses a deep teal.
+private let accent = Color(UIColor { $0.userInterfaceStyle == .dark
+    ? UIColor(red: 0.51, green: 0.87, blue: 0.73, alpha: 1)
+    : UIColor(red: 0.0, green: 0.45, blue: 0.38, alpha: 1) })
 
 /// Start menu: four modes. The app reopens in the last mode used; each mode has a back button.
 struct ContentView: View {
@@ -14,13 +18,14 @@ struct ContentView: View {
         NavigationStack {
             switch mode {
             case "camera": CameraScreen { mode = "" }
+            case "tesla": CameraScreen(tesla: true) { mode = "" }
             case "babyphone": BabyPhoneScreen { mode = "" }
             case "listen": ListenScreen { mode = "" }
             case "driver": DriverScreen { mode = "" }
             default: StartScreen { mode = $0 }
             }
         }
-        .tint(mint)
+        .tint(accent)
     }
 }
 
@@ -46,10 +51,12 @@ struct StartScreen: View {
                 }
 
                 ModeGroup(title: "In the car", symbol: "car.fill") {
-                    ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
-                             detail: "Driver's phone. Baby card on CarPlay and the Lock Screen.") { pick("driver") }
+                    ModeCard(symbol: "car.fill", color: mint, title: "Show on a Tesla",
+                             detail: "Uses this iPhone's camera. Mount it facing the baby and see them on the Tesla screen.") { pick("tesla") }
                     ModeCard(symbol: "video.fill", color: peach, title: "Back-seat camera",
-                             detail: "An old iPhone or iPad mounted facing the baby.") { pick("camera") }
+                             detail: "Uses this iPhone's camera, facing the baby. Watch on the driver's phone or a Tesla.") { pick("camera") }
+                    ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
+                             detail: "Driver's phone. Shows another phone's camera on CarPlay and the Lock Screen.") { pick("driver") }
                 }
 
                 Text("Tip: put Stork View on both phones. Each one picks its job here.")
@@ -138,6 +145,79 @@ private extension View {
         padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+    }
+}
+
+/// Nearby phones to tap, AirDrop-style, on the phone that watches/listens.
+struct NearbyList: View {
+    let title: String
+    let empty: String
+    let items: [DriverStation.Nearby]
+    let tap: (DriverStation.Nearby) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if items.isEmpty {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text(empty).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            ForEach(items) { item in
+                Button { tap(item) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "iphone.radiowaves.left.and.right")
+                            .font(.title2).foregroundStyle(accent)
+                            .frame(width: 44, height: 44)
+                            .background(mint.opacity(0.15), in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.name).font(.headline).foregroundStyle(.primary)
+                            Text(item.saved ? "Ready, tap to connect" : "Tap to connect")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .card()
+    }
+}
+
+/// Tells the sending phone's owner how to connect (no code to type any more).
+struct TapHint: View {
+    let name: String
+    let hint: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "dot.radiowaves.left.and.right").font(.title2).foregroundStyle(accent)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Shows up nearby as “\(name)”").font(.headline)
+                Text(hint).font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+}
+
+extension View {
+    /// "Parent phone wants to connect" Allow / Don't Allow, like AirDrop.
+    func joinAlert(_ station: CameraStation) -> some View {
+        alert(
+            "\(station.request?.name ?? "A phone") wants to connect",
+            isPresented: Binding(get: { station.request != nil }, set: { if !$0 { station.answer(false) } })
+        ) {
+            Button("Don't Allow", role: .cancel) { station.answer(false) }
+            Button("Allow") { station.answer(true) }
+        } message: {
+            Text("It will see and hear this phone. You only need to allow it once.")
+        }
     }
 }
 
@@ -258,7 +338,7 @@ struct BabyPhoneScreen: View {
                         BigButton(title: "Start", symbol: "play.fill") { Task { await station.start() } }
                     }
 
-                    CodeCard(code: station.code, hint: "On the parent phone, pick Parent phone and type this code.")
+                    TapHint(name: "Baby Phone", hint: "On the parent phone, pick Parent phone and tap Baby Phone. Then tap Allow here. Only once.")
 
                     VStack(alignment: .leading, spacing: 12) {
                         Toggle(isOn: Binding(get: { !station.audioOnly }, set: { on in Task { await station.setVideo(on) } })) {
@@ -284,6 +364,8 @@ struct BabyPhoneScreen: View {
                             Text("• Put this phone near the crib, out of the baby's reach, and plug it in.")
                             Text("• Both phones need the same Wi-Fi, or to be close enough for AirDrop.")
                             Text("• Don't swipe Stork View closed.")
+                            Button("Forget connected phones", role: .destructive) { station.forgetPhones() }
+                                .font(.footnote).padding(.top, 4)
                         }
                         .font(.footnote).foregroundStyle(.secondary)
                         .padding(.top, 6)
@@ -304,6 +386,7 @@ struct BabyPhoneScreen: View {
         .statusBarHidden(darkScreen)
         .toolbar(darkScreen ? .hidden : .visible, for: .navigationBar)
         .modeToolbar("Baby phone", back: { station.stop(); back() })
+        .joinAlert(station)
         .task { await station.start() }
     }
 }
@@ -313,7 +396,6 @@ struct BabyPhoneScreen: View {
 struct ListenScreen: View {
     let back: () -> Void
     @StateObject private var station = DriverStation(home: true)
-    @AppStorage("homePairCode") private var pairCode = ""
     @State private var showSettings = false
 
     var body: some View {
@@ -367,13 +449,16 @@ struct ListenScreen: View {
                                 .buttonStyle(.bordered)
                         }
                         Spacer()
-                        Button("Stop", role: .destructive) { station.stop() }.buttonStyle(.bordered)
+                        Button("Stop", role: .destructive) { station.stop(); station.look() }.buttonStyle(.bordered).tint(.red)
                     }
                 } else {
-                    CodeEntry(label: "Code shown on the baby phone", code: $pairCode)
-                    BigButton(title: "Listen", symbol: "headphones") { station.start(code: pairCode) }
-                        .disabled(pairCode.count != 4)
-                        .opacity(pairCode.count == 4 ? 1 : 0.5)
+                    if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
+                    if station.hasSaved {
+                        BigButton(title: "Listen", symbol: "headphones") { station.start() }
+                    }
+                    NearbyList(title: "Nearby baby phones",
+                               empty: "Looking… Open Stork View on the baby phone and pick Baby phone.",
+                               items: station.nearby) { station.start(target: $0.id) }
                     Text("Lock this phone any time. A Baby's room card stays on your Lock Screen, and alerts come through.")
                         .font(.caption).foregroundStyle(.secondary)
                     if InternetRelay.available {
@@ -389,6 +474,7 @@ struct ListenScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .routeBanner(station.routeNotice)
         .modeToolbar("Parent phone", back: { station.stop(); back() }, settings: { showSettings = true })
+        .onAppear { station.look() }
         .sheet(isPresented: $showSettings) { ListenSettings(station: station) }
     }
 }
@@ -421,6 +507,9 @@ struct ListenSettings: View {
                 if InternetRelay.available {
                     Section {
                         Label(station.awayReady ? "Ready" : "Connect once at home first", systemImage: "globe")
+                        if station.hasSaved {
+                            Button("Forget saved baby phones", role: .destructive) { station.forgetSaved() }
+                        }
                     } header: { Text("Away from home") } footer: {
                         Text("Home Wi-Fi comes first, then phone to phone. If neither works (you're out), Stork View connects over the internet. It's encrypted on the phones, the picture is smaller, and sound only comes when there's a noise, to save data.")
                     }
@@ -471,6 +560,8 @@ struct SoundPanel: View {
 // MARK: Car: back-seat camera phone
 
 struct CameraScreen: View {
+    /// Opened from "Show on a Tesla": switches the car screen on and puts its steps first.
+    var tesla = false
     let back: () -> Void
     @StateObject private var station = CameraStation()
     @State private var darkScreen = false
@@ -480,8 +571,12 @@ struct CameraScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     PicturePanel(image: station.preview, mood: station.running ? station.mood : nil, placeholder: "Tap Start Camera")
-                    StatusPill(text: station.viewers == 0 ? "Waiting for the driver's phone" : "Connected to the driver's phone",
-                               good: station.viewers > 0)
+                    if tesla {
+                        CarScreenCard(screen: station.carScreen)
+                    } else {
+                        StatusPill(text: station.viewers == 0 ? "Waiting for the driver's phone" : "Connected to the driver's phone",
+                                   good: station.viewers > 0)
+                    }
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
                     if station.tooDark && station.running {
                         Text("It's too dark to see much. Sound and crying alerts still work.").font(.footnote).foregroundStyle(.orange)
@@ -498,8 +593,10 @@ struct CameraScreen: View {
                     } else {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
-                    CodeCard(code: station.code, hint: "On the driver's phone, pick Watch the back seat and type this code.")
-                    CarScreenCard(screen: station.carScreen)
+                    if !tesla {
+                        TapHint(name: "Back-seat camera", hint: "On the driver's phone, pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
+                        CarScreenCard(screen: station.carScreen)
+                    }
                     Text("Keep Stork View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
                     if station.running {
@@ -514,8 +611,15 @@ struct CameraScreen: View {
         }
         .statusBarHidden(darkScreen)
         .toolbar(darkScreen ? .hidden : .visible, for: .navigationBar)
-        .modeToolbar("Back-seat camera", back: { station.stop(); back() })
-        .task { await station.start() }
+        .modeToolbar(tesla ? "Tesla screen" : "Back-seat camera", back: { station.stop(); back() })
+        .joinAlert(station)
+        .task {
+            if tesla && !station.carScreen.wanted {
+                station.carScreen.wanted = true
+                station.carScreen.objectWillChange.send()
+            }
+            await station.start()
+        }
     }
 }
 
@@ -532,7 +636,7 @@ struct DriverScreen: View {
             VStack(alignment: .leading, spacing: 16) {
                 PicturePanel(image: station.connected ? station.picture : nil,
                              mood: station.running ? station.mood : nil,
-                             placeholder: station.running ? station.status : "Switch the camera on, then tap Watch")
+                             placeholder: station.running ? station.status : "Open Stork View on the camera iPhone, then tap it below")
                 if station.running {
                     StatusPill(text: station.connected ? (station.route?.label.map { "Connected · \($0)" } ?? "Connected") : station.status, good: station.connected)
                     if station.cameraTooDark && station.connected {
@@ -552,13 +656,18 @@ struct DriverScreen: View {
                         Button { station.turns += 1 } label: { Label("Rotate", systemImage: "rotate.right") }
                             .buttonStyle(.bordered)
                         Spacer()
-                        Button("Stop", role: .destructive) { station.stop() }.buttonStyle(.bordered)
+                        Button("Stop", role: .destructive) { station.stop(); station.look() }.buttonStyle(.bordered).tint(.red)
                     }
                 } else {
-                    BigButton(title: "Watch", symbol: "eye.fill") { station.start(code: pairCode) }
-                    CodeEntry(label: "Camera code (only for an old iPhone or iPad camera)", code: $pairCode)
-                    Text("Using the mini camera? Setup steps are under the gear button.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
+                    if station.hasSaved {
+                        BigButton(title: "Watch", symbol: "eye.fill") { station.start(code: pairCode) }
+                    }
+                    NearbyList(title: "Nearby camera iPhones",
+                               empty: "Looking… On the camera iPhone, open Stork View and pick Back-seat camera.",
+                               items: station.nearby) { station.start(code: pairCode, target: $0.id) }
+                    Button("Using the mini camera instead? Connect to it") { station.start(code: pairCode) }
+                        .font(.footnote)
                 }
                 CarScreenCard(screen: station.carScreen)
                 Text("Glance only, like a mirror. Not a medical or safety device. Never leave a child alone in a car.")
@@ -569,6 +678,7 @@ struct DriverScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .routeBanner(station.routeNotice)
         .modeToolbar("Back seat", back: { station.stop(); back() }, settings: { showSettings = true })
+        .onAppear { station.look() }
         .sheet(isPresented: $showSettings) { DriverSettings(station: station) }
     }
 }

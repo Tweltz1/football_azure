@@ -136,14 +136,48 @@ final class DriverStation: ObservableObject {
     private var linkEndpoint: NWEndpoint?
     private var wrongCode: Set<NWEndpoint> = []
     private var code = ""
+
+    /// A phone nearby that this one can tap to connect to (AirDrop-style).
+    struct Nearby: Identifiable, Equatable {
+        let id: String
+        let name: String
+        let saved: Bool
+    }
+
+    @Published private(set) var nearby: [Nearby] = []
+    /// This phone has been allowed by at least one nearby phone, so "Listen"/"Watch" just works.
+    @Published private(set) var hasSaved = false
+    /// Why the last try stopped (shown on the start screen).
+    @Published private(set) var problem: String?
+    private var kind: String { home ? "baby" : "car" }
+    /// The phone the person tapped (nil: any phone that allowed this one before).
+    private var target: String?
+    /// Pairing id of the phone the link is talking to (nil for the mini camera / older builds).
+    private var linkPeer: String?
     private var ticker: Timer?
     /// The car's own screen (Tesla browser). This phone plays the baby's sound itself.
     let carScreen: CarScreen
 
-    func start(code: String) {
+    /// Keep the nearby list up to date before Listen / Watch is tapped.
+    func look() {
+        hasSaved = !Pairing.saved(kind).isEmpty
+        if browser == nil { browse() }
+    }
+
+    /// Forget the phones that allowed this one.
+    func forgetSaved() {
+        Pairing.setSaved(kind, [:])
+        hasSaved = false
+        if let browser { updateNearby(browser.browseResults) }
+    }
+
+    func start(code: String = "", target: String? = nil) {
         lastRoute = nil
         guard !running else { return }
         self.code = code
+        self.target = target
+        problem = nil
+        hasSaved = !Pairing.saved(kind).isEmpty
         gate.reset()
         gate.sensitivity = sensitivity
         if home {
@@ -174,7 +208,7 @@ final class DriverStation: ObservableObject {
                 }
             }
         }
-        browse()
+        if browser == nil { browse() } else if let browser { pickCamera(from: browser.browseResults) }
         startRelay()
         ticker = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
@@ -211,18 +245,21 @@ final class DriverStation: ObservableObject {
     // MARK: Finding and talking to the camera phone
 
     private func browse() {
-        let browser = NWBrowser(for: .bonjour(type: BVLink.service, domain: nil), using: BVLink.parameters())
+        let browser = NWBrowser(for: .bonjourWithTXTRecord(type: BVLink.service, domain: nil), using: BVLink.parameters())
         browser.browseResultsChangedHandler = { [weak self] results, _ in
-            MainActor.assumeIsolated { self?.pickCamera(from: results) }
-        }
-        browser.stateUpdateHandler = { [weak self] state in
             MainActor.assumeIsolated {
-                guard let self, self.running else { return }
+                self?.updateNearby(results)
+                self?.pickCamera(from: results)
+            }
+        }
+        browser.stateUpdateHandler = { [weak self, weak browser] state in
+            MainActor.assumeIsolated {
+                guard let self, let browser, browser === self.browser else { return }
                 if case .failed = state {
                     self.browser?.cancel()
                     self.browser = nil
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        MainActor.assumeIsolated { if self.running && self.browser == nil { self.browse() } }
+                        MainActor.assumeIsolated { if self.browser == nil { self.browse() } }
                     }
                 }
             }
@@ -231,14 +268,42 @@ final class DriverStation: ObservableObject {
         self.browser = browser
     }
 
+    private static func info(_ result: NWBrowser.Result) -> (id: String?, kind: String?, name: String) {
+        var name = "Phone"
+        if case .service(let service, _, _, _) = result.endpoint { name = service }
+        if case .bonjour(let txt) = result.metadata { return (txt["id"], txt["kind"], name) }
+        return (nil, nil, name)
+    }
+
+    private func updateNearby(_ results: Set<NWBrowser.Result>) {
+        let saved = Pairing.saved(kind)
+        var seen = Set<String>()
+        nearby = results.compactMap { result -> Nearby? in
+            let info = Self.info(result)
+            guard let id = info.id, info.kind == kind, seen.insert(id).inserted else { return nil }
+            return Nearby(id: id, name: info.name, saved: saved[id] != nil)
+        }
+        .sorted { $0.name < $1.name }
+    }
+
     private func pickCamera(from results: Set<NWBrowser.Result>) {
         guard running, link == nil else { return }
-        guard let result = results.first(where: { !wrongCode.contains($0.endpoint) }) else {
+        let saved = Pairing.saved(kind)
+        let choice = results.first { result in
+            guard !wrongCode.contains(result.endpoint) else { return false }
+            let info = Self.info(result)
+            if let id = info.id {
+                guard info.kind == nil || info.kind == kind else { return false }
+                return target.map { $0 == id } ?? (saved[id] != nil)
+            }
+            // The mini camera (and older builds) don't say who they are: car mode, no phone tapped.
+            return !home && target == nil
+        }
+        guard let choice else {
             tryHotspotAddresses()
-            if !results.isEmpty { status = "Found a \(other), but its code doesn't match. Check the code." }
             return
         }
-        connect(to: result.endpoint)
+        connect(to: choice.endpoint, peer: Self.info(choice).id)
     }
 
     /// iPhone Personal Hotspot hands out 172.20.10.2-14. If Bonjour doesn't find the mini camera
@@ -258,7 +323,7 @@ final class DriverStation: ObservableObject {
                         let found = self.link == nil && self.running
                         self.hotspotTries.forEach { $0.cancel() }
                         self.hotspotTries.removeAll()
-                        if found { self.connect(to: endpoint) }
+                        if found { self.connect(to: endpoint, peer: nil) }
                     case .failed, .cancelled:
                         self.hotspotTries.removeAll { $0 === attempt }
                     case .waiting:
@@ -273,11 +338,12 @@ final class DriverStation: ObservableObject {
         }
     }
 
-    private func connect(to endpoint: NWEndpoint) {
+    private func connect(to endpoint: NWEndpoint, peer: String?) {
         status = "Connecting to the \(other)..."
         let link = FramedConnection(NWConnection(to: endpoint, using: BVLink.parameters()))
         self.link = link
         linkEndpoint = endpoint
+        linkPeer = peer
         link.onPacket = { [weak self] type, payload in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -292,7 +358,14 @@ final class DriverStation: ObservableObject {
                 switch state {
                 case .ready:
                     self.route = Self.isDirect(link.connection.currentPath) ? .direct : .wifi
-                    link.send(.hello, Data(self.code.utf8))
+                    if let peer = self.linkPeer {
+                        let token = Pairing.saved(self.kind)[peer]
+                        let join = JoinRequest(device: Pairing.myID(), name: self.home ? "Parent phone" : "Driver's phone", token: token)
+                        if token == nil { self.status = "Tap Allow on the \(self.other)" }
+                        link.send(.hello, (try? JSONEncoder().encode(join)) ?? Data())
+                    } else {
+                        link.send(.hello, Data(self.code.utf8))
+                    }
                 case .failed, .cancelled:
                     self.lostCamera()
                 default:
@@ -356,6 +429,13 @@ final class DriverStation: ObservableObject {
     private func handle(_ type: Packet, _ payload: Data) {
         switch type {
         case .welcome:
+            if let answer = try? JSONDecoder().decode(JoinAnswer.self, from: payload) {
+                var saved = Pairing.saved(kind)
+                saved[answer.id] = answer.token
+                Pairing.setSaved(kind, saved)
+                hasSaved = true
+                if let browser { updateNearby(browser.browseResults) }
+            }
             localUp = true
             relayUp = false
             connected = true
@@ -374,9 +454,18 @@ final class DriverStation: ObservableObject {
                 startRelay()
             }
         case .denied:
+            if let peer = linkPeer {
+                var saved = Pairing.saved(kind)
+                saved[peer] = nil
+                Pairing.setSaved(kind, saved)
+                let message = "The \(other) didn't allow this phone. Tap it again to ask."
+                stop()
+                problem = message
+                look()
+                return
+            }
             if let linkEndpoint { wrongCode.insert(linkEndpoint) }
-            status = home ? "That baby phone wants a different code. Check the code on the baby phone."
-                          : "That camera wants a different code. Check the code on the camera iPhone or iPad."
+            status = "That camera wants a different code."
             dropLink()
         case .frame:
             lastSeen = Date()
@@ -405,6 +494,7 @@ final class DriverStation: ObservableObject {
         let old = link
         link = nil
         linkEndpoint = nil
+        linkPeer = nil
         old?.cancel()
     }
 

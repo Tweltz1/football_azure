@@ -20,6 +20,11 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   immediately on a mood change, with a chime when crying starts.
 
 ## Baby monitor at home (sound only)
+- **Pairing is AirDrop-style (no code).** The sending phone advertises its Bonjour service with a TXT
+  record (`id`, `kind` baby/car). The watching phone lists nearby phones (`NearbyList`); tapping one sends a
+  `JoinRequest`, the sending phone shows "… wants to connect" Allow / Don't Allow, and Allow returns a
+  random token (`JoinAnswer`) both phones keep (`Pairing` in Link.swift), so later it just connects.
+  A plain 4-digit hello is still accepted (mini camera / older builds).
 - Two phones, picked from the "Baby monitor at home" card. The **baby phone** (`BabyPhoneScreen`,
   `CameraStation(audioOnly: true)`) sends microphone sound only, advertises as "Baby Phone" on the same
   Bonjour service with its own 4-digit code, and keeps listening while locked (background audio mode).

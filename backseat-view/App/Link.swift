@@ -101,3 +101,48 @@ final class FramedConnection {
         if let type = Packet(rawValue: raw) { onPacket?(type, payload) }
     }
 }
+
+/// AirDrop-style pairing: the watching phone taps a nearby phone, the sending phone shows
+/// "Allow?" once, and both remember each other with a random token after that.
+/// (A 4-digit hello is still accepted from older builds and the mini camera.)
+struct JoinRequest: Codable {
+    var device: String
+    var name: String
+    var token: String?
+}
+
+struct JoinAnswer: Codable {
+    var id: String
+    var token: String
+}
+
+enum Pairing {
+    /// Bonjour TXT keys on the sending phone's service: "id" (stable) and "kind" ("baby" or "car").
+    static func myID() -> String {
+        if let id = UserDefaults.standard.string(forKey: "pairingID") { return id }
+        let id = randomHex(4)
+        UserDefaults.standard.set(id, forKey: "pairingID")
+        return id
+    }
+
+    static func randomHex(_ bytes: Int) -> String {
+        var raw = [UInt8](repeating: 0, count: bytes)
+        _ = SecRandomCopyBytes(kSecRandomDefault, raw.count, &raw)
+        return raw.map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Sending phone: watching phones it allowed, device id -> token.
+    static var allowed: [String: String] {
+        get { UserDefaults.standard.dictionary(forKey: "pairingAllowed") as? [String: String] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: "pairingAllowed") }
+    }
+
+    /// Watching phone: sending phones that allowed it, their id -> token (one list per kind).
+    static func saved(_ kind: String) -> [String: String] {
+        UserDefaults.standard.dictionary(forKey: "pairingSaved-\(kind)") as? [String: String] ?? [:]
+    }
+
+    static func setSaved(_ kind: String, _ value: [String: String]) {
+        UserDefaults.standard.set(value, forKey: "pairingSaved-\(kind)")
+    }
+}
