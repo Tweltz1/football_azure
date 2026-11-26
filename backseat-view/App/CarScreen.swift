@@ -20,6 +20,10 @@ final class CarScreen: ObservableObject {
     @Published private(set) var address: String?
     @Published private(set) var carWatching = false
     @Published private(set) var problem: String?
+    /// Self-check shown on the phone: is the server up, and does it answer at the car's address?
+    @Published private(set) var serverState: String?
+    @Published private(set) var selfCheck: String?
+    private var checking: NWConnection?
 
     /// A car screen waiting for Allow on this phone: the 6-digit number it shows.
     @Published private(set) var pendingNumber: String?
@@ -122,7 +126,14 @@ final class CarScreen: ObservableObject {
             listener.stateUpdateHandler = { [weak self] state in
                 MainActor.assumeIsolated {
                     guard let self else { return }
+                    switch state {
+                    case .ready: self.serverState = "Car screen is running on port \(Self.port)."
+                    case .waiting(let error): self.serverState = "Car screen is waiting: \(error.localizedDescription). Check Settings > Privacy > Local Network > Stork View."
+                    case .setup: self.serverState = "Car screen is starting..."
+                    default: break
+                    }
                     if case .failed(let error) = state {
+                        self.serverState = nil
                         self.problem = "The car screen couldn't start: \(error.localizedDescription)"
                         self.listener?.cancel()
                         self.listener = nil
@@ -144,6 +155,7 @@ final class CarScreen: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.refreshAddress()
+                self.checkMyself()
                 if let waiting = self.pending, Date().timeIntervalSince(waiting.since) > 120 {
                     self.pending = nil
                     self.pendingNumber = nil
@@ -154,7 +166,37 @@ final class CarScreen: ObservableObject {
         }
     }
 
+    /// Connects to this phone's own car address, the same way the car does, and reports the result.
+    private func checkMyself() {
+        guard on, checking == nil else { return }
+        let host = address ?? "127.0.0.1"
+        let tcp = NWProtocolTCP.Options()
+        tcp.connectionTimeout = 2
+        let probe = NWConnection(host: NWEndpoint.Host(host), port: NWEndpoint.Port(rawValue: Self.port)!, using: NWParameters(tls: nil, tcp: tcp))
+        checking = probe
+        probe.stateUpdateHandler = { [weak self, weak probe] state in
+            MainActor.assumeIsolated {
+                guard let self, let probe, probe === self.checking else { return }
+                switch state {
+                case .ready:
+                    self.selfCheck = "Self-check OK: the phone answers at \(host):\(Self.port)."
+                case .failed(let error), .waiting(let error):
+                    self.selfCheck = "Self-check failed at \(host):\(Self.port): \(error.localizedDescription)"
+                default:
+                    return
+                }
+                probe.cancel()
+                self.checking = nil
+            }
+        }
+        probe.start(queue: .main)
+    }
+
     func stop() {
+        checking?.cancel()
+        checking = nil
+        selfCheck = nil
+        serverState = nil
         on = false
         listener?.cancel()
         listener = nil
