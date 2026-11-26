@@ -573,10 +573,6 @@ struct DriverScreen: View {
     }
 }
 
-private func spaced(_ number: String) -> String {
-    number.count == 6 ? "\(number.prefix(3)) \(number.suffix(3))" : number
-}
-
 /// "Show on the car's screen": for a Tesla (or any car with a web browser). See CarScreen.
 struct CarScreenCard: View {
     @ObservedObject var screen: CarScreen
@@ -589,46 +585,33 @@ struct CarScreenCard: View {
             if screen.on {
                 if screen.carWatching {
                     StatusPill(text: "The car screen is showing the back seat", good: true)
+                } else {
+                    StatusPill(text: screen.connected ? "Ready for the car screen" : "Connecting to the internet...", good: screen.connected)
                 }
-                Text("1. On this phone, turn on Personal Hotspot (Settings > Personal Hotspot > Allow Others to Join).")
-                Text("2. In the Tesla: Wi-Fi, join this phone's hotspot. You only do this once.")
-                Text("3. In the Tesla's browser, go to:")
+                Text("On the Tesla's browser, go to:")
                 Text("weltzcraft.com/storkview/car")
                     .font(.title3.weight(.bold))
                     .textSelection(.enabled)
-                Text("The first time, the car screen shows a 6-digit number and this phone asks you to Allow it. Only allow it if the numbers match.")
-                Text("Bookmark it in the Tesla so next time it's one tap.")
-                if let link = screen.link {
-                    Text("Direct address: \(link.replacingOccurrences(of: "http://", with: ""))")
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                    if !link.contains("172.20.10.1") {
-                        Text("This phone isn't sharing a hotspot right now, so use the direct address above.")
-                            .foregroundStyle(.orange)
-                    }
-                } else {
-                    Text("Waiting for the hotspot to turn on...").foregroundStyle(.orange)
-                }
-                Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Keep Stork View open on this phone.")
+                Text("and type this code:")
+                Text("\(screen.code.prefix(3)) \(screen.code.suffix(3))")
+                    .font(.system(size: 40, weight: .heavy, design: .rounded)).monospacedDigit()
+                Text("Then tap Allow here. After that the car connects by itself whenever this switch is on (bookmark the page in the Tesla).")
+                Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Uses this phone's data: about 70 MB an hour while parked, much less while driving. Encrypted on the phone.")
                     .foregroundStyle(.secondary)
                 if let problem = screen.problem { Text(problem).foregroundStyle(.orange) }
-                if let state = screen.serverState { Text(state).foregroundStyle(.secondary) }
-                if let check = screen.selfCheck {
-                    Text(check).foregroundStyle(check.hasPrefix("Self-check OK") ? Color.green : Color.orange)
-                }
-                if screen.allowedCount > 0 {
-                    Button("Disconnect all car screens (\(screen.allowedCount))", role: .destructive) { screen.forgetAll() }
-                        .font(.footnote.weight(.semibold))
-                }
+                Button("Disconnect all car screens", role: .destructive) { screen.forgetAll() }
+                    .font(.footnote.weight(.semibold))
+            } else if let problem = screen.problem {
+                Text(problem).foregroundStyle(.orange)
             }
         }
         .font(.footnote)
         .card()
-        .alert("Allow this car screen?", isPresented: Binding(get: { screen.pendingNumber != nil }, set: { if !$0 { screen.deny() } })) {
+        .alert("Allow this car screen?", isPresented: Binding(get: { screen.asking }, set: { if !$0 { screen.deny() } })) {
             Button("Allow") { screen.allow() }
             Button("Don't Allow", role: .cancel) { screen.deny() }
         } message: {
-            Text("Only tap Allow if your car screen shows \(spaced(screen.pendingNumber ?? "")). It will then see the back seat.")
+            Text("A screen typed your code \(screen.code.prefix(3)) \(screen.code.suffix(3)). Only tap Allow if it's your car. It will then see the back seat.")
         }
         .onAppear { if screen.wanted { screen.start() } }
         .onDisappear { screen.stop() }
