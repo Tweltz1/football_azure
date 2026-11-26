@@ -129,6 +129,10 @@ struct ListenScreen: View {
                         Text("It's dark in the baby's room, so the picture is hard to see. Sound alerts still work.").font(.footnote).foregroundStyle(.orange)
                     }
                 } else {
+                    if station.picturePaused {
+                        Text("The picture paused, but you can still hear the baby. The baby phone probably locked. Open Backseat View on it and use Dark screen instead of locking it.")
+                            .font(.footnote).foregroundStyle(.orange)
+                    }
                     SoundPanel(mood: station.running ? station.mood : nil, level: nil,
                                caption: !station.running ? "Start Listening on the baby phone, then tap Listen here"
                                : !station.connected ? station.status

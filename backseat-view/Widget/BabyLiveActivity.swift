@@ -67,7 +67,7 @@ struct BabyCardView: View {
         } else {
             // Lock Screen: big picture, what the baby is doing, and for how long.
             HStack(spacing: 14) {
-                BabyThumb(data: state.thumb, size: 104)
+                BabyThumb(data: state.thumb, size: 104, paused: state.paused == true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(place.uppercased()).font(.caption2.weight(.heavy)).foregroundStyle(.white.opacity(0.7))
                     Label(state.mood.title, systemImage: state.mood.symbol)
@@ -84,8 +84,16 @@ struct BabyCardView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                     }
-                    Text("Picture from \(state.updated, style: .relative) ago")
-                        .font(.caption2).foregroundStyle(.white.opacity(0.6))
+                    Group {
+                        if state.paused == true {
+                            Text("Picture paused. Sound still on.")
+                        } else if state.thumb != nil {
+                            Text("Picture from \(state.updated, style: .relative) ago")
+                        } else {
+                            Text("Updated \(state.updated, style: .relative) ago")
+                        }
+                    }
+                    .font(.caption2).foregroundStyle(.white.opacity(0.6))
                 }
                 Spacer(minLength: 0)
             }
@@ -109,13 +117,14 @@ struct MoodLabel: View {
 struct BabyThumb: View {
     let data: Data?
     let size: CGFloat
+    var paused = false
 
     var body: some View {
         Group {
             if let data, let image = UIImage(data: data) {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
-                Image(systemName: "figure.child").font(.system(size: size * 0.45)).foregroundStyle(mint)
+                Image(systemName: paused ? "video.slash.fill" : "figure.child").font(.system(size: size * 0.45)).foregroundStyle(mint)
             }
         }
         .frame(width: size, height: size)

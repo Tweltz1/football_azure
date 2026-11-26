@@ -28,6 +28,9 @@ final class DriverStation: ObservableObject {
     @Published private(set) var cardProblem: String?
     /// Home monitor: true while the baby's sound is coming through (always true in "All the time").
     @Published private(set) var hearing = false
+    /// Pictures were coming in but stopped (usually the camera phone locked). Sound may still be live.
+    @Published private(set) var picturePaused = false
+    private var lastFrame: Date?
 
     let home: Bool
     private var other: String { home ? "baby phone" : "camera" }
@@ -156,6 +159,8 @@ final class DriverStation: ObservableObject {
         hearing = false
         mood = .offline
         picture = nil
+        picturePaused = false
+        lastFrame = nil
         status = "Not started"
         UIApplication.shared.isIdleTimerDisabled = false
     }
@@ -281,7 +286,11 @@ final class DriverStation: ObservableObject {
             dropLink()
         case .frame:
             lastSeen = Date()
-            if let image = UIImage(data: payload) { picture = turned(image) }
+            if let image = UIImage(data: payload) {
+                picture = turned(image)
+                lastFrame = Date()
+                picturePaused = false
+            }
             pushCard()
         case .status:
             lastSeen = Date()
@@ -330,6 +339,12 @@ final class DriverStation: ObservableObject {
         if running, link == nil, let browser { pickCamera(from: browser.browseResults) }
         guard connected else { return }
         let now = Date()
+        // Never leave an old picture up looking live: drop it once frames stop for 10 s.
+        if picture != nil, let lastFrame, now.timeIntervalSince(lastFrame) > 10 {
+            picture = nil
+            picturePaused = true
+            pushCard(force: true)
+        }
         hearing = !home || soundMode == .always || gate.isOpen
         let newMood: BabyMood
         if now.timeIntervalSince(lastCry) < 4 {
@@ -382,7 +397,7 @@ final class DriverStation: ObservableObject {
 
     private func pushCard(force: Bool = false, alert: CardAlert? = nil) {
         guard running else { return }
-        let error = card.update(mood: mood, picture: showPictureInCar || home ? picture : nil, force: force, alert: alert)
+        let error = card.update(mood: mood, picture: showPictureInCar || home ? picture : nil, paused: picturePaused, force: force, alert: alert)
         if let error { cardProblem = error }
     }
 }
@@ -538,13 +553,13 @@ final class CarCard {
     }
 
     /// Returns a message for the user when the card can't be shown.
-    func update(mood: BabyMood, picture: UIImage?, force: Bool, alert: CardAlert?) -> String? {
+    func update(mood: BabyMood, picture: UIImage?, paused: Bool, force: Bool, alert: CardAlert?) -> String? {
         let now = Date()
         guard force || now.timeIntervalSince(lastSent) >= 4 else { return nil }
         lastSent = now
         if mood != lastMood { lastMood = mood; moodSince = now }
         let state = BabyActivityAttributes.ContentState(mood: mood, thumb: picture.flatMap(Self.tinyJPEG), updated: now,
-                                                        since: mood == .offline ? nil : moodSince)
+                                                        since: mood == .offline ? nil : moodSince, paused: paused)
         let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(60))
         if let activity {
             let sound = alert.map { AlertConfiguration(title: "\($0.title)", body: "\($0.body)", sound: .default) }
