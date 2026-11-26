@@ -15,7 +15,7 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   (mixes with music and directions), and a Live Activity ("baby card"). Playing the sound
   (background audio mode) is what keeps the app running while the phone is locked.
 - **Car screen**: iOS 26 CarPlay shows Live Activities on the Dashboard using the `.small` family
-  (`Widget/BabyLiveActivity.swift`). The card carries a tiny JPEG (<= 2.3 KB) inside its state because
+  (`Widget/BabyLiveActivity.swift`). The card carries a tiny JPEG (<= 2.3 KB) and how long the current mood has lasted ("Quiet for 12:03") inside its state because
   ActivityKit caps the state at 4 KB; this avoids needing an App Group. Refresh about every 4 seconds,
   immediately on a mood change, with a chime when crying starts.
 

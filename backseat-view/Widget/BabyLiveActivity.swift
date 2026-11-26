@@ -65,13 +65,27 @@ struct BabyCardView: View {
             }
             .padding(8)
         } else {
+            // Lock Screen: big picture, what the baby is doing, and for how long.
             HStack(spacing: 14) {
-                BabyThumb(data: state.thumb, size: 76)
+                BabyThumb(data: state.thumb, size: 104)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("BACKSEAT VIEW").font(.caption2.weight(.heavy)).foregroundStyle(.white.opacity(0.7))
-                    MoodLabel(mood: state.mood, big: true)
-                    Text("Updated \(state.updated, style: .relative) ago")
-                        .font(.caption2).foregroundStyle(.white.opacity(0.7))
+                    Text(place.uppercased()).font(.caption2.weight(.heavy)).foregroundStyle(.white.opacity(0.7))
+                    Label(state.mood.title, systemImage: state.mood.symbol)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(moodColor(state.mood))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    if let since = state.since {
+                        HStack(spacing: 4) {
+                            Text("for")
+                            Text(timerInterval: since...Date.distantFuture, countsDown: false)
+                                .monospacedDigit()
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    }
+                    Text("Picture from \(state.updated, style: .relative) ago")
+                        .font(.caption2).foregroundStyle(.white.opacity(0.6))
                 }
                 Spacer(minLength: 0)
             }
