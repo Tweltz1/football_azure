@@ -27,7 +27,7 @@
 <key>NSLocalNetworkUsageDescription</key><string>Stork View connects your phone straight to the back-seat camera or the baby phone nearby.</string>
 <key>NSBonjourServices</key><array><string>_backseatview._tcp</string></array>
 <key>NSCameraUsageDescription</key><string>On the back-seat camera phone, the camera shows the back seat on your phone and car screen.</string>
-<key>NSMicrophoneUsageDescription</key><string>On the back-seat camera or the baby phone, the microphone lets you hear the baby and spot crying and other sounds.</string>
+<key>NSMicrophoneUsageDescription</key><string>On the back-seat camera or the baby phone, the microphone lets you hear the baby and spot crying and other sounds. On the parent phone, it lets you talk to the baby.</string>
 <key>NSSupportsLiveActivities</key><true/>
 <key>NSSupportsLiveActivitiesFrequentUpdates</key><true/>
 <key>ITSAppUsesNonExemptEncryption</key><false/>

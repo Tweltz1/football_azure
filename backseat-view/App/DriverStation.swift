@@ -49,6 +49,17 @@ final class DriverStation: ObservableObject {
     }
 
     @Published private(set) var route: Route?
+    /// Live loudness of the baby's room (0...1) and when sound last came in, so the parent can see it's not frozen.
+    @Published private(set) var soundLevel: Float = 0
+    @Published private(set) var lastSound: Date?
+    /// Soothing sound playing on the baby phone (from its status).
+    @Published private(set) var babyMusic: Soothing?
+    /// The parent is talking to the baby right now.
+    @Published private(set) var talking = false
+    @Published private(set) var micProblem: String?
+    private let mic = ParentMic()
+    private var lastLevelPublish = Date.distantPast
+    private var talkStarted = Date.distantPast
     /// Short pop-up text when the connection route changes ("Now connected phone to phone").
     @Published private(set) var routeNotice: String?
     /// The route of the last working connection, to spot a switch.
@@ -223,6 +234,9 @@ final class DriverStation: ObservableObject {
         ticker = nil
         browser?.cancel()
         browser = nil
+        if talking { talking = false; mic.stop() }
+        lastSound = nil
+        soundLevel = 0
         dropLink()
         relay?.stop()
         relay = nil
@@ -480,6 +494,9 @@ final class DriverStation: ObservableObject {
             lastSeen = Date()
             guard let message = try? JSONDecoder().decode(StatusMessage.self, from: payload) else { return }
             cameraBattery = message.battery
+            babyMusic = message.music.flatMap(Soothing.init(rawValue:))
+            // Over the internet sound only comes on noise, so the status level is the live meter.
+            if relayUp { noteSound(message.level) }
             // Over the internet the sound only comes when there's a noise, so also trust the baby phone's own guess.
             if relayUp {
                 if message.mood == .crying { lastCry = Date() }
@@ -577,12 +594,73 @@ final class DriverStation: ObservableObject {
         }
     }
 
+    private func noteSound(_ level: Float) {
+        lastSound = Date()
+        guard Date().timeIntervalSince(lastLevelPublish) > 0.2 else { return }
+        lastLevelPublish = Date()
+        soundLevel = level
+    }
+
+    // MARK: Talk back + soothing sounds
+
+    private func sendToBaby(_ type: Packet, _ payload: Data) {
+        if localUp, let link {
+            link.send(type, payload)
+        } else if relayUp, let relay {
+            relay.send(type, type == .talk ? InternetRelay.shrink(payload) : payload)
+        }
+    }
+
+    /// Tap to talk to the baby (tap again to stop; stops by itself after 2 minutes).
+    func toggleTalk() {
+        if talking { stopTalking(); return }
+        Task { @MainActor in
+            guard await ParentMic.ask() else {
+                micProblem = "Microphone access is off. Turn it on in Settings > Stork View to talk to the baby."
+                return
+            }
+            mic.onSound = { [weak self] pcm in
+                MainActor.assumeIsolated { self?.sendToBaby(.talk, pcm) }
+            }
+            do {
+                try mic.start()
+                micProblem = nil
+                talking = true
+                let started = Date()
+                talkStarted = started
+                DispatchQueue.main.asyncAfter(deadline: .now() + 120) {
+                    MainActor.assumeIsolated { if self.talking && self.talkStarted == started { self.stopTalking() } }
+                }
+            } catch {
+                micProblem = "The microphone couldn't start: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func stopTalking() {
+        guard talking else { return }
+        talking = false
+        mic.stop()
+        speaker.refresh()
+    }
+
+    /// Start (or with nil stop) a soothing sound on the baby phone.
+    func soothe(_ sound: Soothing?, minutes: Int?, volume: Float) {
+        let control = ControlMessage(music: sound?.rawValue ?? "off", volume: volume, minutes: minutes)
+        if let data = try? JSONEncoder().encode(control) { sendToBaby(.control, data) }
+        babyMusic = sound
+    }
+
     private func takeAudio(_ payload: Data) {
         guard let sound = BabySpeaker.decode(payload) else { return }
+        noteSound(InternetRelay.rms(sound))
         if !home { carScreen.hear(payload) }
         watcher.hear(sound)
         gate.listen(to: sound)
-        if home && soundMode == .noiseOnly {
+        // While the parent talks, don't play the room back (it would echo their own voice).
+        if talking {
+            _ = gate.pass(sound)
+        } else if home && soundMode == .noiseOnly {
             gate.pass(sound).forEach(speaker.play)
         } else {
             speaker.play(sound)
@@ -705,6 +783,9 @@ final class BabySpeaker {
         lock.lock(); queued = 0; lock.unlock()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
+
+    /// Make sure playback is running again (after the parent's microphone switched the audio setup).
+    func refresh() { restart() }
 
     private func restart() {
         guard !observers.isEmpty else { return }

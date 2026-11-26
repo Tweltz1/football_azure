@@ -325,6 +325,18 @@ struct BabyPhoneScreen: View {
                                : station.viewers == 1 ? "Parent phone connected" : "\(station.viewers) parent phones connected",
                                good: station.viewers > 0)
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
+                    if station.talking {
+                        Label("The parent phone is talking", systemImage: "mic.fill")
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(accent)
+                    }
+                    if let music = station.music {
+                        HStack {
+                            Label("Playing \(music.title)", systemImage: music.symbol).font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Button("Stop") { station.stopMusic() }.buttonStyle(.bordered)
+                        }
+                        .card()
+                    }
                     if !station.audioOnly && station.tooDark && station.running {
                         Text("It's too dark for the camera. Sound alerts still work. A small night light helps.")
                             .font(.footnote).foregroundStyle(.orange)
@@ -425,6 +437,11 @@ struct ListenScreen: View {
                     if station.notificationsOff {
                         Text("Notifications are off, so you'll only get the Lock Screen card chime. Turn them on in Settings > Notifications > Stork View.")
                             .font(.footnote).foregroundStyle(.orange)
+                    }
+
+                    if station.connected {
+                        LiveSoundRow(level: station.soundLevel, last: station.lastSound, overInternet: station.route == .internet)
+                        TalkAndSoothe(station: station)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -865,4 +882,111 @@ struct RouteBanner: ViewModifier {
 
 extension View {
     func routeBanner(_ text: String?) -> some View { modifier(RouteBanner(text: text)) }
+}
+
+/// "Is it frozen?" answer for the parent: a blinking Live dot and a level meter fed by the sound coming in.
+struct LiveSoundRow: View {
+    let level: Float
+    let last: Date?
+    let overInternet: Bool
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            let age = last.map { context.date.timeIntervalSince($0) } ?? .infinity
+            let live = age < 4
+            let blink = Int(context.date.timeIntervalSince1970 * 2) % 2 == 0
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(live ? Color.green : Color.orange)
+                    .frame(width: 10, height: 10)
+                    .opacity(live && !blink ? 0.4 : 1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(live ? "Live · sound coming in" : age.isFinite ? "No sound for \(Int(age)) s" : "Waiting for sound")
+                        .font(.subheadline.weight(.semibold))
+                    if overInternet {
+                        Text("Over the internet: updates every 2 s, sound plays on noise")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                HStack(alignment: .bottom, spacing: 3) {
+                    ForEach(0..<6, id: \.self) { bar in
+                        let lit = live && Float(bar) < min(6, level * 120)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(lit ? accent : Color.secondary.opacity(0.25))
+                            .frame(width: 5, height: CGFloat(6 + bar * 3))
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+            .card()
+            .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// Parent phone: talk to the baby and start soothing sounds on the baby phone.
+struct TalkAndSoothe: View {
+    @ObservedObject var station: DriverStation
+    @AppStorage("sootheMinutes") private var minutes = 30
+    @AppStorage("sootheVolume") private var volume = 0.5
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button { station.toggleTalk() } label: {
+                Label(station.talking ? "Stop talking" : "Talk to the baby", systemImage: station.talking ? "mic.slash.fill" : "mic.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(station.talking ? .red : accent)
+            .controlSize(.large)
+            if station.talking {
+                Text("The baby phone is playing your voice. The room sound pauses while you talk.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if let problem = station.micProblem { Text(problem).font(.caption).foregroundStyle(.orange) }
+
+            Text("Soothing sounds on the baby phone").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                ForEach(Soothing.allCases) { sound in
+                    let on = station.babyMusic == sound
+                    Button {
+                        station.soothe(on ? nil : sound, minutes: minutes == 0 ? nil : minutes, volume: Float(volume))
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: on ? "stop.fill" : sound.symbol).font(.title3)
+                            Text(sound.title).font(.caption.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(on ? accent : .primary)
+                }
+            }
+            Picker("Turn off after", selection: $minutes) {
+                Text("15 min").tag(15)
+                Text("30 min").tag(30)
+                Text("1 hr").tag(60)
+                Text("Keep on").tag(0)
+            }
+            .pickerStyle(.segmented)
+            HStack {
+                Image(systemName: "speaker.fill").foregroundStyle(.secondary)
+                Slider(value: $volume, in: 0.1...1, onEditingChanged: { editing in
+                    if !editing, let sound = station.babyMusic {
+                        station.soothe(sound, minutes: minutes == 0 ? nil : minutes, volume: Float(volume))
+                    }
+                })
+                Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
+            }
+            if let sound = station.babyMusic {
+                Text("Playing \(sound.title) on the baby phone. Tap it again to stop.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .card()
+    }
 }
