@@ -74,7 +74,23 @@ final class CameraStation: ObservableObject {
         set {
             UserDefaults.standard.set(newValue, forKey: "cameraFront")
             objectWillChange.send()
-            if running { try? rig.startVideo(front: newValue) }
+            if running { try? rig.startVideo(front: newValue, night: nightView) }
+        }
+    }
+
+    /// Night view: the Face ID (TrueDepth) camera's depth picture, lit by its own infrared light,
+    /// so it works in total darkness. Front camera only; shows shapes in gray, not a color photo.
+    static let nightViewAvailable = AVCaptureDevice.default(.builtInTrueDepthCamera, for: .video, position: .front) != nil
+
+    var nightView: Bool {
+        get { Self.nightViewAvailable && UserDefaults.standard.bool(forKey: "cameraNight") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "cameraNight")
+            objectWillChange.send()
+            if running {
+                do { try rig.startVideo(front: useFrontCamera, night: newValue) }
+                catch { problem = "Night view couldn't start: \(error.localizedDescription)" }
+            }
         }
     }
 
@@ -105,7 +121,7 @@ final class CameraStation: ObservableObject {
             DispatchQueue.main.async { MainActor.assumeIsolated { if score > 0.5 { self?.lastCry = Date() } } }
         }
         do {
-            if !audioOnly { try rig.startVideo(front: useFrontCamera) }
+            if !audioOnly { try rig.startVideo(front: useFrontCamera, night: nightView) }
             if micAllowed { try rig.startAudio() } else { problem = "Microphone is off, so crying can't be heard. Turn it on in Settings > Stork View." }
         } catch {
             problem = audioOnly ? "The microphone couldn't start: \(error.localizedDescription)"
@@ -348,7 +364,7 @@ final class CameraStation: ObservableObject {
 }
 
 /// Camera + microphone capture. Works off the main thread; reports through callbacks.
-final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDepthDataOutputDelegate {
     var onFrame: ((Data, Double, Double) -> Void)?
     var onAudio: ((Data, Float) -> Void)?
     var onCry: ((Double) -> Void)?
@@ -365,34 +381,84 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private var lastTinyTime = 0.0
     /// Seconds between pictures (0.5 normally; shorter while a parked Tesla screen is watching).
     var frameInterval = 0.5
+    private var nightMode = false
     private var lastTiny: [Double] = []
     private var interruptionObserver: NSObjectProtocol?
 
-    func startVideo(front: Bool) throws {
+    func startVideo(front: Bool, night: Bool = false) throws {
         session.beginConfiguration()
         session.sessionPreset = .vga640x480
         session.automaticallyConfiguresApplicationAudioSession = false
         session.inputs.forEach { session.removeInput($0) }
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: front ? .front : .back) else {
-            session.commitConfiguration()
-            throw NSError(domain: "BackseatView", code: 1, userInfo: [NSLocalizedDescriptionKey: "No camera found"])
+        session.outputs.forEach { session.removeOutput($0) }
+        let device: AVCaptureDevice?
+        if night {
+            device = AVCaptureDevice.default(.builtInTrueDepthCamera, for: .video, position: .front)
+        } else {
+            device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: front ? .front : .back)
         }
-        if (try? device.lockForConfiguration()) != nil {
+        guard let device else {
+            session.commitConfiguration()
+            throw NSError(domain: "BackseatView", code: 1, userInfo: [NSLocalizedDescriptionKey: night ? "This iPhone has no Face ID camera" : "No camera found"])
+        }
+        if !night, (try? device.lockForConfiguration()) != nil {
             if device.isLowLightBoostSupported { device.automaticallyEnablesLowLightBoostWhenAvailable = true }
             device.unlockForConfiguration()
         }
         let input = try AVCaptureDeviceInput(device: device)
         if session.canAddInput(input) { session.addInput(input) }
-        if session.outputs.isEmpty {
-            let output = AVCaptureVideoDataOutput()
-            output.alwaysDiscardsLateVideoFrames = true
-            output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-            output.setSampleBufferDelegate(self, queue: videoQueue)
-            if session.canAddOutput(output) { session.addOutput(output) }
+        nightMode = night
+        // A video output is always attached (depth needs a running video stream); in night view its
+        // color frames are ignored and the pictures come from the depth map instead.
+        let output = AVCaptureVideoDataOutput()
+        output.alwaysDiscardsLateVideoFrames = true
+        output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        output.setSampleBufferDelegate(self, queue: videoQueue)
+        if session.canAddOutput(output) { session.addOutput(output) }
+        if night {
+            let depth = AVCaptureDepthDataOutput()
+            depth.isFilteringEnabled = true // fills small holes so the picture is smoother
+            depth.alwaysDiscardsLateDepthData = true
+            if session.canAddOutput(depth) { session.addOutput(depth) }
+            depth.setDelegate(self, callbackQueue: videoQueue)
+            depth.connection(with: .depthData)?.isEnabled = true
         }
         session.commitConfiguration()
         let running = self.session
         videoQueue.async { if !running.isRunning { running.startRunning() } }
+    }
+
+    /// Night view: turns the depth map into a gray picture, near = bright, far = dark (about 0.3 to 2.5 m).
+    func depthDataOutput(_ output: AVCaptureDepthDataOutput, didOutput depthData: AVDepthData,
+                         timestamp: CMTime, connection: AVCaptureConnection) {
+        let now = CACurrentMediaTime()
+        guard now - lastFrameTime >= frameInterval - 0.02 else { return }
+        lastFrameTime = now
+        let map = depthData.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32).depthDataMap
+        CVPixelBufferLockBaseAddress(map, .readOnly)
+        let width = CVPixelBufferGetWidth(map), height = CVPixelBufferGetHeight(map)
+        let rowBytes = CVPixelBufferGetBytesPerRow(map)
+        guard let base = CVPixelBufferGetBaseAddress(map), width > 0, height > 0 else {
+            CVPixelBufferUnlockBaseAddress(map, .readOnly)
+            return
+        }
+        var gray = [UInt8](repeating: 0, count: width * height)
+        let near: Float = 1 / 0.3, far: Float = 1 / 2.5
+        for y in 0..<height {
+            let row = base.advanced(by: y * rowBytes).assumingMemoryBound(to: Float32.self)
+            for x in 0..<width {
+                let d = row[x]
+                guard d.isFinite, d > 0 else { continue }
+                let t = min(max((d - far) / (near - far), 0), 1)
+                gray[y * width + x] = UInt8(30 + 225 * t)
+            }
+        }
+        CVPixelBufferUnlockBaseAddress(map, .readOnly)
+        guard let provider = CGDataProvider(data: Data(gray) as CFData),
+              let cg = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
+                               space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: 0),
+                               provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { return }
+        process(CIImage(cgImage: cg), now: now, night: true)
     }
 
     func startAudio() throws {
@@ -471,10 +537,15 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard !nightMode else { return }
         let now = CACurrentMediaTime()
         guard now - lastFrameTime >= frameInterval - 0.02, let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         lastFrameTime = now
+        process(CIImage(cvPixelBuffer: pixels), now: now, night: false)
+    }
 
+    /// Turns one camera (or night view) picture into the shared JPEG + movement + brightness check.
+    private func process(_ source: CIImage, now: CFTimeInterval, night: Bool) {
         let orientation: CGImagePropertyOrientation
         switch rotation {
         case 90: orientation = .right
@@ -482,7 +553,7 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         case 270: orientation = .left
         default: orientation = .up
         }
-        var image = CIImage(cvPixelBuffer: pixels).oriented(orientation)
+        var image = source.oriented(orientation)
         image = image.transformed(by: CGAffineTransform(translationX: -image.extent.minX, y: -image.extent.minY))
         let width = image.extent.width, height = image.extent.height
         guard width > 0, height > 0 else { return }
@@ -503,10 +574,12 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         for i in stride(from: 0, to: rgba.count, by: 4) {
             luma.append((0.3 * Double(rgba[i]) + 0.59 * Double(rgba[i + 1]) + 0.11 * Double(rgba[i + 2])) / 255)
         }
+        // Night view lights the scene itself, so it's never "too dark".
         let mean = luma.reduce(0, +) / Double(luma.count)
+        let brightness = night ? 1 : mean
         // Movement is always measured over about half a second, however often pictures are taken.
         guard now - lastTinyTime >= 0.45 else {
-            onFrame?(jpeg, -1, mean)
+            onFrame?(jpeg, -1, brightness)
             return
         }
         lastTinyTime = now
@@ -520,7 +593,7 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             motion = diff / Double(luma.count)
         }
         lastTiny = luma
-        onFrame?(jpeg, motion, mean)
+        onFrame?(jpeg, motion, brightness)
     }
 }
 

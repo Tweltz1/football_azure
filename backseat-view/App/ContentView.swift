@@ -18,7 +18,7 @@ struct ContentView: View {
         NavigationStack {
             switch mode {
             case "camera": CameraScreen { mode = "" }
-            case "tesla": CameraScreen(tesla: true) { mode = "" }
+            case "tesla": CameraScreen { mode = "" } // older builds had a separate Tesla button
             case "babyphone": BabyPhoneScreen { mode = "" }
             case "listen": ListenScreen { mode = "" }
             case "driver": DriverScreen { mode = "" }
@@ -51,10 +51,8 @@ struct StartScreen: View {
                 }
 
                 ModeGroup(title: "In the car", symbol: "car.fill") {
-                    ModeCard(symbol: "car.fill", color: mint, title: "Show on a Tesla",
-                             detail: "Uses this iPhone's camera. Mount it facing the baby and see them on the Tesla screen.") { pick("tesla") }
                     ModeCard(symbol: "video.fill", color: peach, title: "Back-seat camera",
-                             detail: "Uses this iPhone's camera, facing the baby. Watch on the driver's phone or a Tesla.") { pick("camera") }
+                             detail: "This iPhone is the camera. Mount it facing the baby and watch on your Tesla screen or the driver's phone.") { pick("camera") }
                     ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
                              detail: "Driver's phone. Shows another phone's camera on CarPlay and the Lock Screen.") { pick("driver") }
                 }
@@ -560,8 +558,6 @@ struct SoundPanel: View {
 // MARK: Car: back-seat camera phone
 
 struct CameraScreen: View {
-    /// Opened from "Show on a Tesla": switches the car screen on and puts its steps first.
-    var tesla = false
     let back: () -> Void
     @StateObject private var station = CameraStation()
     @State private var darkScreen = false
@@ -571,15 +567,22 @@ struct CameraScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     PicturePanel(image: station.preview, mood: station.running ? station.mood : nil, placeholder: "Tap Start Camera")
-                    if tesla {
-                        CarScreenCard(screen: station.carScreen)
-                    } else {
-                        StatusPill(text: station.viewers == 0 ? "Waiting for the driver's phone" : "Connected to the driver's phone",
-                                   good: station.viewers > 0)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Set up").font(.headline)
+                        StepRow(number: 1, text: "Mount this phone on the back of a front headrest, camera facing the baby. Plug it in.")
+                        StepRow(number: 2, text: "Check the picture above. Use Rotate if it's sideways, Flip to switch cameras.")
+                        StepRow(number: 3, text: "Turn on Show on a Tesla screen below and follow its steps.")
+                        StepRow(number: 4, text: "Tap Dark screen to turn this screen black. The camera keeps going.")
                     }
+                    .font(.footnote)
+                    .card()
+                    CarScreenCard(screen: station.carScreen)
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
-                    if station.tooDark && station.running {
-                        Text("It's too dark to see much. Sound and crying alerts still work.").font(.footnote).foregroundStyle(.orange)
+                    if station.tooDark && station.running && !station.nightView {
+                        Text(CameraStation.nightViewAvailable
+                             ? "It's too dark to see much. Turn on Night view below, or rely on sound and crying alerts."
+                             : "It's too dark to see much. Sound and crying alerts still work.")
+                            .font(.footnote).foregroundStyle(.orange)
                     }
                     if station.running {
                         BigButton(title: "Dark screen", symbol: "moon.fill") { darkScreen = true }
@@ -590,13 +593,22 @@ struct CameraScreen: View {
                         }
                         .font(.subheadline.weight(.semibold))
                         .card()
+                        if CameraStation.nightViewAvailable {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Toggle(isOn: Binding(get: { station.nightView }, set: { station.nightView = $0 })) {
+                                    Label("Night view", systemImage: "moon.stars.fill").font(.subheadline.weight(.semibold))
+                                }
+                                Text("Uses the Face ID camera's own infrared light, so it works in total darkness. Shows a gray shape view (closer is brighter), not a color photo. Uses the front camera: point the screen side at the baby, about 1 to 2 m away.")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            .card()
+                        }
                     } else {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
-                    if !tesla {
-                        TapHint(name: "Back-seat camera", hint: "On the driver's phone, pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
-                        CarScreenCard(screen: station.carScreen)
-                    }
+                    StatusPill(text: station.viewers == 0 ? "No driver's phone connected (not needed for a Tesla)" : "Connected to the driver's phone",
+                               good: station.viewers > 0)
+                    TapHint(name: "Back-seat camera", hint: "Using a second phone instead of a Tesla? On that phone pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
                     Text("Keep Stork View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
                     if station.running {
@@ -611,15 +623,9 @@ struct CameraScreen: View {
         }
         .statusBarHidden(darkScreen)
         .toolbar(darkScreen ? .hidden : .visible, for: .navigationBar)
-        .modeToolbar(tesla ? "Tesla screen" : "Back-seat camera", back: { station.stop(); back() })
+        .modeToolbar("Back-seat camera", back: { station.stop(); back() })
         .joinAlert(station)
-        .task {
-            if tesla && !station.carScreen.wanted {
-                station.carScreen.wanted = true
-                station.carScreen.objectWillChange.send()
-            }
-            await station.start()
-        }
+        .task { await station.start() }
     }
 }
 
@@ -683,6 +689,23 @@ struct DriverScreen: View {
     }
 }
 
+/// A numbered step: a small filled circle with the number, then the text.
+struct StepRow: View {
+    let number: Int
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("\(number)")
+                .font(.caption.weight(.heavy))
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(accent, in: Circle())
+            Text(text)
+        }
+    }
+}
+
 /// "Show on the car's screen": for a Tesla (or any car with a web browser). See CarScreen.
 struct CarScreenCard: View {
     @ObservedObject var screen: CarScreen
@@ -692,20 +715,27 @@ struct CarScreenCard: View {
             Toggle(isOn: Binding(get: { screen.wanted }, set: { screen.wanted = $0; screen.objectWillChange.send() })) {
                 Label("Show on a Tesla screen", systemImage: "car.fill").font(.headline)
             }
+            if !screen.on && screen.problem == nil {
+                Text("Turn this on to see the baby on your Tesla's screen. No cables or hotspot needed.")
+                    .foregroundStyle(.secondary)
+            }
             if screen.on {
                 if screen.carWatching {
                     StatusPill(text: "The car screen is showing the back seat", good: true)
                 } else {
                     StatusPill(text: screen.connected ? "Ready for the car screen" : "Connecting to the internet...", good: screen.connected)
                 }
-                Text("On the Tesla's browser, go to:")
+                StepRow(number: 1, text: "In the Tesla, tap the browser and go to:")
                 Text("weltzcraft.com/storkview/car")
                     .font(.title3.weight(.bold))
                     .textSelection(.enabled)
-                Text("and type this code:")
+                    .padding(.leading, 36)
+                StepRow(number: 2, text: "Type this code on the Tesla and tap Connect:")
                 Text("\(screen.code.prefix(3)) \(screen.code.suffix(3))")
                     .font(.system(size: 40, weight: .heavy, design: .rounded)).monospacedDigit()
-                Text("Then tap Allow here. After that the car connects by itself whenever this switch is on (bookmark the page in the Tesla).")
+                    .padding(.leading, 36)
+                StepRow(number: 3, text: "Tap Allow when this phone asks.")
+                StepRow(number: 4, text: "Tap \"Tap to start\" on the Tesla. Done! Bookmark the page; next time it connects by itself while this switch is on.")
                 Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Uses this phone's data: about 150 MB an hour while parked, much less while driving. Encrypted on the phone.")
                     .foregroundStyle(.secondary)
                 if let problem = screen.problem { Text(problem).foregroundStyle(.orange) }
