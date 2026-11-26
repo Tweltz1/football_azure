@@ -41,7 +41,8 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
 - Lock Screen card "Baby's room" says Quiet / Making sounds / Fussing / Crying. Phone notifications
   (`BabyNotifier`, max one per kind per minute) for crying (Apple sound classifier), fussing (sounds in
   4+ different seconds of the last 20), optionally any sound, and always when the baby phone disconnects.
-  Same Wi-Fi or AirDrop range needed.
+  Same Wi-Fi or AirDrop range needed. The card refreshes every 4-5 s even with no picture, sends one
+  update at a time (newest wins), and starts a new card if iOS ended it or it was swiped away.
 - **Wi-Fi drop backup.** Home Wi-Fi is used first. If the router drops, `viabilityUpdateHandler` notices
   in ~2 s and the parent phone reconnects; Bonjour also advertises over Apple peer-to-peer Wi-Fi (AWDL,
   what AirDrop uses), so it comes back phone to phone with no router. A pop-up (`RouteBanner`) says
