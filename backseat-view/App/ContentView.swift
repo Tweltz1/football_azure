@@ -970,7 +970,7 @@ struct TalkAndSoothe: View {
 
             Text("Soothing sounds on the baby phone").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                ForEach(Soothing.allCases) { sound in
+                ForEach(Soothing.allCases.filter { $0 != .mine || station.hasRecording }) { sound in
                     let on = station.babyMusic == sound
                     Button {
                         station.soothe(on ? nil : sound, minutes: minutes == 0 ? nil : minutes, volume: Float(volume))
@@ -985,6 +985,23 @@ struct TalkAndSoothe: View {
                     .buttonStyle(.bordered)
                     .tint(on ? accent : .primary)
                 }
+            }
+            Button { station.toggleRecord() } label: {
+                if let since = station.recordingSince {
+                    TimelineView(.periodic(from: since, by: 1)) { context in
+                        Label("Stop and save (\(max(0, 30 - Int(context.date.timeIntervalSince(since)))) s left)", systemImage: "stop.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    Label(station.hasRecording ? "Record a new sound" : "Record your own sound", systemImage: "record.circle")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.bordered)
+            .tint(station.recordingSince != nil ? .red : accent)
+            if station.recordingSince != nil {
+                Text("Shush, hum or sing. It plays over and over on the baby phone as \"My recording\".")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Picker("Turn off after", selection: $minutes) {
                 Text("15 min").tag(15)

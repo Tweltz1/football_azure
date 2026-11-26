@@ -12,6 +12,7 @@ enum Packet: UInt8 {
     case relay = 7    // baby phone -> parent phone at home: InternetRelay.Pass JSON (room + key)
     case talk = 8     // parent -> baby phone: the parent's voice, 16 kHz mono 16-bit PCM
     case control = 9  // parent -> baby phone: ControlMessage JSON (soothing sounds)
+    case clip = 10    // parent -> baby phone: the parent's own recorded sound, 16 kHz mono 16-bit PCM (up to 30 s)
 }
 
 struct StatusMessage: Codable {

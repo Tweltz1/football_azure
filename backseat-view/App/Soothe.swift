@@ -4,7 +4,7 @@ import Foundation
 /// Soft sounds the parent phone can start on the baby phone. Made on the phone (no audio files):
 /// a music-box "Twinkle Twinkle" (public domain), gentle ocean waves, plain white noise and a crackling fire.
 enum Soothing: String, Codable, CaseIterable, Identifiable {
-    case lullaby, ocean, white, fire
+    case lullaby, ocean, white, fire, mine
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum Soothing: String, Codable, CaseIterable, Identifiable {
         case .ocean: return "Ocean"
         case .white: return "White noise"
         case .fire: return "Fireplace"
+        case .mine: return "My recording"
         }
     }
 
@@ -23,14 +24,38 @@ enum Soothing: String, Codable, CaseIterable, Identifiable {
         case .ocean: return "water.waves"
         case .white: return "wind"
         case .fire: return "flame"
+        case .mine: return "person.wave.2.fill"
         }
     }
+
+    /// The parent's own recording (16 kHz mono 16-bit). The parent phone keeps the one it made, and
+    /// the baby phone keeps the copy it was sent, so it can play it any time.
+    static var mineURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("my-sound.pcm")
+    }
+
+    static var hasMine: Bool { FileManager.default.fileExists(atPath: mineURL.path) }
+
+    /// Longest recording: 30 s.
+    static let mineMaxBytes = 16_000 * 2 * 30
 
     /// One seamless loop at 16 kHz mono.
     func makeBuffer() -> AVAudioPCMBuffer? {
         let rate = 16_000.0
         var samples: [Float]
         switch self {
+        case .mine:
+            guard let data = try? Data(contentsOf: Self.mineURL), data.count >= 3_200 else { return nil }
+            let pcm = data.withUnsafeBytes { Array($0.bindMemory(to: Int16.self)) }
+            samples = pcm.map { Float($0) / 32_768 }
+            // Short fades so the loop doesn't click, then a little pause before it plays again.
+            let fade = min(320, samples.count / 4)
+            for i in 0..<fade {
+                let k = Float(i) / Float(fade)
+                samples[i] *= k
+                samples[samples.count - 1 - i] *= k
+            }
+            samples += [Float](repeating: 0, count: Int(rate * 0.6))
         case .white:
             samples = (0..<Int(rate * 4)).map { _ in Float.random(in: -1...1) * 0.18 }
             // Soften the top end a little (one-pole low-pass) so it's a hush, not a hiss.

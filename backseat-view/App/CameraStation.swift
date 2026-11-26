@@ -237,9 +237,13 @@ final class CameraStation: ObservableObject {
         link.onPacket = { [weak self, weak link] type, payload in
             MainActor.assumeIsolated {
                 guard let self, let link else { return }
-                if type == .talk || type == .control {
+                if type == .talk || type == .control || type == .clip {
                     guard self.paired.contains(id) else { return }
-                    if type == .talk { self.hearParent(payload) } else { self.apply(payload) }
+                    switch type {
+                    case .talk: self.hearParent(payload)
+                    case .clip: self.gotClip(payload)
+                    default: self.apply(payload)
+                    }
                     return
                 }
                 guard type == .hello else { return }
@@ -291,9 +295,19 @@ final class CameraStation: ObservableObject {
         rig.playTalk(pcm)
     }
 
+    /// The parent's own recorded sound: keep it, and if it's playing, switch to the new one.
+    private func gotClip(_ payload: Data) {
+        guard payload.count >= 3_200, payload.count <= Soothing.mineMaxBytes + 4_096 else { return }
+        if let old = try? Data(contentsOf: Soothing.mineURL), old == payload { return }
+        try? payload.write(to: Soothing.mineURL, options: .atomic)
+        rig.reloadMine()
+    }
+
     private func apply(_ payload: Data) {
         guard let control = try? JSONDecoder().decode(ControlMessage.self, from: payload) else { return }
-        let sound = control.music.flatMap(Soothing.init(rawValue:))
+        var sound = control.music.flatMap(Soothing.init(rawValue:))
+        // Never shown as playing if this phone hasn't been sent the recording yet.
+        if sound == .mine && !Soothing.hasMine { sound = nil }
         let volume = control.volume ?? 0.5
         if sound != music {
             rig.setMusic(sound, volume: volume)
@@ -786,6 +800,12 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         musicPlayer.volume = volume
         musicPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
         musicPlayer.play()
+    }
+
+    /// A new recording arrived: forget the old one and restart it if it's playing.
+    func reloadMine() {
+        musicCache[.mine] = nil
+        if currentMusic == .mine { setMusic(.mine, volume: musicVolume) }
     }
 
     func setMusicVolume(_ volume: Float) { musicVolume = volume; musicPlayer.volume = volume }

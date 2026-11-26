@@ -70,6 +70,10 @@ final class DriverStation: ObservableObject {
     @Published private(set) var babyMusic: Soothing?
     /// The parent is talking to the baby right now.
     @Published private(set) var talking = false
+    /// Recording the parent's own soothing sound right now (since when).
+    @Published private(set) var recordingSince: Date?
+    @Published private(set) var hasRecording = Soothing.hasMine
+    private var recorded = Data()
     @Published private(set) var micProblem: String?
     private let mic = ParentMic()
     private var lastLevelPublish = Date.distantPast
@@ -475,6 +479,8 @@ final class DriverStation: ObservableObject {
             localUp = true
             relayUp = false
             connected = true
+            // Hand the baby phone the parent's own recording (only over the local link; it's big).
+            if home { sendClip() }
             lostSince = nil
             lastSeen = Date()
             if route == nil || route == .internet { route = .wifi }
@@ -633,9 +639,61 @@ final class DriverStation: ObservableObject {
         }
     }
 
+    /// Record your own soothing sound (up to 30 s): tap to start, tap again to save.
+    func toggleRecord() {
+        if recordingSince != nil { finishRecording(); return }
+        stopTalking()
+        Task { @MainActor in
+            guard await ParentMic.ask() else {
+                micProblem = "Microphone access is off. Turn it on in Settings > Stork View to record a sound."
+                return
+            }
+            recorded = Data()
+            mic.onSound = { [weak self] pcm in
+                MainActor.assumeIsolated {
+                    guard let self, self.recordingSince != nil else { return }
+                    self.recorded.append(pcm)
+                    if self.recorded.count >= Soothing.mineMaxBytes { self.finishRecording() }
+                }
+            }
+            do {
+                try mic.start()
+                micProblem = nil
+                recordingSince = Date()
+            } catch {
+                micProblem = "The microphone couldn't start: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func finishRecording() {
+        guard recordingSince != nil else { return }
+        recordingSince = nil
+        mic.stop()
+        speaker.refresh()
+        let clip = recorded.prefix(Soothing.mineMaxBytes)
+        recorded = Data()
+        guard clip.count >= 16_000 else {
+            micProblem = "That recording was too short. Hold on a little longer next time."
+            return
+        }
+        try? Data(clip).write(to: Soothing.mineURL, options: .atomic)
+        hasRecording = true
+        sendClip()
+        if !localUp && connected {
+            micProblem = "Saved. It goes to the baby phone the next time both phones are on the same Wi-Fi or nearby."
+        }
+    }
+
+    private func sendClip() {
+        guard localUp, let link, let data = try? Data(contentsOf: Soothing.mineURL) else { return }
+        link.send(.clip, data)
+    }
+
     /// Tap to talk to the baby (tap again to stop; stops by itself after 2 minutes).
     func toggleTalk() {
         if talking { stopTalking(); return }
+        if recordingSince != nil { finishRecording() }
         Task { @MainActor in
             guard await ParentMic.ask() else {
                 micProblem = "Microphone access is off. Turn it on in Settings > Stork View to talk to the baby."
