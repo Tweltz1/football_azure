@@ -285,8 +285,11 @@ final class CameraStation: ObservableObject {
         preview = UIImage(data: jpeg)
         tooDark = brightness < 0.06
         // Two busy pictures in a row counts as movement; one alone is usually a passing shadow.
-        motionStreak = motion > 0.05 ? motionStreak + 1 : 0
-        if motionStreak >= 2 { lastMotion = Date() }
+        // motion < 0: a between picture (faster pictures for the Tesla screen) with no movement check.
+        if motion >= 0 {
+            motionStreak = motion > 0.05 ? motionStreak + 1 : 0
+            if motionStreak >= 2 { lastMotion = Date() }
+        }
         broadcast(.frame, jpeg)
         if !home { carScreen.show(picture: jpeg) }
         if remoteViewer, Date().timeIntervalSince(lastRelayFrame) >= 4, let small = Self.small(jpeg) {
@@ -319,6 +322,8 @@ final class CameraStation: ObservableObject {
     }
 
     private func tick() {
+        // About 3 pictures a second while a parked Tesla is watching, otherwise 2.
+        rig.frameInterval = carScreen.wantsFastPictures ? 0.33 : 0.5
         let now = Date()
         if now.timeIntervalSince(lastCry) < 4 {
             mood = .crying
@@ -357,6 +362,9 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let cryListener = CryListener()
     private var analyzer: SNAudioStreamAnalyzer?
     private var lastFrameTime = 0.0
+    private var lastTinyTime = 0.0
+    /// Seconds between pictures (0.5 normally; shorter while a parked Tesla screen is watching).
+    var frameInterval = 0.5
     private var lastTiny: [Double] = []
     private var interruptionObserver: NSObjectProtocol?
 
@@ -464,7 +472,7 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         let now = CACurrentMediaTime()
-        guard now - lastFrameTime >= 0.5, let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        guard now - lastFrameTime >= frameInterval - 0.02, let pixels = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         lastFrameTime = now
 
         let orientation: CGImagePropertyOrientation
@@ -496,6 +504,12 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             luma.append((0.3 * Double(rgba[i]) + 0.59 * Double(rgba[i + 1]) + 0.11 * Double(rgba[i + 2])) / 255)
         }
         let mean = luma.reduce(0, +) / Double(luma.count)
+        // Movement is always measured over about half a second, however often pictures are taken.
+        guard now - lastTinyTime >= 0.45 else {
+            onFrame?(jpeg, -1, mean)
+            return
+        }
+        lastTinyTime = now
         var motion = 0.0
         if lastTiny.count == luma.count {
             // Remove the overall brightness change first so streetlights and tunnels

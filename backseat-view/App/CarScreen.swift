@@ -12,7 +12,7 @@ import UIKit
 /// only sees scrambled bytes. The page keeps the room for next time, so later it connects by itself.
 ///
 /// Tesla pauses all browser video once the car leaves Park; the page watches a tiny hidden video for that
-/// and tells the phone. Parked: a picture about every second. Driving: one still photo every 5 seconds.
+/// and tells the phone. Parked: about 3 pictures a second. Driving: one still photo every 5 seconds.
 @MainActor
 final class CarScreen: ObservableObject {
     @Published private(set) var on = false
@@ -43,6 +43,9 @@ final class CarScreen: ObservableObject {
     private var lastFrameSent = Date.distantPast
     private var lastStatusSent = Date.distantPast
     private var soundBuffer = Data()
+
+    /// The camera takes pictures faster while a parked car screen is watching.
+    var wantsFastPictures: Bool { on && carWatching && parked }
 
     var wanted: Bool {
         get { UserDefaults.standard.bool(forKey: "carScreenOn") }
@@ -168,7 +171,7 @@ final class CarScreen: ObservableObject {
         paused = false
         guard on, carWatching else { return }
         let now = Date()
-        guard now.timeIntervalSince(lastFrameSent) >= (parked ? 1 : 5) else { return }
+        guard now.timeIntervalSince(lastFrameSent) >= (parked ? 0.3 : 5) else { return }
         lastFrameSent = now
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let small = Self.smaller(jpeg) else { return }
@@ -213,16 +216,16 @@ final class CarScreen: ObservableObject {
         if let body = try? JSONSerialization.data(withJSONObject: json) { room?.send(.status, body) }
     }
 
-    /// About 400 px and 12-20 KB, so the relay stays quick and phone data use stays low.
+    /// About 360 px and 8-12 KB, so the relay stays quick and phone data use stays reasonable.
     nonisolated static func smaller(_ jpeg: Data) -> Data? {
         guard let image = UIImage(data: jpeg) else { return nil }
-        let scale = min(1, 400 / max(image.size.width, image.size.height, 1))
+        let scale = min(1, 360 / max(image.size.width, image.size.height, 1))
         let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in
             image.draw(in: CGRect(origin: .zero, size: size))
-        }.jpegData(compressionQuality: 0.5)
+        }.jpegData(compressionQuality: 0.45)
     }
 }
 
