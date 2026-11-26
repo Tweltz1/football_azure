@@ -706,7 +706,7 @@ struct CarScreenCard: View {
                 Text("\(screen.code.prefix(3)) \(screen.code.suffix(3))")
                     .font(.system(size: 40, weight: .heavy, design: .rounded)).monospacedDigit()
                 Text("Then tap Allow here. After that the car connects by itself whenever this switch is on (bookmark the page in the Tesla).")
-                Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Uses this phone's data: about 70 MB an hour while parked, much less while driving. Encrypted on the phone.")
+                Text("Live picture while parked. While driving, Tesla stops video, so the screen shows a still photo every 5 seconds and big Quiet, Moving or Crying. Uses this phone's data: about 150 MB an hour while parked, much less while driving. Encrypted on the phone.")
                     .foregroundStyle(.secondary)
                 if let problem = screen.problem { Text(problem).foregroundStyle(.orange) }
                 Button("Disconnect all car screens", role: .destructive) { screen.forgetAll() }
