@@ -86,9 +86,20 @@ final class CameraStation: ObservableObject {
         get { UserDefaults.standard.bool(forKey: "cameraFront") }
         set {
             UserDefaults.standard.set(newValue, forKey: "cameraFront")
+            // Night view only works on the front Face ID camera, so Flip turns it off.
+            if nightView {
+                UserDefaults.standard.set(false, forKey: "cameraNight")
+                breath = nil
+                breathTracking = false
+            }
             objectWillChange.send()
-            if running { try? rig.startVideo(front: newValue, night: nightView) }
+            if running { try? rig.startVideo(front: newValue, night: false) }
         }
+    }
+
+    /// Flip button. From night view (which is always the front camera) it goes to the back camera.
+    func flip() {
+        useFrontCamera = nightView ? false : !useFrontCamera
     }
 
     /// Night view: the Face ID (TrueDepth) camera's depth picture, lit by its own infrared light,
@@ -127,6 +138,7 @@ final class CameraStation: ObservableObject {
         }
         rig.rotation = rotation
         rig.echoCancel = home
+        carScreen.onCamera = { [weak self] command in self?.camera(command) }
         rig.onFrame = { [weak self] jpeg, motion, brightness in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.gotFrame(jpeg, motion: motion, brightness: brightness) } }
         }
@@ -321,6 +333,7 @@ final class CameraStation: ObservableObject {
 
     private func apply(_ payload: Data) {
         guard let control = try? JSONDecoder().decode(ControlMessage.self, from: payload) else { return }
+        if let command = control.camera { camera(command); return }
         var sound = control.music.flatMap(Soothing.init(rawValue:))
         // Never shown as playing if this phone hasn't been sent the recording yet.
         if sound == .mine && !Soothing.hasMine { sound = nil }
@@ -332,6 +345,17 @@ final class CameraStation: ObservableObject {
             rig.setMusicVolume(volume)
         }
         musicUntil = sound != nil ? control.minutes.map { Date().addingTimeInterval(Double($0) * 60) } : nil
+    }
+
+    /// Camera command from a parent phone, the driver's phone or the car screen.
+    func camera(_ command: String) {
+        guard running, !audioOnly else { return }
+        switch command {
+        case "flip": flip()
+        case "night-on": if Self.nightViewAvailable && !nightView { nightView = true }
+        case "night-off": if nightView { nightView = false }
+        default: break
+        }
     }
 
     /// Stop the soothing sound from this phone.
@@ -483,7 +507,9 @@ final class CameraStation: ObservableObject {
                                    hot: ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue,
                                    breath: measuresBreathing ? (breath?.code ?? "settling") : nil,
                                    breaths: measuresBreathing ? breath?.perMinute : nil,
-                                   breathQuiet: breathQuiet)
+                                   breathQuiet: breathQuiet,
+                                   night: audioOnly ? nil : nightView,
+                                   nightOK: !audioOnly && Self.nightViewAvailable)
         if let data = try? JSONEncoder().encode(status) {
             broadcast(.status, data)
             remoteViewer = relay != nil && now.timeIntervalSince(remoteListen) < 15
@@ -492,7 +518,10 @@ final class CameraStation: ObservableObject {
                 relay?.send(.status, data)
             }
         }
-        if !home { carScreen.show(mood: mood, paused: false, phoneSound: false) }
+        if !home {
+            carScreen.show(mood: mood, paused: false, phoneSound: false)
+            carScreen.setCamera(night: nightView, nightOK: Self.nightViewAvailable)
+        }
     }
 }
 

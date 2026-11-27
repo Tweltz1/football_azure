@@ -34,6 +34,9 @@ struct StatusMessage: Codable {
     var breaths: Int? = nil
     /// Seconds with no breathing rhythm seen while the baby is still and quiet (for the Beta alert).
     var breathQuiet: Int? = nil
+    /// Camera on: night view is on right now / this phone has night view (Face ID camera).
+    var night: Bool? = nil
+    var nightOK: Bool? = nil
 }
 
 enum BVLink {

@@ -145,6 +145,8 @@ struct ControlMessage: Codable {
     var volume: Float?
     /// Stop by itself after this many minutes (nil: keep playing).
     var minutes: Int?
+    /// Camera command instead of a sound: "flip", "night-on" or "night-off".
+    var camera: String? = nil
 }
 
 /// Parent phone microphone for talking to the baby. 16 kHz mono 16-bit, like the baby phone's sound.
