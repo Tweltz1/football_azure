@@ -12,7 +12,7 @@ struct SetupGuide: View {
                 Section("At home") {
                     NavigationLink { GuidePage(topic: .babyPhone) } label: { Label("Baby phone", systemImage: "ear.fill") }
                     NavigationLink { GuidePage(topic: .parentPhone) } label: { Label("Parent phone", systemImage: "headphones") }
-                    NavigationLink { GuidePage(topic: .nightView) } label: { Label("Night view and breathing", systemImage: "moon.stars.fill") }
+                    NavigationLink { GuidePage(topic: .nightView) } label: { Label("Night views and breathing", systemImage: "moon.stars.fill") }
                 }
                 Section("In the car") {
                     NavigationLink { GuidePage(topic: .tesla) } label: { Label("Tesla screen", systemImage: "bolt.car.fill") }
@@ -68,10 +68,10 @@ private struct GuidePage: View {
                      "After connecting once at home, you can listen away from home over the internet.",
                      "Turn your volume up and the ringer switch on."])
         case .nightView:
-            return ("Night view and breathing",
+            return ("Night views and breathing",
                     "An iPhone with Face ID (iPhone X or newer) as the baby phone or camera.",
-                    ["Turn on the camera, then Night view (Night view + breathing on the baby phone).",
-                     "Night view uses the front Face ID camera, so point the screen side at the baby.",
+                    ["Turn on the camera, then pick a night view. Front night view (Front night view + breathing on the baby phone) works in total darkness with the Face ID camera's infrared light.",
+                     "Front night view uses the Face ID camera, so point the screen side at the baby. Low-light boost night mode brightens the normal camera in a dim room. Back LiDAR night view (Pro only) uses the back sensor in total darkness.",
                      "Best distance: 0.5 to 1.5 m (about 2 to 5 ft), looking down at the baby's chest from above or at an angle.",
                      "Keep blankets thin and the chest or tummy in view. The breathing number shows only when the baby is still.",
                      "The breathing readout and its alert work at home only, never in a moving car."],
@@ -88,7 +88,7 @@ private struct GuidePage: View {
                      "Tap \"Tap to start\" on the Tesla and bookmark the page. Next time it connects by itself.",
                      "Tap Dark screen on the iPhone."],
                     ["Parked: live picture. Driving: Tesla stops video, so it shows a still photo every 5 seconds.",
-                     "Flip and Night view buttons show on the Tesla while parked.",
+                     "Flip and Front night view buttons show on the Tesla while parked.",
                      "Uses the iPhone's data: about 150 MB an hour while parked, much less while driving."])
         case .carPlay:
             return ("Apple CarPlay",
@@ -127,7 +127,7 @@ private struct GuidePage: View {
                      "No sound: turn up the volume on the listening phone and check the baby phone's microphone permission.",
                      "Picture paused: the camera phone was locked. Open Stork View on it and use Dark screen instead.",
                      "Tesla says iPhone not connected: keep Stork View open on the iPhone with Show on a Tesla screen on, and check it has data.",
-                     "Too dark: turn on Night view, or rely on sound alerts.",
+                     "Too dark: turn on a night view, or rely on sound alerts.",
                      "Still stuck: on the baby phone use Tips > Forget connected phones, then pair again."],
                     [])
         }
@@ -176,7 +176,7 @@ private struct GuideArt: View {
             case .babyPhone:
                 Placement(items: [("iphone", "Baby phone on a shelf"), ("bed.double.fill", "Crib")], gaps: ["1 to 2 m"])
                 PhoneMock(title: "Baby phone", rows: [.picture, .pill("Connected to Parent's iPhone"), .button("Dark screen"),
-                                                       .toggle("Camera", true), .toggle("Night view + breathing", false)])
+                                                       .toggle("Camera", true), .toggle("Front night view + breathing", false)])
             case .parentPhone:
                 Placement(items: [("iphone", "Baby phone"), ("wifi", "Same Wi-Fi"), ("iphone", "Your phone")], gaps: ["", ""])
                 PhoneMock(title: "Parent phone", rows: [.text("Nearby baby phones"), .listItem("Baby Phone", "Tap to connect"),
@@ -184,7 +184,7 @@ private struct GuideArt: View {
             case .nightView:
                 Placement(items: [("iphone", "Screen side facing down at the baby"), ("figure.child", "Baby's chest in view")], gaps: ["0.5 to 1.5 m"])
                 PhoneMock(title: "Baby phone", rows: [.picture, .breath("Breathing motion: about 34 a minute"),
-                                                       .toggle("Night view + breathing", true)])
+                                                       .toggle("Front night view + breathing", true)])
             case .tesla:
                 Placement(items: [("iphone", "iPhone on the headrest"), ("figure.child", "Baby"), ("bolt.car.fill", "Tesla screen")], gaps: ["faces", "internet"])
                 PhoneMock(title: "Tesla camera", rows: [.toggle("Show on a Tesla screen", true), .text("1  Go to weltzcraft.com/storkview/car"),
