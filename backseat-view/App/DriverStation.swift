@@ -127,6 +127,16 @@ final class DriverStation: ObservableObject {
     @Published private(set) var notificationsOff = false
     private let notifier = BabyNotifier()
 
+    /// Breathing readout from the baby phone's night view (BreathReading code), nil when it's off.
+    @Published private(set) var babyBreath: String?
+    @Published private(set) var babyBreaths: Int?
+    /// Beta: alert when no breathing movement is seen for a while. Off unless the parent turns it on.
+    var breathAlerts: Bool {
+        get { UserDefaults.standard.bool(forKey: "homeBreathAlerts") }
+        set { UserDefaults.standard.set(newValue, forKey: "homeBreathAlerts"); objectWillChange.send() }
+    }
+    static let breathAlertSeconds = 20
+
     var motionAlerts: Bool {
         get { UserDefaults.standard.object(forKey: "homeMotionAlerts") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "homeMotionAlerts"); objectWillChange.send() }
@@ -266,6 +276,8 @@ final class DriverStation: ObservableObject {
         browser?.cancel()
         browser = nil
         if talking { talking = false; mic.stop() }
+        babyBreath = nil
+        babyBreaths = nil
         lastSound = nil
         soundLevel = 0
         dropLink()
@@ -531,7 +543,16 @@ final class DriverStation: ObservableObject {
             lastSeen = Date()
             guard let message = try? JSONDecoder().decode(StatusMessage.self, from: payload) else { return }
             cameraBattery = message.battery
-            if home { checkBabyPhone(message) }
+            if home {
+                checkBabyPhone(message)
+                babyBreath = message.breath
+                babyBreaths = message.breaths
+                if breathAlerts, let quiet = message.breathQuiet, quiet >= Self.breathAlertSeconds {
+                    tell(title: "Check on the baby",
+                         body: "Stork View hasn't seen breathing movement for \(quiet) seconds. This Beta alert can be wrong, so go look.",
+                         kind: "breath")
+                }
+            }
             babyMusic = message.music.flatMap(Soothing.init(rawValue:))
             // Over the internet sound only comes on noise, so the status level is the live meter.
             if relayUp { noteSound(message.level) }

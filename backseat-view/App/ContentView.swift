@@ -358,9 +358,14 @@ struct BabyPhoneScreen: View {
                         }
                         .card()
                     }
-                    if !station.audioOnly && station.tooDark && station.running {
-                        Text("It's too dark for the camera. Sound alerts still work. A small night light helps.")
+                    if !station.audioOnly && station.tooDark && station.running && !station.nightView {
+                        Text(CameraStation.nightViewAvailable
+                             ? "It's too dark for the camera. Turn on Night view below, or rely on sound alerts."
+                             : "It's too dark for the camera. Sound alerts still work. A small night light helps.")
                             .font(.footnote).foregroundStyle(.orange)
+                    }
+                    if station.measuresBreathing {
+                        BreathRow(code: station.breath?.code, perMinute: station.breath?.perMinute)
                     }
 
                     if station.running {
@@ -387,6 +392,14 @@ struct BabyPhoneScreen: View {
                              ? "Sound only. You can lock this phone and it keeps listening."
                              : "With the camera on, keep this phone open and use Dark screen. If it locks, the picture pauses but sound keeps going.")
                             .font(.caption).foregroundStyle(.secondary)
+                        if !station.audioOnly && CameraStation.nightViewAvailable {
+                            Divider()
+                            Toggle(isOn: Binding(get: { station.nightView }, set: { station.nightView = $0 })) {
+                                Label("Night view + breathing", systemImage: "moon.stars.fill")
+                            }
+                            Text("Uses the Face ID camera's own infrared light, so it sees in total darkness (gray shapes, closer is brighter). Point the screen side at the baby, about 0.5 to 1.5 m away. When the baby is still, it also shows about how many breaths a minute it sees. Not a medical device.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     .card()
 
@@ -460,6 +473,9 @@ struct ListenScreen: View {
                             .font(.footnote).foregroundStyle(.orange)
                     }
 
+                    if station.connected, let code = station.babyBreath {
+                        BreathRow(code: code, perMinute: station.babyBreaths)
+                    }
                     if station.connected {
                         LiveSoundRow(level: station.soundLevel, last: station.lastSound, overInternet: station.route == .internet)
                         TalkAndSoothe(station: station)
@@ -539,6 +555,17 @@ struct ListenSettings: View {
                 } header: { Text("Notify me when the baby is…") } footer: {
                     Text("Fussing means little sounds that keep coming back, not one bump. You always get a notification if the baby phone disconnects.")
                 }
+                Section {
+                    Toggle(isOn: Binding(get: { station.breathAlerts }, set: { station.breathAlerts = $0 })) {
+                        HStack(spacing: 6) {
+                            Text("No breathing movement")
+                            Text("BETA").font(.caption2.weight(.bold)).padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(.orange.opacity(0.2), in: Capsule()).foregroundStyle(.orange)
+                        }
+                    }
+                } header: { Text("Breathing alert (Beta)") } footer: {
+                    Text("Off unless you turn it on. Needs the baby phone's camera with Night view + breathing on. If the baby is still and quiet and Stork View stops seeing the breathing rhythm for about \(DriverStation.breathAlertSeconds) seconds, you get a \"Check on the baby\" notification, about half a minute after the change.\n\nThis is an experiment, not a medical or safety device, and it is not an apnea or SIDS monitor. It can miss real problems and it will sometimes go off when the baby is fine (blankets, a turned head, a bumped phone, the baby out of view). Never rely on it. Follow safe sleep guidance and check on your baby in person.")
+                }
                 if InternetRelay.available {
                     Section {
                         Label(station.awayReady ? "Ready" : "Connect once at home first", systemImage: "globe")
@@ -558,6 +585,37 @@ struct ListenSettings: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+    }
+}
+
+/// Breathing readout line (night view at home). An estimate, never a medical number.
+struct BreathRow: View {
+    let code: String?
+    let perMinute: Int?
+
+    private var text: String {
+        switch code {
+        case "breathing": return perMinute.map { "Breathing motion: about \($0) a minute" } ?? "Breathing motion seen"
+        case "moving": return "Moving, so breathing isn't measured"
+        case "unclear": return "Can't see a breathing rhythm right now"
+        default: return "Measuring breathing… keep the baby in view"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label {
+                Text(text)
+            } icon: {
+                Image(systemName: code == "breathing" ? "lungs.fill" : "lungs")
+                    .foregroundStyle(code == "breathing" ? Color.green : Color.secondary)
+            }
+            .font(.subheadline.weight(.semibold))
+            Text("Estimate from the night view, not a medical device.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
     }
 }
 
