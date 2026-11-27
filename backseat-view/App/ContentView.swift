@@ -19,6 +19,7 @@ struct ContentView: View {
             switch mode {
             case "camera": CameraScreen(tesla: false) { mode = "" }
             case "tesla": CameraScreen(tesla: true) { mode = "" }
+            case "solo": CameraScreen(tesla: false, solo: true) { mode = "" }
             case "babyphone": BabyPhoneScreen { mode = "" }
             case "listen": ListenScreen { mode = "" }
             case "driver": DriverScreen { mode = "" }
@@ -60,6 +61,11 @@ struct StartScreen: View {
                              detail: "Spare iPhone facing the baby. Sends the picture and sound to the driver's phone.") { pick("camera") }
                     ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
                              detail: "Driver's phone, plugged into CarPlay. Shows a baby card with a fresh snapshot on the CarPlay screen and Lock Screen.") { pick("driver") }
+                }
+
+                ModeGroup(title: "Car without a screen", symbol: "car.fill") {
+                    ModeCard(symbol: "bell.fill", color: mint, title: "Car-seat watcher",
+                             detail: "One iPhone above the car seat. Dings by itself when the baby cries, fusses or wakes up. No other phone or screen needed.") { pick("solo") }
                 }
 
                 PhoneNameCard()
@@ -687,6 +693,8 @@ struct SoundPanel: View {
 struct CameraScreen: View {
     /// Tesla: the car's own screen watches. Otherwise (CarPlay) the driver's phone does.
     let tesla: Bool
+    /// Car without a screen: this phone works alone and dings.
+    var solo = false
     let back: () -> Void
     @StateObject private var station = CameraStation()
     @State private var darkScreen = false
@@ -700,7 +708,9 @@ struct CameraScreen: View {
                         Text("Set up").font(.headline)
                         StepRow(number: 1, text: "Mount this phone on the back of a front headrest, camera facing the baby. Plug it in.")
                         StepRow(number: 2, text: "Check the picture above. Use Rotate if it's sideways, Flip to switch cameras.")
-                        if tesla {
+                        if solo {
+                            StepRow(number: 3, text: "Pick the dings you want below. They play from this phone, so turn its volume up. The baby may hear them too.")
+                        } else if tesla {
                             StepRow(number: 3, text: "Follow the Tesla steps below.")
                         } else {
                             StepRow(number: 3, text: "On the driver's phone, open Stork View, pick Watch the back seat and tap \(Pairing.name(or: "Back-seat camera")). Tap Allow here (only the first time).")
@@ -711,6 +721,9 @@ struct CameraScreen: View {
                     .card()
                     if tesla {
                         CarScreenCard(screen: station.carScreen)
+                    }
+                    if solo {
+                        SoloDingCard(station: station)
                     }
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
                     if station.tooDark && station.running && !station.nightView {
@@ -741,7 +754,7 @@ struct CameraScreen: View {
                     } else {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
-                    if !tesla {
+                    if !tesla && !solo {
                         StatusPill(text: station.viewers == 0 ? "Waiting for the driver's phone" : "Connected to the driver's phone",
                                    good: station.viewers > 0)
                         TapHint(name: Pairing.name(or: "Back-seat camera"), hint: "On the driver's phone pick Watch the back seat and tap \(Pairing.name(or: "Back-seat camera")). Then tap Allow here. Only once.")
@@ -760,9 +773,32 @@ struct CameraScreen: View {
         }
         .statusBarHidden(darkScreen)
         .toolbar(darkScreen ? .hidden : .visible, for: .navigationBar)
-        .modeToolbar(tesla ? "Tesla camera" : "Back-seat camera", back: { station.stop(); back() })
+        .modeToolbar(solo ? "Car-seat watcher" : tesla ? "Tesla camera" : "Back-seat camera", back: { station.stop(); back() })
         .joinAlert(station)
-        .task { await station.start() }
+        .task { station.solo = solo; await station.start() }
+    }
+}
+
+/// Car without a screen: which dings this phone plays by itself.
+struct SoloDingCard: View {
+    @ObservedObject var station: CameraStation
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Ding on this phone when the baby is…", systemImage: "bell.fill").font(.headline)
+            Toggle("Crying (double ding)", isOn: Binding(get: { station.dingCry }, set: { station.dingCry = $0 }))
+            Toggle("Fussing", isOn: Binding(get: { station.dingFuss }, set: { station.dingFuss = $0 }))
+            Toggle("Waking up (camera)", isOn: Binding(get: { station.dingWake }, set: { station.dingWake = $0 }))
+            if let last = station.lastDing {
+                Text("Last ding: \(last.title) at \(last.at.formatted(date: .omitted, time: .shortened))")
+                    .font(.subheadline.weight(.semibold))
+            }
+            Button { station.testDing() } label: { Label("Test the ding", systemImage: "speaker.wave.2.fill") }
+                .buttonStyle(.bordered)
+            Text("Crying and fussing come from sound, so they work while driving. Waking up means moving for a few seconds after 3 minutes still; bumpy roads can fool it. Breathing isn't checked in the car because road shake is far bigger than a baby's breathing. Not a safety device.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .card()
     }
 }
 
