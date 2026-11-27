@@ -34,6 +34,7 @@ struct ContentView: View {
 
 struct StartScreen: View {
     let pick: (String) -> Void
+    @State private var showGuide = false
 
     var body: some View {
         ScrollView {
@@ -43,6 +44,13 @@ struct StartScreen: View {
                     Text("What is this phone for?").font(.largeTitle.bold())
                 }
                 .padding(.top, 8)
+
+                Button { showGuide = true } label: {
+                    Label("Setup guide: where to put the phones and how to start", systemImage: "book.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
 
                 ModeGroup(title: "At home", symbol: "house.fill") {
                     ModeCard(symbol: "ear.fill", color: mint, title: "Baby phone",
@@ -77,6 +85,7 @@ struct StartScreen: View {
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showGuide) { SetupGuide() }
     }
 
     private struct ModeGroup<Content: View>: View {
