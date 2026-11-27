@@ -60,6 +60,32 @@ final class CameraStation: ObservableObject {
     /// The car's own screen (Tesla browser), when this phone is the camera and the hotspot.
     let carScreen: CarScreen
 
+    /// Car without a screen: this phone is alone above the car seat and dings by itself.
+    var solo = false
+    /// What it last dinged for, shown on screen.
+    @Published private(set) var lastDing: (title: String, at: Date)?
+    private let ding = Ding()
+    private var fussHits: [Date] = []
+    private var lastDingAt: [String: Date] = [:]
+    private var moveStart = Date.distantPast
+    private var stillBefore: TimeInterval = 0
+    private var wakeDinged = false
+
+    var dingCry: Bool {
+        get { UserDefaults.standard.object(forKey: "soloDingCry") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "soloDingCry"); objectWillChange.send() }
+    }
+    var dingFuss: Bool {
+        get { UserDefaults.standard.object(forKey: "soloDingFuss") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "soloDingFuss"); objectWillChange.send() }
+    }
+    var dingWake: Bool {
+        get { UserDefaults.standard.object(forKey: "soloDingWake") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "soloDingWake"); objectWillChange.send() }
+    }
+
+    func testDing() { ding.play() }
+
     init(home: Bool = false) {
         self.home = home
         carScreen = CarScreen()
@@ -153,7 +179,9 @@ final class CameraStation: ObservableObject {
             rig.breathing = watcher
         }
         rig.onCry = { [weak self] score in
-            DispatchQueue.main.async { MainActor.assumeIsolated { if score > 0.5 { self?.lastCry = Date() } } }
+            DispatchQueue.main.async { MainActor.assumeIsolated {
+                if score > 0.5 { self?.lastCry = Date() } else if score > 0.25 { self?.fussHits.append(Date()) }
+            } }
         }
         do {
             if !audioOnly { try rig.startVideo(front: useFrontCamera, night: nightView) }
@@ -423,7 +451,16 @@ final class CameraStation: ObservableObject {
         // motion < 0: a between picture (faster pictures for the Tesla screen) with no movement check.
         if motion >= 0 {
             motionStreak = motion > 0.05 ? motionStreak + 1 : 0
-            if motionStreak >= 2 { lastMotion = Date() }
+            if motionStreak >= 2 {
+                let now = Date()
+                // A new stretch of movement: remember how long it was still before.
+                if now.timeIntervalSince(lastMotion) > 10 {
+                    stillBefore = lastMotion == .distantPast ? 0 : now.timeIntervalSince(lastMotion)
+                    moveStart = now
+                    wakeDinged = false
+                }
+                lastMotion = now
+            }
         }
         broadcast(.frame, jpeg)
         if !home { carScreen.show(picture: jpeg) }
@@ -443,6 +480,27 @@ final class CameraStation: ObservableObject {
         return UIGraphicsImageRenderer(size: size, format: format).image { _ in
             image.draw(in: CGRect(origin: .zero, size: size))
         }.jpegData(compressionQuality: 0.45)
+    }
+
+    /// Car without a screen: ding on this phone for crying, fussing and waking up.
+    private func checkDings(_ now: Date) {
+        fussHits.removeAll { now.timeIntervalSince($0) > 20 }
+        func dingOnce(_ kind: String, _ title: String, every: TimeInterval, times: Int) {
+            if let last = lastDingAt[kind], now.timeIntervalSince(last) < every { return }
+            lastDingAt[kind] = now
+            lastDing = (title, now)
+            ding.play(times: times)
+        }
+        if mood == .crying {
+            if dingCry { dingOnce("cry", "Crying", every: 30, times: 2) }
+        } else if fussHits.count >= 3 {
+            if dingFuss { dingOnce("fuss", "Fussing", every: 60, times: 1) }
+        } else if !audioOnly, dingWake, !wakeDinged, stillBefore >= 180,
+                  now.timeIntervalSince(lastMotion) < 2, now.timeIntervalSince(moveStart) >= 4 {
+            // Moving for a few seconds after 3+ minutes of being still: probably waking up.
+            wakeDinged = true
+            dingOnce("wake", "Waking up", every: 60, times: 1)
+        }
     }
 
     /// Breathing readout is on: home baby phone, camera on, night view.
@@ -500,6 +558,7 @@ final class CameraStation: ObservableObject {
             mood = .quiet
         }
         if let musicUntil, now > musicUntil { stopMusic() }
+        if solo { checkDings(now) }
         if talking && now.timeIntervalSince(lastTalk) > 1.5 { talking = false }
         let status = StatusMessage(mood: mood, level: level, dark: tooDark, battery: UIDevice.current.batteryLevel,
                                    music: music?.rawValue, talking: talking,
