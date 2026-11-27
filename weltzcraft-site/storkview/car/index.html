@@ -31,6 +31,7 @@ small{color:var(--dim);font-size:17px}
   <aside>
     <div id="mood" class="card offline"><div id="emoji">📵</div><div id="title">Connecting</div><div id="since"></div></div>
     <div class="card row"><span>Baby's sound</span><button id="snd" class="off">Off</button></div>
+    <div id="camctl" class="card row hide"><button id="flip" class="off">Flip camera</button><button id="night" class="off">Night view: Off</button></div>
     <div class="row"><small>Stork View. Glance only, like a mirror. Live picture (about 3 a second) while parked; while driving, a still photo every 5 seconds. Never leave a child alone in a car.</small><button id="forget" class="off" style="font-size:15px;padding:10px 14px;white-space:nowrap">Use another phone</button></div>
   </aside>
 </main>
@@ -141,6 +142,9 @@ function show(){
   $('mood').className='card '+cur.mood;$('emoji').textContent=EMOJI[cur.mood]||'🍼';$('title').textContent=cur.title;
   $('since').textContent=cur.since?('for '+fmt(Date.now()/1000-cur.since)):(stale&&roomKey?'Keep Stork View open on the iPhone with Show on a Tesla screen on':'');
   var note=$('note');
+  // Camera buttons only while parked (no fiddling while driving).
+  $('camctl').classList.toggle('hide',stale||!parked);
+  if(!stale){$('night').classList.toggle('hide',!cur.nightOK);$('night').textContent='Night view: '+(cur.night?'On':'Off');$('night').className=(cur.night?'':'off')+(cur.nightOK?'':' hide')}
   if(stale||cur.paused){img.classList.add('hide');$('ph').classList.remove('hide');$('ph').textContent=cur.paused?'Picture paused. The camera phone may be locked.':'Waiting for the picture...';note.classList.add('hide');return}
   img.style.transform='rotate('+((cur.turns||0)*90)+'deg)';
   if(parked)note.classList.add('hide');else{note.classList.remove('hide');note.textContent='Driving: photo every 5 s, updated '+Math.round((Date.now()-gotPic)/1000)+' s ago'}
@@ -149,6 +153,9 @@ setInterval(show,1000);
 
 var ctx=null,soundOn=false,nextAt=0;
 $('snd').onclick=function(){setSound(!soundOn)};
+function camera(c){if(!roomKey)return;var j=enc.encode(JSON.stringify({camera:c})),b=new Uint8Array(j.length+1);b[0]=9;b.set(j,1);seal(b).then(function(x){cast(room,'p',{d:b64(x)})})}
+$('flip').onclick=function(){camera('flip');if(st)st.night=false;show()};
+$('night').onclick=function(){var on=!(st&&st.night);camera(on?'night-on':'night-off');if(st)st.night=on;show()};
 function setSound(on){soundOn=on&&!!ctx;$('snd').textContent=soundOn?'On':'Off';$('snd').className=soundOn?'':'off';if(soundOn){ctx.resume();nextAt=0}hello()}
 function playSound(b){if(!soundOn||!ctx)return;var n=b.length>>1;if(!n)return;var v=new DataView(b.buffer,b.byteOffset,b.byteLength),buf=ctx.createBuffer(1,n,8000),ch=buf.getChannelData(0);
   for(var i=0;i<n;i++)ch[i]=v.getInt16(i*2,true)/32768;var s=ctx.createBufferSource();s.buffer=buf;s.connect(ctx.destination);
