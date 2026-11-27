@@ -64,7 +64,7 @@ struct StartScreen: View {
                              detail: "This iPhone is the camera, facing the baby. The Tesla's own screen shows it. Only one phone needed.") { pick("tesla") }
                 }
 
-                ModeGroup(title: "Car with Apple CarPlay", symbol: "carplay") {
+                ModeGroup(title: "Car with Apple CarPlay", symbol: "car.side.fill") {
                     ModeCard(symbol: "video.fill", color: peach, title: "Back-seat camera",
                              detail: "Spare iPhone facing the baby. Sends the picture and sound to the driver's phone.") { pick("camera") }
                     ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",

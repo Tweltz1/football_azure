@@ -16,7 +16,7 @@ struct SetupGuide: View {
                 }
                 Section("In the car") {
                     NavigationLink { GuidePage(topic: .tesla) } label: { Label("Tesla screen", systemImage: "bolt.car.fill") }
-                    NavigationLink { GuidePage(topic: .carPlay) } label: { Label("Apple CarPlay", systemImage: "carplay") }
+                    NavigationLink { GuidePage(topic: .carPlay) } label: { Label("Apple CarPlay", systemImage: "car.side.fill") }
                     NavigationLink { GuidePage(topic: .solo) } label: { Label("Car without a screen", systemImage: "bell.fill") }
                 }
                 Section("Any setup") {
@@ -190,7 +190,7 @@ private struct GuideArt: View {
                 PhoneMock(title: "Tesla camera", rows: [.toggle("Show on a Tesla screen", true), .text("1  Go to weltzcraft.com/storkview/car"),
                                                          .code("482 913"), .text("3  Tap Allow   4  Tap to start")])
             case .carPlay:
-                Placement(items: [("iphone", "Camera on the headrest"), ("iphone", "Driver's phone"), ("carplay", "CarPlay")], gaps: ["direct", "cable or wireless"])
+                Placement(items: [("iphone", "Camera on the headrest"), ("iphone", "Driver's phone"), ("display", "CarPlay screen")], gaps: ["direct", "cable or wireless"])
                 PhoneMock(title: "CarPlay Dashboard", rows: [.card("Back seat", "Quiet for 12 min")])
             case .solo:
                 Placement(items: [("iphone", "iPhone above the car seat"), ("figure.child", "Baby"), ("bell.fill", "Ding")], gaps: ["faces", ""])
