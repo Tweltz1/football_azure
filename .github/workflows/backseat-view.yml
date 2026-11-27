@@ -117,7 +117,7 @@ jobs:
           set +x
           for f in "$RUNNER_TEMP"/shots/*.png; do
             sips -Z 900 -s format jpeg -s formatOptions 60 "$f" --out "$f.jpg" >/dev/null
-            echo "SHOT-BEGIN $(basename "$f")"; base64 -i "$f.jpg" | tr -d '\n'; echo; echo "SHOT-END"
+            echo "SHOT-BEGIN $(basename "$f")"; base64 -b 3000 -i "$f.jpg"; echo "SHOT-END"
           done
       - uses: actions/upload-artifact@v4
         if: env.UPLOAD != 'true' && github.event_name == 'workflow_dispatch' && inputs.screenshots
