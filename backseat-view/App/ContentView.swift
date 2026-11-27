@@ -34,6 +34,7 @@ struct ContentView: View {
 
 struct StartScreen: View {
     let pick: (String) -> Void
+    @State private var showGuide = UserDefaults.standard.string(forKey: "guideTopic") != nil
 
     var body: some View {
         ScrollView {
@@ -43,6 +44,13 @@ struct StartScreen: View {
                     Text("What is this phone for?").font(.largeTitle.bold())
                 }
                 .padding(.top, 8)
+
+                Button { showGuide = true } label: {
+                    Label("Setup guide: where to put the phones and how to start", systemImage: "book.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
 
                 ModeGroup(title: "At home", symbol: "house.fill") {
                     ModeCard(symbol: "ear.fill", color: mint, title: "Baby phone",
@@ -56,7 +64,7 @@ struct StartScreen: View {
                              detail: "This iPhone is the camera, facing the baby. The Tesla's own screen shows it. Only one phone needed.") { pick("tesla") }
                 }
 
-                ModeGroup(title: "Car with Apple CarPlay", symbol: "carplay") {
+                ModeGroup(title: "Car with Apple CarPlay", symbol: "car.side.fill") {
                     ModeCard(symbol: "video.fill", color: peach, title: "Back-seat camera",
                              detail: "Spare iPhone facing the baby. Sends the picture and sound to the driver's phone.") { pick("camera") }
                     ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
@@ -77,6 +85,7 @@ struct StartScreen: View {
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showGuide) { SetupGuide() }
     }
 
     private struct ModeGroup<Content: View>: View {
