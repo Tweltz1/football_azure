@@ -384,7 +384,7 @@ struct BabyPhoneScreen: View {
                             HStack {
                                 Button { station.rotation = (station.rotation + 90) % 360 } label: { Label("Rotate", systemImage: "rotate.right") }
                                 Spacer()
-                                Button { station.useFrontCamera.toggle() } label: { Label("Flip", systemImage: "arrow.triangle.2.circlepath.camera") }
+                                Button { station.flip() } label: { Label("Flip", systemImage: "arrow.triangle.2.circlepath.camera") }
                             }
                             .font(.subheadline.weight(.semibold))
                         }
@@ -684,7 +684,7 @@ struct CameraScreen: View {
                         HStack {
                             Button { station.rotation = (station.rotation + 90) % 360 } label: { Label("Rotate", systemImage: "rotate.right") }
                             Spacer()
-                            Button { station.useFrontCamera.toggle() } label: { Label("Flip", systemImage: "arrow.triangle.2.circlepath.camera") }
+                            Button { station.flip() } label: { Label("Flip", systemImage: "arrow.triangle.2.circlepath.camera") }
                         }
                         .font(.subheadline.weight(.semibold))
                         .card()

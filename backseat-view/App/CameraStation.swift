@@ -86,9 +86,20 @@ final class CameraStation: ObservableObject {
         get { UserDefaults.standard.bool(forKey: "cameraFront") }
         set {
             UserDefaults.standard.set(newValue, forKey: "cameraFront")
+            // Night view only works on the front Face ID camera, so Flip turns it off.
+            if nightView {
+                UserDefaults.standard.set(false, forKey: "cameraNight")
+                breath = nil
+                breathTracking = false
+            }
             objectWillChange.send()
-            if running { try? rig.startVideo(front: newValue, night: nightView) }
+            if running { try? rig.startVideo(front: newValue, night: false) }
         }
+    }
+
+    /// Flip button. From night view (which is always the front camera) it goes to the back camera.
+    func flip() {
+        useFrontCamera = nightView ? false : !useFrontCamera
     }
 
     /// Night view: the Face ID (TrueDepth) camera's depth picture, lit by its own infrared light,
