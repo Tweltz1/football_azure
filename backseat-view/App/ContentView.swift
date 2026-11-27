@@ -378,7 +378,7 @@ struct BabyPhoneScreen: View {
                         }
                         .card()
                     }
-                    if !station.audioOnly && station.tooDark && station.running && !station.nightView {
+                    if !station.audioOnly && station.tooDark && station.running && !station.nightView && !station.lidarView && !station.lowLightBoost {
                         Text(CameraStation.nightViewAvailable
                              ? "It's too dark for the camera. Turn on Night view below, or rely on sound alerts."
                              : "It's too dark for the camera. Sound alerts still work. A small night light helps.")
@@ -419,6 +419,10 @@ struct BabyPhoneScreen: View {
                             }
                             Text("Uses the Face ID camera's own infrared light, so it sees in total darkness (gray shapes, closer is brighter). Point the screen side at the baby, about 0.5 to 1.5 m away. When the baby is still, it also shows about how many breaths a minute it sees. Not a medical device.")
                                 .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if !station.audioOnly {
+                            Divider()
+                            NightTestSwitches(station: station)
                         }
                     }
                     .card()
@@ -612,6 +616,32 @@ struct ListenSettings: View {
 }
 
 /// Flip and Night view for the camera phone, from the phone that's watching.
+/// Night test switches on the camera phone itself: low-light boost and (Pro iPhones) LiDAR view.
+struct NightTestSwitches: View {
+    @ObservedObject var station: CameraStation
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Try other night options").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Toggle(isOn: Binding(get: { station.lowLightBoost }, set: { station.lowLightBoost = $0 })) {
+                Label("Low-light boost", systemImage: "sun.max.fill").font(.subheadline.weight(.semibold))
+            }
+            Text("Brightens the normal camera in a dim room (a night-light helps). Grainier, and not for pitch black.")
+                .font(.caption).foregroundStyle(.secondary)
+            if CameraStation.lidarAvailable {
+                Toggle(isOn: Binding(get: { station.lidarView }, set: { station.lidarView = $0 })) {
+                    Label("LiDAR view", systemImage: "dot.radiowaves.forward").font(.subheadline.weight(.semibold))
+                }
+                Text("Uses the back LiDAR sensor, so it sees shapes in total darkness (gray, closer is brighter). Point the back of the phone at the baby.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                Text("LiDAR view needs an iPhone Pro (12 Pro or newer). This phone doesn't have the sensor.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 struct CameraRemote: View {
     @ObservedObject var station: DriverStation
     let nightLabel: String
@@ -629,6 +659,18 @@ struct CameraRemote: View {
                 }
                 Text("Night view uses the other phone's front Face ID camera, so point its screen side at the baby. Flip switches night view off.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+            if station.cameraBoost != nil {
+                Toggle(isOn: Binding(get: { station.cameraBoost == true },
+                                     set: { station.cameraCommand($0 ? "boost-on" : "boost-off") })) {
+                    Label("Low-light boost", systemImage: "sun.max.fill").font(.subheadline.weight(.semibold))
+                }
+            }
+            if station.cameraLidarOK {
+                Toggle(isOn: Binding(get: { station.cameraLidar == true },
+                                     set: { station.cameraCommand($0 ? "lidar-on" : "lidar-off") })) {
+                    Label("LiDAR view", systemImage: "dot.radiowaves.forward").font(.subheadline.weight(.semibold))
+                }
             }
         }
         .card()
@@ -735,7 +777,7 @@ struct CameraScreen: View {
                         SoloDingCard(station: station)
                     }
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
-                    if station.tooDark && station.running && !station.nightView {
+                    if station.tooDark && station.running && !station.nightView && !station.lidarView && !station.lowLightBoost {
                         Text(CameraStation.nightViewAvailable
                              ? "It's too dark to see much. Turn on Night view below, or rely on sound and crying alerts."
                              : "It's too dark to see much. Sound and crying alerts still work.")
@@ -760,6 +802,7 @@ struct CameraScreen: View {
                             }
                             .card()
                         }
+                        NightTestSwitches(station: station).card()
                     } else {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
