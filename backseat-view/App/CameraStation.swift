@@ -50,6 +50,11 @@ final class CameraStation: ObservableObject {
     /// Soothing sound the parent started on this phone.
     @Published private(set) var music: Soothing?
     @Published private(set) var talking = false
+    /// Breathing readout (home baby phone with night view on). nil = not measuring.
+    @Published private(set) var breath: BreathReading?
+    /// A breathing rhythm was seen since the baby last moved, so a gap in it means something.
+    private var breathTracking = false
+    private var lastBreathSeen = Date.distantPast
     private var musicUntil: Date?
     private var lastTalk = Date.distantPast
     /// The car's own screen (Tesla browser), when this phone is the camera and the hotspot.
@@ -95,6 +100,8 @@ final class CameraStation: ObservableObject {
         set {
             UserDefaults.standard.set(newValue, forKey: "cameraNight")
             objectWillChange.send()
+            breath = nil
+            breathTracking = false
             if running {
                 do { try rig.startVideo(front: useFrontCamera, night: newValue) }
                 catch { problem = "Night view couldn't start: \(error.localizedDescription)" }
@@ -125,6 +132,13 @@ final class CameraStation: ObservableObject {
         }
         rig.onAudio = { [weak self] pcm, rms in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.gotAudio(pcm, rms: rms) } }
+        }
+        if home {
+            let watcher = BreathWatcher()
+            watcher.onReading = { [weak self] reading in
+                DispatchQueue.main.async { MainActor.assumeIsolated { self?.gotBreath(reading) } }
+            }
+            rig.breathing = watcher
         }
         rig.onCry = { [weak self] score in
             DispatchQueue.main.async { MainActor.assumeIsolated { if score > 0.5 { self?.lastCry = Date() } } }
@@ -194,6 +208,8 @@ final class CameraStation: ObservableObject {
         paired.removeAll()
         viewers = 0
         rig.stop()
+        breath = nil
+        breathTracking = false
         UIApplication.shared.isIdleTimerDisabled = false
         running = false
         carScreen.show(mood: .offline, paused: false, phoneSound: false)
@@ -405,6 +421,36 @@ final class CameraStation: ObservableObject {
         }.jpegData(compressionQuality: 0.45)
     }
 
+    /// Breathing readout is on: home baby phone, camera on, night view.
+    var measuresBreathing: Bool { home && running && !audioOnly && nightView }
+
+    private func gotBreath(_ reading: BreathReading) {
+        guard measuresBreathing else { breath = nil; return }
+        breath = reading
+        switch reading {
+        case .breathing:
+            breathTracking = true
+            lastBreathSeen = Date()
+        case .moving:
+            breathTracking = false
+        case .settling, .unclear:
+            break
+        }
+        // Lost the rhythm for a long time (blanket, baby turned away): stop counting a gap.
+        if breathTracking && Date().timeIntervalSince(lastBreathSeen) > 180 { breathTracking = false }
+    }
+
+    /// Seconds since the last breathing rhythm while the baby is still and quiet, for the parent
+    /// phone's optional Beta alert. nil when there's nothing to count (moving, sound, not tracking).
+    private var breathQuiet: Int? {
+        guard measuresBreathing, breathTracking, breath == .unclear else { return nil }
+        let now = Date()
+        // Crying, noise or movement means the baby is active, not a breathing gap.
+        guard now.timeIntervalSince(lastCry) > 10, now.timeIntervalSince(lastNoise) > 10,
+              now.timeIntervalSince(lastMotion) > 10 else { return nil }
+        return Int(now.timeIntervalSince(lastBreathSeen))
+    }
+
     private func gotAudio(_ pcm: Data, rms: Float) {
         level = rms
         if rms > SoundGate.Sensitivity.medium.threshold { lastNoise = Date() }
@@ -434,7 +480,10 @@ final class CameraStation: ObservableObject {
         let status = StatusMessage(mood: mood, level: level, dark: tooDark, battery: UIDevice.current.batteryLevel,
                                    music: music?.rawValue, talking: talking,
                                    charging: [.charging, .full].contains(UIDevice.current.batteryState),
-                                   hot: ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue)
+                                   hot: ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue,
+                                   breath: measuresBreathing ? (breath?.code ?? "settling") : nil,
+                                   breaths: measuresBreathing ? breath?.perMinute : nil,
+                                   breathQuiet: breathQuiet)
         if let data = try? JSONEncoder().encode(status) {
             broadcast(.status, data)
             remoteViewer = relay != nil && now.timeIntervalSince(remoteListen) < 15
@@ -472,6 +521,9 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     /// Seconds between pictures (0.5 normally; shorter while a parked Tesla screen is watching).
     var frameInterval = 0.5
     private var nightMode = false
+    /// Home baby phone in night view: the breathing readout (nil = off).
+    var breathing: BreathWatcher?
+    private var lastBreathTime = 0.0
     private var lastTiny: [Double] = []
     private var interruptionObserver: NSObjectProtocol?
     private var configObserver: NSObjectProtocol?
@@ -539,8 +591,9 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     func depthDataOutput(_ output: AVCaptureDepthDataOutput, didOutput depthData: AVDepthData,
                          timestamp: CMTime, connection: AVCaptureConnection) {
         let now = CACurrentMediaTime()
-        guard now - lastFrameTime >= frameInterval - 0.02 else { return }
-        lastFrameTime = now
+        let pictureDue = now - lastFrameTime >= frameInterval - 0.02
+        let breathDue = breathing != nil && now - lastBreathTime >= 0.09
+        guard pictureDue || breathDue else { return }
         let map = depthData.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32).depthDataMap
         CVPixelBufferLockBaseAddress(map, .readOnly)
         let width = CVPixelBufferGetWidth(map), height = CVPixelBufferGetHeight(map)
@@ -560,6 +613,12 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
             }
         }
         CVPixelBufferUnlockBaseAddress(map, .readOnly)
+        if breathDue, let breathing {
+            lastBreathTime = now
+            breathing.add(z, width: width, height: height, now: now)
+        }
+        guard pictureDue else { return }
+        lastFrameTime = now
         let gray = Self.nightPicture(z, width: width, height: height)
         guard let provider = CGDataProvider(data: Data(gray) as CFData),
               let cg = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,

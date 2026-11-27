@@ -28,6 +28,12 @@ struct StatusMessage: Codable {
     var charging: Bool? = nil
     /// iOS says the phone is getting hot.
     var hot: Bool? = nil
+    /// Breathing readout (night view at home): BreathReading code, nil when it's off.
+    var breath: String? = nil
+    /// About this many breaths a minute (an estimate, not medical).
+    var breaths: Int? = nil
+    /// Seconds with no breathing rhythm seen while the baby is still and quiet (for the Beta alert).
+    var breathQuiet: Int? = nil
 }
 
 enum BVLink {
