@@ -107,6 +107,7 @@ final class DriverStation: ObservableObject {
         self.home = home
         carScreen = CarScreen()
         card = CarCard(place: home ? "Baby's room" : "Back seat")
+        carScreen.onCamera = { [weak self] command in self?.cameraCommand(command) }
     }
 
     var soundMode: SoundMode {
@@ -128,6 +129,9 @@ final class DriverStation: ObservableObject {
     private let notifier = BabyNotifier()
 
     /// Breathing readout from the baby phone's night view (BreathReading code), nil when it's off.
+    /// The camera phone's night view (nil = camera off or unknown) and whether it has one.
+    @Published private(set) var cameraNight: Bool?
+    @Published private(set) var cameraNightOK = false
     @Published private(set) var babyBreath: String?
     @Published private(set) var babyBreaths: Int?
     /// Beta: alert when no breathing movement is seen for a while. Off unless the parent turns it on.
@@ -278,6 +282,7 @@ final class DriverStation: ObservableObject {
         if talking { talking = false; mic.stop() }
         babyBreath = nil
         babyBreaths = nil
+        cameraNight = nil
         lastSound = nil
         soundLevel = 0
         dropLink()
@@ -543,6 +548,9 @@ final class DriverStation: ObservableObject {
             lastSeen = Date()
             guard let message = try? JSONDecoder().decode(StatusMessage.self, from: payload) else { return }
             cameraBattery = message.battery
+            cameraNight = message.night
+            cameraNightOK = message.nightOK ?? false
+            if !home { carScreen.setCamera(night: message.night ?? false, nightOK: message.nightOK ?? false) }
             if home {
                 checkBabyPhone(message)
                 babyBreath = message.breath
@@ -802,6 +810,14 @@ final class DriverStation: ObservableObject {
         talking = false
         mic.stop()
         speaker.refresh()
+    }
+
+    /// Flip the camera phone's camera, or turn its night view on or off.
+    func cameraCommand(_ command: String) {
+        let control = ControlMessage(music: nil, volume: nil, minutes: nil, camera: command)
+        if let data = try? JSONEncoder().encode(control) { sendToBaby(.control, data) }
+        if command == "night-on" { cameraNight = true }
+        if command == "night-off" || command == "flip" { cameraNight = false }
     }
 
     /// Start (or with nil stop) a soothing sound on the baby phone.

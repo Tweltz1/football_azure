@@ -17,8 +17,8 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             switch mode {
-            case "camera": CameraScreen { mode = "" }
-            case "tesla": CameraScreen { mode = "" } // older builds had a separate Tesla button
+            case "camera": CameraScreen(tesla: false) { mode = "" }
+            case "tesla": CameraScreen(tesla: true) { mode = "" }
             case "babyphone": BabyPhoneScreen { mode = "" }
             case "listen": ListenScreen { mode = "" }
             case "driver": DriverScreen { mode = "" }
@@ -50,11 +50,16 @@ struct StartScreen: View {
                              detail: "Hear and see the baby. Get alerts for crying, fussing and moving.") { pick("listen") }
                 }
 
-                ModeGroup(title: "In the car", symbol: "car.fill") {
+                ModeGroup(title: "Car with a Tesla screen", symbol: "bolt.car.fill") {
+                    ModeCard(symbol: "video.fill", color: peach, title: "Tesla camera",
+                             detail: "This iPhone is the camera, facing the baby. The Tesla's own screen shows it. Only one phone needed.") { pick("tesla") }
+                }
+
+                ModeGroup(title: "Car with Apple CarPlay", symbol: "carplay") {
                     ModeCard(symbol: "video.fill", color: peach, title: "Back-seat camera",
-                             detail: "This iPhone is the camera. Mount it facing the baby and watch on your Tesla screen or the driver's phone.") { pick("camera") }
+                             detail: "Spare iPhone facing the baby. Sends the picture and sound to the driver's phone.") { pick("camera") }
                     ModeCard(symbol: "car.side.rear.open", color: sun, title: "Watch the back seat",
-                             detail: "Driver's phone. Shows another phone's camera on CarPlay and the Lock Screen.") { pick("driver") }
+                             detail: "Driver's phone, plugged into CarPlay. Shows a baby card with a fresh snapshot on the CarPlay screen and Lock Screen.") { pick("driver") }
                 }
 
                 PhoneNameCard()
@@ -494,6 +499,9 @@ struct ListenScreen: View {
                     }
                     .card()
 
+                    if station.connected && station.cameraNight != nil {
+                        CameraRemote(station: station, nightLabel: "Night view + breathing")
+                    }
                     HStack {
                         if station.picture != nil {
                             Button { station.turns += 1 } label: { Label("Rotate", systemImage: "rotate.right") }
@@ -588,6 +596,30 @@ struct ListenSettings: View {
     }
 }
 
+/// Flip and Night view for the camera phone, from the phone that's watching.
+struct CameraRemote: View {
+    @ObservedObject var station: DriverStation
+    let nightLabel: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button { station.cameraCommand("flip") } label: {
+                Label("Flip the other phone's camera", systemImage: "arrow.triangle.2.circlepath.camera")
+            }
+            .font(.subheadline.weight(.semibold))
+            if station.cameraNightOK {
+                Toggle(isOn: Binding(get: { station.cameraNight == true },
+                                     set: { station.cameraCommand($0 ? "night-on" : "night-off") })) {
+                    Label(nightLabel, systemImage: "moon.stars.fill").font(.subheadline.weight(.semibold))
+                }
+                Text("Night view uses the other phone's front Face ID camera, so point its screen side at the baby. Flip switches night view off.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .card()
+    }
+}
+
 /// Breathing readout line (night view at home). An estimate, never a medical number.
 struct BreathRow: View {
     let code: String?
@@ -653,6 +685,8 @@ struct SoundPanel: View {
 // MARK: Car: back-seat camera phone
 
 struct CameraScreen: View {
+    /// Tesla: the car's own screen watches. Otherwise (CarPlay) the driver's phone does.
+    let tesla: Bool
     let back: () -> Void
     @StateObject private var station = CameraStation()
     @State private var darkScreen = false
@@ -666,12 +700,18 @@ struct CameraScreen: View {
                         Text("Set up").font(.headline)
                         StepRow(number: 1, text: "Mount this phone on the back of a front headrest, camera facing the baby. Plug it in.")
                         StepRow(number: 2, text: "Check the picture above. Use Rotate if it's sideways, Flip to switch cameras.")
-                        StepRow(number: 3, text: "Turn on Show on a Tesla screen below and follow its steps.")
+                        if tesla {
+                            StepRow(number: 3, text: "Follow the Tesla steps below.")
+                        } else {
+                            StepRow(number: 3, text: "On the driver's phone, open Stork View, pick Watch the back seat and tap \(Pairing.name(or: "Back-seat camera")). Tap Allow here (only the first time).")
+                        }
                         StepRow(number: 4, text: "Tap Dark screen to turn this screen black. The camera keeps going.")
                     }
                     .font(.footnote)
                     .card()
-                    CarScreenCard(screen: station.carScreen)
+                    if tesla {
+                        CarScreenCard(screen: station.carScreen)
+                    }
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
                     if station.tooDark && station.running && !station.nightView {
                         Text(CameraStation.nightViewAvailable
@@ -701,9 +741,11 @@ struct CameraScreen: View {
                     } else {
                         BigButton(title: "Start Camera", symbol: "video.fill") { Task { await station.start() } }
                     }
-                    StatusPill(text: station.viewers == 0 ? "No driver's phone connected (not needed for a Tesla)" : "Connected to the driver's phone",
-                               good: station.viewers > 0)
-                    TapHint(name: Pairing.name(or: "Back-seat camera"), hint: "Using a second phone instead of a Tesla? On that phone pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
+                    if !tesla {
+                        StatusPill(text: station.viewers == 0 ? "Waiting for the driver's phone" : "Connected to the driver's phone",
+                                   good: station.viewers > 0)
+                        TapHint(name: Pairing.name(or: "Back-seat camera"), hint: "On the driver's phone pick Watch the back seat and tap \(Pairing.name(or: "Back-seat camera")). Then tap Allow here. Only once.")
+                    }
                     Text("Keep Stork View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
                     if station.running {
@@ -718,7 +760,7 @@ struct CameraScreen: View {
         }
         .statusBarHidden(darkScreen)
         .toolbar(darkScreen ? .hidden : .visible, for: .navigationBar)
-        .modeToolbar("Back-seat camera", back: { station.stop(); back() })
+        .modeToolbar(tesla ? "Tesla camera" : "Back-seat camera", back: { station.stop(); back() })
         .joinAlert(station)
         .task { await station.start() }
     }
@@ -753,6 +795,9 @@ struct DriverScreen: View {
                         Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
                     }
                     .card()
+                    if station.connected && station.cameraNight != nil {
+                        CameraRemote(station: station, nightLabel: "Night view")
+                    }
                     HStack {
                         Button { station.turns += 1 } label: { Label("Rotate", systemImage: "rotate.right") }
                             .buttonStyle(.bordered)

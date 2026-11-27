@@ -40,6 +40,10 @@ final class CarScreen: ObservableObject {
     private var paused = false
     private var turns = 0
     private var phoneSound = false
+    private var night = false
+    private var nightOK = false
+    /// A camera command from the car screen ("flip", "night-on", "night-off").
+    var onCamera: ((String) -> Void)?
     private var lastFrameSent = Date.distantPast
     private var lastStatusSent = Date.distantPast
     private var soundBuffer = Data()
@@ -145,7 +149,13 @@ final class CarScreen: ObservableObject {
         let room = InternetRelay(pass: pass)
         room.onPacket = { [weak self] type, payload in
             MainActor.assumeIsolated {
-                guard let self, type == .hello else { return }
+                guard let self else { return }
+                if type == .control {
+                    if let json = try? JSONSerialization.jsonObject(with: payload) as? [String: Any],
+                       let command = json["camera"] as? String { self.onCamera?(command) }
+                    return
+                }
+                guard type == .hello else { return }
                 let flags = payload.first ?? 1
                 let wasWatching = self.carWatching
                 self.lastHello = Date()
@@ -190,6 +200,14 @@ final class CarScreen: ObservableObject {
         if changed { sendStatus(force: true) }
     }
 
+    /// Night view state for the page's Night view button.
+    func setCamera(night: Bool, nightOK: Bool) {
+        guard night != self.night || nightOK != self.nightOK else { return }
+        self.night = night
+        self.nightOK = nightOK
+        sendStatus(force: true)
+    }
+
     /// 16 kHz sound from the camera; sent at 8 kHz in half-second pieces, only while the car has sound on.
     func hear(_ pcm: Data) {
         guard on, carWatching, wantsSound else { soundBuffer.removeAll(); return }
@@ -212,6 +230,8 @@ final class CarScreen: ObservableObject {
             "paused": paused,
             "turns": turns,
             "phoneSound": phoneSound,
+            "night": night,
+            "nightOK": nightOK,
         ]
         if let body = try? JSONSerialization.data(withJSONObject: json) { room?.send(.status, body) }
     }
