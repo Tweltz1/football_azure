@@ -164,7 +164,7 @@ final class CameraStation: ObservableObject {
             breathTracking = false
             if running && !audioOnly {
                 do { try restartVideo() }
-                catch { problem = "LiDAR view couldn't start: \(error.localizedDescription)" }
+                catch { problem = "Back LiDAR night view couldn't start: \(error.localizedDescription)" }
             }
         }
     }
@@ -183,7 +183,7 @@ final class CameraStation: ObservableObject {
             breathTracking = false
             if running {
                 do { try restartVideo() }
-                catch { problem = "Night view couldn't start: \(error.localizedDescription)" }
+                catch { problem = "Front night view couldn't start: \(error.localizedDescription)" }
             }
         }
     }
