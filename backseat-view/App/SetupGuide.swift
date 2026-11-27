@@ -3,9 +3,11 @@ import SwiftUI
 /// Setup advice for every way to use Stork View, opened from the start screen.
 struct SetupGuide: View {
     @Environment(\.dismiss) private var dismiss
+    /// Screenshot runs open a page straight away (launch argument -guideTopic tesla).
+    @State private var path: [GuideTopic] = UserDefaults.standard.string(forKey: "guideTopic").flatMap(GuideTopic.init(name:)).map { [$0] } ?? []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section("At home") {
                     NavigationLink { GuidePage(topic: .babyPhone) } label: { Label("Baby phone", systemImage: "ear.fill") }
@@ -26,6 +28,7 @@ struct SetupGuide: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
+            .navigationDestination(for: GuideTopic.self) { GuidePage(topic: $0) }
             .navigationTitle("Setup guide")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
@@ -158,7 +161,10 @@ private struct GuidePage: View {
     }
 }
 
-enum GuideTopic { case babyPhone, parentPhone, nightView, tesla, carPlay, solo, general, trouble }
+enum GuideTopic: String, Hashable, CaseIterable {
+    case babyPhone, parentPhone, nightView, tesla, carPlay, solo, general, trouble
+    init?(name: String) { self.init(rawValue: name) }
+}
 
 /// Pictures for the setup guide: where things go, and what the screen looks like.
 private struct GuideArt: View {

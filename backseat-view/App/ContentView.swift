@@ -34,7 +34,7 @@ struct ContentView: View {
 
 struct StartScreen: View {
     let pick: (String) -> Void
-    @State private var showGuide = false
+    @State private var showGuide = UserDefaults.standard.string(forKey: "guideTopic") != nil
 
     var body: some View {
         ScrollView {
