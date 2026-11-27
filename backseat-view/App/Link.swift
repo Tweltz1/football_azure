@@ -37,6 +37,10 @@ struct StatusMessage: Codable {
     /// Camera on: night view is on right now / this phone has night view (Face ID camera).
     var night: Bool? = nil
     var nightOK: Bool? = nil
+    /// Test switches: low-light boost on, LiDAR view on, and whether the camera phone has LiDAR.
+    var boost: Bool? = nil
+    var lidar: Bool? = nil
+    var lidarOK: Bool? = nil
 }
 
 enum BVLink {

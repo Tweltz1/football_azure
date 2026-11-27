@@ -132,6 +132,10 @@ final class DriverStation: ObservableObject {
     /// The camera phone's night view (nil = camera off or unknown) and whether it has one.
     @Published private(set) var cameraNight: Bool?
     @Published private(set) var cameraNightOK = false
+    /// Test switches on the camera phone: low-light boost, LiDAR view, and whether it has LiDAR.
+    @Published private(set) var cameraBoost: Bool?
+    @Published private(set) var cameraLidar: Bool?
+    @Published private(set) var cameraLidarOK = false
     @Published private(set) var babyBreath: String?
     @Published private(set) var babyBreaths: Int?
     /// Beta: alert when no breathing movement is seen for a while. Off unless the parent turns it on.
@@ -550,6 +554,9 @@ final class DriverStation: ObservableObject {
             cameraBattery = message.battery
             cameraNight = message.night
             cameraNightOK = message.nightOK ?? false
+            cameraBoost = message.boost
+            cameraLidar = message.lidar
+            cameraLidarOK = message.lidarOK ?? false
             if !home { carScreen.setCamera(night: message.night ?? false, nightOK: message.nightOK ?? false) }
             if home {
                 checkBabyPhone(message)
@@ -818,6 +825,11 @@ final class DriverStation: ObservableObject {
         if let data = try? JSONEncoder().encode(control) { sendToBaby(.control, data) }
         if command == "night-on" { cameraNight = true }
         if command == "night-off" || command == "flip" { cameraNight = false }
+        if command == "night-on" || command == "flip" { cameraLidar = false }
+        if command == "lidar-on" { cameraLidar = true; cameraNight = false }
+        if command == "lidar-off" { cameraLidar = false }
+        if command == "boost-on" { cameraBoost = true }
+        if command == "boost-off" { cameraBoost = false }
     }
 
     /// Start (or with nil stop) a soothing sound on the baby phone.

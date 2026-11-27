@@ -112,20 +112,61 @@ final class CameraStation: ObservableObject {
         get { UserDefaults.standard.bool(forKey: "cameraFront") }
         set {
             UserDefaults.standard.set(newValue, forKey: "cameraFront")
-            // Night view only works on the front Face ID camera, so Flip turns it off.
-            if nightView {
+            // Night view (front Face ID camera) and LiDAR view (back) are tied to one side, so Flip
+            // turns them off.
+            if nightView || lidarView {
                 UserDefaults.standard.set(false, forKey: "cameraNight")
+                UserDefaults.standard.set(false, forKey: "cameraLidar")
                 breath = nil
                 breathTracking = false
             }
             objectWillChange.send()
-            if running { try? rig.startVideo(front: newValue, night: false) }
+            if running { try? restartVideo() }
         }
     }
 
     /// Flip button. From night view (which is always the front camera) it goes to the back camera.
     func flip() {
-        useFrontCamera = nightView ? false : !useFrontCamera
+        useFrontCamera = nightView ? false : (lidarView ? true : !useFrontCamera)
+    }
+
+    /// Starts the camera again with the current Flip / night settings.
+    func restartVideo() throws {
+        rig.boost = lowLightBoost
+        try rig.startVideo(front: useFrontCamera, night: nightView, lidar: lidarView)
+    }
+
+    /// Test switch: low-light boost. Longer exposure on the normal camera plus software brightening
+    /// and noise smoothing. Works on any iPhone in a dim room (not pitch black); grainier picture.
+    var lowLightBoost: Bool {
+        get { UserDefaults.standard.bool(forKey: "cameraBoost") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "cameraBoost")
+            objectWillChange.send()
+            if running && !audioOnly { try? restartVideo() }
+        }
+    }
+
+    /// Test switch: LiDAR night view. Pro iPhones' back depth sensor sees shapes in total darkness,
+    /// shown like night view (gray, closer is brighter). Back camera only.
+    static let lidarAvailable = AVCaptureDevice.default(.builtInLiDARDepthCamera, for: .video, position: .back) != nil
+
+    var lidarView: Bool {
+        get { Self.lidarAvailable && UserDefaults.standard.bool(forKey: "cameraLidar") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "cameraLidar")
+            if newValue {
+                UserDefaults.standard.set(false, forKey: "cameraNight")
+                UserDefaults.standard.set(false, forKey: "cameraFront")
+            }
+            objectWillChange.send()
+            breath = nil
+            breathTracking = false
+            if running && !audioOnly {
+                do { try restartVideo() }
+                catch { problem = "LiDAR view couldn't start: \(error.localizedDescription)" }
+            }
+        }
     }
 
     /// Night view: the Face ID (TrueDepth) camera's depth picture, lit by its own infrared light,
@@ -136,11 +177,12 @@ final class CameraStation: ObservableObject {
         get { Self.nightViewAvailable && UserDefaults.standard.bool(forKey: "cameraNight") }
         set {
             UserDefaults.standard.set(newValue, forKey: "cameraNight")
+            if newValue { UserDefaults.standard.set(false, forKey: "cameraLidar") }
             objectWillChange.send()
             breath = nil
             breathTracking = false
             if running {
-                do { try rig.startVideo(front: useFrontCamera, night: newValue) }
+                do { try restartVideo() }
                 catch { problem = "Night view couldn't start: \(error.localizedDescription)" }
             }
         }
@@ -184,7 +226,7 @@ final class CameraStation: ObservableObject {
             } }
         }
         do {
-            if !audioOnly { try rig.startVideo(front: useFrontCamera, night: nightView) }
+            if !audioOnly { try restartVideo() }
             if micAllowed { try rig.startAudio() } else { problem = "Microphone is off, so crying can't be heard. Turn it on in Settings > Stork View." }
         } catch {
             problem = audioOnly ? "The microphone couldn't start: \(error.localizedDescription)"
@@ -382,6 +424,10 @@ final class CameraStation: ObservableObject {
         case "flip": flip()
         case "night-on": if Self.nightViewAvailable && !nightView { nightView = true }
         case "night-off": if nightView { nightView = false }
+        case "boost-on": if !lowLightBoost { lowLightBoost = true }
+        case "boost-off": if lowLightBoost { lowLightBoost = false }
+        case "lidar-on": if Self.lidarAvailable && !lidarView { lidarView = true }
+        case "lidar-off": if lidarView { lidarView = false }
         default: break
         }
     }
@@ -504,7 +550,7 @@ final class CameraStation: ObservableObject {
     }
 
     /// Breathing readout is on: home baby phone, camera on, night view.
-    var measuresBreathing: Bool { home && running && !audioOnly && nightView }
+    var measuresBreathing: Bool { home && running && !audioOnly && (nightView || lidarView) }
 
     private func gotBreath(_ reading: BreathReading) {
         guard measuresBreathing else { breath = nil; return }
@@ -568,7 +614,10 @@ final class CameraStation: ObservableObject {
                                    breaths: measuresBreathing ? breath?.perMinute : nil,
                                    breathQuiet: breathQuiet,
                                    night: audioOnly ? nil : nightView,
-                                   nightOK: !audioOnly && Self.nightViewAvailable)
+                                   nightOK: !audioOnly && Self.nightViewAvailable,
+                                   boost: audioOnly ? nil : lowLightBoost,
+                                   lidar: audioOnly ? nil : lidarView,
+                                   lidarOK: !audioOnly && Self.lidarAvailable)
         if let data = try? JSONEncoder().encode(status) {
             broadcast(.status, data)
             remoteViewer = relay != nil && now.timeIntervalSince(remoteListen) < 15
@@ -609,6 +658,8 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     /// Seconds between pictures (0.5 normally; shorter while a parked Tesla screen is watching).
     var frameInterval = 0.5
     private var nightMode = false
+    /// Low-light boost (normal camera only): brighten + smooth each picture.
+    var boost = false
     /// Home baby phone in night view: the breathing readout (nil = off).
     var breathing: BreathWatcher?
     private var lastBreathTime = 0.0
@@ -623,29 +674,49 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     private var currentMusic: Soothing?
     private var musicVolume: Float = 0.5
 
-    func startVideo(front: Bool, night: Bool = false) throws {
+    func startVideo(front: Bool, night: Bool = false, lidar: Bool = false) throws {
         session.beginConfiguration()
         session.sessionPreset = .vga640x480
         session.automaticallyConfiguresApplicationAudioSession = false
         session.inputs.forEach { session.removeInput($0) }
         session.outputs.forEach { session.removeOutput($0) }
         let device: AVCaptureDevice?
-        if night {
+        if lidar {
+            device = AVCaptureDevice.default(.builtInLiDARDepthCamera, for: .video, position: .back)
+        } else if night {
             device = AVCaptureDevice.default(.builtInTrueDepthCamera, for: .video, position: .front)
         } else {
             device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: front ? .front : .back)
         }
         guard let device else {
             session.commitConfiguration()
-            throw NSError(domain: "BackseatView", code: 1, userInfo: [NSLocalizedDescriptionKey: night ? "This iPhone has no Face ID camera" : "No camera found"])
+            throw NSError(domain: "BackseatView", code: 1, userInfo: [NSLocalizedDescriptionKey: lidar ? "This iPhone has no LiDAR sensor" : night ? "This iPhone has no Face ID camera" : "No camera found"])
         }
-        if !night, (try? device.lockForConfiguration()) != nil {
+        if !night && !lidar, (try? device.lockForConfiguration()) != nil {
             if device.isLowLightBoostSupported { device.automaticallyEnablesLowLightBoostWhenAvailable = true }
             device.unlockForConfiguration()
         }
         let input = try AVCaptureDeviceInput(device: device)
         if session.canAddInput(input) { session.addInput(input) }
-        nightMode = night
+        if lidar {
+            // The LiDAR camera only gives depth on some formats: pick the smallest one that does.
+            let withDepth = device.formats.filter { !$0.supportedDepthDataFormats.isEmpty }
+            let pick = withDepth.filter { CMVideoFormatDescriptionGetDimensions($0.formatDescription).width >= 640 }
+                .min { CMVideoFormatDescriptionGetDimensions($0.formatDescription).width < CMVideoFormatDescriptionGetDimensions($1.formatDescription).width }
+                ?? withDepth.first
+            if let pick, (try? device.lockForConfiguration()) != nil {
+                session.sessionPreset = .inputPriority
+                device.activeFormat = pick
+                device.unlockForConfiguration()
+            }
+        } else if boost && !night, (try? device.lockForConfiguration()) != nil {
+            // Let auto exposure keep the shutter open up to 1/5 s (pictures go out at 2-3 a second anyway).
+            if device.activeFormat.videoSupportedFrameRateRanges.contains(where: { $0.minFrameRate <= 5 }) {
+                device.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 5)
+            }
+            device.unlockForConfiguration()
+        }
+        nightMode = night || lidar
         // A video output is always attached (depth needs a running video stream); in night view its
         // color frames are ignored and the pictures come from the depth map instead.
         let output = AVCaptureVideoDataOutput()
@@ -653,7 +724,7 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         output.setSampleBufferDelegate(self, queue: videoQueue)
         if session.canAddOutput(output) { session.addOutput(output) }
-        if night {
+        if night || lidar {
             let depth = AVCaptureDepthDataOutput()
             depth.isFilteringEnabled = true // fills small holes so the picture is smoother
             depth.alwaysDiscardsLateDepthData = true
@@ -981,12 +1052,6 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         let width = image.extent.width, height = image.extent.height
         guard width > 0, height > 0 else { return }
 
-        let scale = 480 / max(width, height)
-        let quality = CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String)
-        guard let jpeg = ci.jpegRepresentation(of: image.transformed(by: CGAffineTransform(scaleX: scale, y: scale)),
-                                               colorSpace: CGColorSpaceCreateDeviceRGB(),
-                                               options: [quality: 0.55]) else { return }
-
         // 32x24 brightness grid for movement and darkness checks.
         let tiny = image.transformed(by: CGAffineTransform(scaleX: 32 / width, y: 24 / height))
         var rgba = [UInt8](repeating: 0, count: 32 * 24 * 4)
@@ -1000,6 +1065,21 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         // Night view lights the scene itself, so it's never "too dark".
         let mean = luma.reduce(0, +) / Double(luma.count)
         let brightness = night ? 1 : mean
+
+        var shown = image
+        if boost && !night {
+            // Brighten toward a normal level (up to 3.5 stops), smooth the grain, lift the shadows.
+            let ev = min(3.5, max(0, log2(0.42 / max(mean, 0.01))))
+            shown = shown.applyingFilter("CINoiseReduction", parameters: ["inputNoiseLevel": 0.02 + 0.01 * ev, "inputSharpness": 0.4])
+            shown = shown.applyingFilter("CIExposureAdjust", parameters: [kCIInputEVKey: ev])
+            shown = shown.applyingFilter("CIGammaAdjust", parameters: ["inputPower": 0.85])
+            shown = shown.cropped(to: image.extent)
+        }
+        let scale = 480 / max(width, height)
+        let quality = CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String)
+        guard let jpeg = ci.jpegRepresentation(of: shown.transformed(by: CGAffineTransform(scaleX: scale, y: scale)),
+                                               colorSpace: CGColorSpaceCreateDeviceRGB(),
+                                               options: [quality: 0.55]) else { return }
         // Movement is always measured over about half a second, however often pictures are taken.
         guard now - lastTinyTime >= 0.45 else {
             onFrame?(jpeg, -1, brightness)
