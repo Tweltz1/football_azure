@@ -12,9 +12,23 @@ import UserNotifications
 @MainActor
 final class DriverStation: ObservableObject {
     enum SoundMode: String, CaseIterable {
-        case always, noiseOnly
+        case babyOnly, noiseOnly, always
 
-        var title: String { self == .always ? "All the time" : "Only when there's a noise" }
+        var title: String {
+            switch self {
+            case .babyOnly: return "Baby sounds only"
+            case .noiseOnly: return "Any noise"
+            case .always: return "All the time"
+            }
+        }
+
+        var short: String {
+            switch self {
+            case .babyOnly: return "Baby only"
+            case .noiseOnly: return "Any noise"
+            case .always: return "All sounds"
+            }
+        }
     }
 
     @Published private(set) var picture: UIImage?
@@ -56,6 +70,17 @@ final class DriverStation: ObservableObject {
     @Published private(set) var babyMusic: Soothing?
     /// The parent is talking to the baby right now.
     @Published private(set) var talking = false
+    /// Recording the parent's own soothing sound right now (since when).
+    @Published private(set) var recordingSince: Date?
+    @Published private(set) var hasRecording = Soothing.hasMine
+    private var recorded = Data()
+    // Failsafes: each warning goes out once until things are fine again.
+    private var lastConnect = Date()
+    private var warnedSilent = false
+    private var warnedBattery = false
+    private var warnedHot = false
+    private var warnedVolume = false
+    private var lastDeadman = Date.distantPast
     @Published private(set) var micProblem: String?
     private let mic = ParentMic()
     private var lastLevelPublish = Date.distantPast
@@ -137,6 +162,7 @@ final class DriverStation: ObservableObject {
     private let card: CarCard
     private let gate = SoundGate()
     private let watcher = BabyWatcher(format: BabySpeaker.format)
+    private let babyGate = BabyGate()
     private var lastCry = Date.distantPast
     private var lastMotion = Date.distantPast
     private var motionStreak = 0
@@ -205,9 +231,14 @@ final class DriverStation: ObservableObject {
         lastCry = .distantPast
         lastMotion = .distantPast
         lookingSince = Date()
+        babyGate.reset()
         watcher.onCry = { [weak self] score in
             guard score > 0.5 else { return }
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.lastCry = Date() } }
+        }
+        watcher.onBaby = { [weak self] score in
+            guard score > 0.3 else { return }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.babyGate.lastBaby = Date() } }
         }
         watcher.onPicture = { [weak self] motion, brightness in
             DispatchQueue.main.async {
@@ -244,6 +275,7 @@ final class DriverStation: ObservableObject {
         relayUp = false
         route = nil
         speaker.stop()
+        BabyNotifier.disarm()
         card.end()
         connected = false
         hearing = false
@@ -374,7 +406,7 @@ final class DriverStation: ObservableObject {
                     self.route = Self.isDirect(link.connection.currentPath) ? .direct : .wifi
                     if let peer = self.linkPeer {
                         let token = Pairing.saved(self.kind)[peer]
-                        let join = JoinRequest(device: Pairing.myID(), name: self.home ? "Parent phone" : "Driver's phone", token: token)
+                        let join = JoinRequest(device: Pairing.myID(), name: Pairing.name(or: self.home ? "Parent phone" : "Driver's phone"), token: token)
                         if token == nil { self.status = "Tap Allow on the \(self.other)" }
                         link.send(.hello, (try? JSONEncoder().encode(join)) ?? Data())
                     } else {
@@ -447,12 +479,17 @@ final class DriverStation: ObservableObject {
                 var saved = Pairing.saved(kind)
                 saved[answer.id] = answer.token
                 Pairing.setSaved(kind, saved)
+                // Both ways, so the phones can swap jobs later without asking again.
+                if home { Pairing.allowed[answer.id] = answer.token }
                 hasSaved = true
                 if let browser { updateNearby(browser.browseResults) }
             }
             localUp = true
             relayUp = false
+            if !connected { lastConnect = Date() }
             connected = true
+            // Hand the baby phone the parent's own recording (only over the local link; it's big).
+            if home { sendClip() }
             lostSince = nil
             lastSeen = Date()
             if route == nil || route == .internet { route = .wifi }
@@ -494,6 +531,7 @@ final class DriverStation: ObservableObject {
             lastSeen = Date()
             guard let message = try? JSONDecoder().decode(StatusMessage.self, from: payload) else { return }
             cameraBattery = message.battery
+            if home { checkBabyPhone(message) }
             babyMusic = message.music.flatMap(Soothing.init(rawValue:))
             // Over the internet sound only comes on noise, so the status level is the live meter.
             if relayUp { noteSound(message.level) }
@@ -553,9 +591,9 @@ final class DriverStation: ObservableObject {
                         self.tell(title: "Baby monitor lost the baby phone", body: "Check that Stork View is still listening on the baby phone, and that Wi-Fi and Bluetooth are on on both phones.", kind: "lost")
                     }
                 }
-            } else {
-                pushCard(force: true)
             }
+            // Show "Not connected" on the card right away (the chime above still waits).
+            pushCard(force: true)
         }
     }
 
@@ -594,6 +632,55 @@ final class DriverStation: ObservableObject {
         }
     }
 
+    // MARK: Failsafes
+
+    private func failsafes() {
+        let now = Date()
+        // If iOS closes the app, this notification (pushed back every 20 s while running) goes off.
+        if running, now.timeIntervalSince(lastDeadman) >= 20 {
+            lastDeadman = now
+            BabyNotifier.armDeadman()
+        }
+        // Connected phone to phone (where sound comes all the time) but nothing heard for 30 s.
+        if connected, localUp, !talking, recordingSince == nil {
+            let heard = max(lastSound ?? .distantPast, lastConnect)
+            if now.timeIntervalSince(heard) > 30 {
+                if !warnedSilent {
+                    warnedSilent = true
+                    tell(title: "Not hearing the baby phone", body: "Connected, but no sound has come from the baby phone for 30 seconds. Check that Stork View is still listening on it.", kind: "silent")
+                }
+            } else {
+                warnedSilent = false
+            }
+        }
+        // Parent phone turned all the way down.
+        let volume = AVAudioSession.sharedInstance().outputVolume
+        if volume < 0.01 {
+            if !warnedVolume && connected {
+                warnedVolume = true
+                tell(title: "Your volume is all the way down", body: "Turn up this phone's volume to hear the baby.", kind: "volume")
+            }
+        } else if volume > 0.05 {
+            warnedVolume = false
+        }
+    }
+
+    private func checkBabyPhone(_ message: StatusMessage) {
+        let low = message.battery >= 0 && message.battery < 0.2 && message.charging == false
+        if low && !warnedBattery {
+            warnedBattery = true
+            tell(title: "Baby phone battery is low", body: "The baby phone is at \(Int(message.battery * 100))% and not charging. Plug it in so it keeps listening.", kind: "battery")
+        } else if message.charging == true || message.battery > 0.3 {
+            warnedBattery = false
+        }
+        if message.hot == true && !warnedHot {
+            warnedHot = true
+            tell(title: "Baby phone is getting hot", body: "Move it out of the sun or off the blanket, or turn its camera off. A hot phone may stop listening.", kind: "hot")
+        } else if message.hot == false {
+            warnedHot = false
+        }
+    }
+
     private func noteSound(_ level: Float) {
         lastSound = Date()
         guard Date().timeIntervalSince(lastLevelPublish) > 0.2 else { return }
@@ -611,9 +698,61 @@ final class DriverStation: ObservableObject {
         }
     }
 
+    /// Record your own soothing sound (up to 30 s): tap to start, tap again to save.
+    func toggleRecord() {
+        if recordingSince != nil { finishRecording(); return }
+        stopTalking()
+        Task { @MainActor in
+            guard await ParentMic.ask() else {
+                micProblem = "Microphone access is off. Turn it on in Settings > Stork View to record a sound."
+                return
+            }
+            recorded = Data()
+            mic.onSound = { [weak self] pcm in
+                MainActor.assumeIsolated {
+                    guard let self, self.recordingSince != nil else { return }
+                    self.recorded.append(pcm)
+                    if self.recorded.count >= Soothing.mineMaxBytes { self.finishRecording() }
+                }
+            }
+            do {
+                try mic.start()
+                micProblem = nil
+                recordingSince = Date()
+            } catch {
+                micProblem = "The microphone couldn't start: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func finishRecording() {
+        guard recordingSince != nil else { return }
+        recordingSince = nil
+        mic.stop()
+        speaker.refresh()
+        let clip = recorded.prefix(Soothing.mineMaxBytes)
+        recorded = Data()
+        guard clip.count >= 16_000 else {
+            micProblem = "That recording was too short. Hold on a little longer next time."
+            return
+        }
+        try? Data(clip).write(to: Soothing.mineURL, options: .atomic)
+        hasRecording = true
+        sendClip()
+        if !localUp && connected {
+            micProblem = "Saved. It goes to the baby phone the next time both phones are on the same Wi-Fi or nearby."
+        }
+    }
+
+    private func sendClip() {
+        guard localUp, let link, let data = try? Data(contentsOf: Soothing.mineURL) else { return }
+        link.send(.clip, data)
+    }
+
     /// Tap to talk to the baby (tap again to stop; stops by itself after 2 minutes).
     func toggleTalk() {
         if talking { stopTalking(); return }
+        if recordingSince != nil { finishRecording() }
         Task { @MainActor in
             guard await ParentMic.ask() else {
                 micProblem = "Microphone access is off. Turn it on in Settings > Stork View to talk to the baby."
@@ -658,8 +797,12 @@ final class DriverStation: ObservableObject {
         watcher.hear(sound)
         gate.listen(to: sound)
         // While the parent talks, don't play the room back (it would echo their own voice).
+        let babyPart = babyGate.pass(sound)
         if talking {
             _ = gate.pass(sound)
+        } else if home && soundMode == .babyOnly {
+            _ = gate.pass(sound)
+            babyPart.forEach(speaker.play)
         } else if home && soundMode == .noiseOnly {
             gate.pass(sound).forEach(speaker.play)
         } else {
@@ -669,6 +812,7 @@ final class DriverStation: ObservableObject {
 
     private func tick() {
         speaker.keepAlive()
+        if home { failsafes() }
         let since = lastSeen.map { Date().timeIntervalSince($0) } ?? 0
         if localUp, since > 8 { lostCamera() }
         if relayUp, since > 15 { lostRelay() }
@@ -686,7 +830,13 @@ final class DriverStation: ObservableObject {
             picturePaused = true
             pushCard(force: true)
         }
-        hearing = !home || soundMode == .always || gate.isOpen
+        if now.timeIntervalSince(lastCry) < 4 { babyGate.lastBaby = max(babyGate.lastBaby, lastCry) }
+        switch soundMode {
+        case _ where !home: hearing = true
+        case .always: hearing = true
+        case .noiseOnly: hearing = gate.isOpen
+        case .babyOnly: hearing = babyGate.isOpen
+        }
         let newMood: BabyMood
         if now.timeIntervalSince(lastCry) < 4 {
             newMood = .crying
@@ -716,6 +866,10 @@ final class DriverStation: ObservableObject {
             } else {
                 pushCard(force: true)
             }
+        } else {
+            // Keep the card fresh even with no picture coming (sound-only, or picture paused), so its
+            // "updated" time moves and a dropped update fixes itself within a few seconds.
+            pushCard()
         }
     }
 
@@ -859,6 +1013,22 @@ final class BabyNotifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// "Stork View stopped listening": goes off 90 s from now unless pushed back again. The app
+    /// pushes it back every 20 s while it runs, so it only fires if iOS closes the app.
+    static func armDeadman() {
+        let content = UNMutableNotificationContent()
+        content.title = "Stork View stopped listening"
+        content.body = "The baby monitor isn't running on this phone any more. Open Stork View to start it again."
+        content.sound = .default
+        content.threadIdentifier = "baby-monitor"
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 90, repeats: false)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "stork-stopped", content: content, trigger: trigger))
+    }
+
+    static func disarm() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["stork-stopped"])
+    }
+
     func post(title: String, body: String, kind: String) {
         let now = Date()
         if let last = lastSent[kind], now.timeIntervalSince(last) < 60 { return }
@@ -897,6 +1067,12 @@ final class CarCard {
         }
     }
 
+    /// The newest card waiting to go out, and whether a send is already running. Updates go out one
+    /// at a time and only the newest is kept, so an older update can never land after a newer one
+    /// and leave the card on an old mood.
+    private var pending: (content: ActivityContent<BabyActivityAttributes.ContentState>, alert: AlertConfiguration?)?
+    private var sending = false
+
     /// Returns a message for the user when the card can't be shown.
     func update(mood: BabyMood, picture: UIImage?, paused: Bool, force: Bool, alert: CardAlert?) -> String? {
         let now = Date()
@@ -910,11 +1086,19 @@ final class CarCard {
         let state = BabyActivityAttributes.ContentState(mood: mood, thumb: picture.flatMap(Self.tinyJPEG), updated: now,
                                                         since: mood == .offline ? nil : moodSince, paused: paused)
         let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(60))
-        if let activity {
+        // The card was swiped away or ended by iOS (they last 8 hours at most): start a fresh one.
+        if let activity, activity.activityState == .ended || activity.activityState == .dismissed {
+            self.activity = nil
+        }
+        if activity != nil {
             let sound = alert.map { AlertConfiguration(title: "\($0.title)", body: "\($0.body)", sound: .default) }
-            Task { await activity.update(content, alertConfiguration: sound) }
+            // Keep an alert that hasn't gone out yet even if a newer picture replaces its state.
+            pending = (content, sound ?? pending?.alert)
+            sendNext()
             return nil
         }
+        // A new card can only be started while the app is on screen. Until then the next update tries again.
+        guard UIApplication.shared.applicationState == .active else { return nil }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             return "Live Activities are off for Stork View. Turn them on in Settings > Stork View so the baby card can show on your Lock Screen and car screen."
         }
@@ -926,9 +1110,21 @@ final class CarCard {
         }
     }
 
+    private func sendNext() {
+        guard !sending, let activity, let next = pending else { return }
+        pending = nil
+        sending = true
+        Task { @MainActor in
+            await activity.update(next.content, alertConfiguration: next.alert)
+            self.sending = false
+            self.sendNext()
+        }
+    }
+
     func end() {
         guard let activity else { return }
         self.activity = nil
+        pending = nil
         lastSent = .distantPast
         Task { await activity.end(nil, dismissalPolicy: .immediate) }
     }

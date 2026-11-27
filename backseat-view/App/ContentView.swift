@@ -57,7 +57,9 @@ struct StartScreen: View {
                              detail: "Driver's phone. Shows another phone's camera on CarPlay and the Lock Screen.") { pick("driver") }
                 }
 
-                Text("Tip: put Stork View on both phones. Each one picks its job here.")
+                PhoneNameCard()
+
+                Text("Tip: put Stork View on both phones. Each one picks its job here. Once paired, they can swap jobs any time.")
                     .font(.footnote).foregroundStyle(.secondary)
                 StudioCredit().padding(.top, 4)
             }
@@ -77,6 +79,24 @@ struct StartScreen: View {
                 content
             }
         }
+    }
+}
+
+/// "This phone's name": what the other phone sees in its nearby list and when it connects.
+struct PhoneNameCard: View {
+    @AppStorage("phoneName") private var phoneName = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("This phone's name", systemImage: "iphone").font(.headline)
+            TextField("Like Nursery or Tyler's iPhone", text: $phoneName)
+                .textFieldStyle(.roundedBorder)
+                .submitLabel(.done)
+            Text("The other phone sees this name when it looks for nearby phones.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
     }
 }
 
@@ -322,6 +342,7 @@ struct BabyPhoneScreen: View {
                         PicturePanel(image: station.preview, mood: station.running ? station.mood : nil, placeholder: "Tap Start to begin")
                     }
                     StatusPill(text: station.viewers == 0 ? "Waiting for the parent phone"
+                               : !station.viewerNames.isEmpty ? "Connected to \(station.viewerNames.joined(separator: " and "))"
                                : station.viewers == 1 ? "Parent phone connected" : "\(station.viewers) parent phones connected",
                                good: station.viewers > 0)
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
@@ -348,7 +369,7 @@ struct BabyPhoneScreen: View {
                         BigButton(title: "Start", symbol: "play.fill") { Task { await station.start() } }
                     }
 
-                    TapHint(name: "Baby Phone", hint: "On the parent phone, pick Parent phone and tap Baby Phone. Then tap Allow here. Only once.")
+                    TapHint(name: Pairing.name(or: "Baby Phone"), hint: "On the parent phone, pick Parent phone and tap \(Pairing.name(or: "Baby Phone")). Then tap Allow here. Only once, and after that the two phones can also swap jobs.")
 
                     VStack(alignment: .leading, spacing: 12) {
                         Toggle(isOn: Binding(get: { !station.audioOnly }, set: { on in Task { await station.setVideo(on) } })) {
@@ -451,8 +472,7 @@ struct ListenScreen: View {
                             Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
                         }
                         Picker("Hear the baby", selection: Binding(get: { station.soundMode }, set: { station.soundMode = $0 })) {
-                            Text("Only on noise").tag(DriverStation.SoundMode.noiseOnly)
-                            Text("All the time").tag(DriverStation.SoundMode.always)
+                            ForEach(DriverStation.SoundMode.allCases, id: \.self) { Text($0.short).tag($0) }
                         }
                         .pickerStyle(.segmented)
                     }
@@ -509,7 +529,7 @@ struct ListenSettings: View {
                         ForEach(SoundGate.Sensitivity.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                 } header: { Text("Sound") } footer: {
-                    Text("\"Only when there's a noise\" stays silent until the baby makes a sound, then plays it live (with the first moment kept) for a few seconds.")
+                    Text("\"Baby sounds only\" stays silent until the phone recognizes the baby (crying, whimpering, babbling, laughing), so TV, talking, fans, echo and the soothing sound stay quiet. \"Any noise\" plays any sound louder than the room's hum. Both keep the first moment and play live for a few seconds after.")
                 }
                 Section {
                     Toggle("Crying", isOn: Binding(get: { station.cryAlerts }, set: { station.cryAlerts = $0 }))
@@ -625,7 +645,7 @@ struct CameraScreen: View {
                     }
                     StatusPill(text: station.viewers == 0 ? "No driver's phone connected (not needed for a Tesla)" : "Connected to the driver's phone",
                                good: station.viewers > 0)
-                    TapHint(name: "Back-seat camera", hint: "Using a second phone instead of a Tesla? On that phone pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
+                    TapHint(name: Pairing.name(or: "Back-seat camera"), hint: "Using a second phone instead of a Tesla? On that phone pick Watch the back seat and tap Back-seat camera. Then tap Allow here. Only once.")
                     Text("Keep Stork View open on this phone and plug it in. Mount it securely so it can't fly loose.")
                         .font(.caption).foregroundStyle(.secondary)
                     if station.running {
@@ -949,8 +969,8 @@ struct TalkAndSoothe: View {
             if let problem = station.micProblem { Text(problem).font(.caption).foregroundStyle(.orange) }
 
             Text("Soothing sounds on the baby phone").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                ForEach(Soothing.allCases) { sound in
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                ForEach(Soothing.allCases.filter { $0 != .mine || station.hasRecording }) { sound in
                     let on = station.babyMusic == sound
                     Button {
                         station.soothe(on ? nil : sound, minutes: minutes == 0 ? nil : minutes, volume: Float(volume))
@@ -965,6 +985,23 @@ struct TalkAndSoothe: View {
                     .buttonStyle(.bordered)
                     .tint(on ? accent : .primary)
                 }
+            }
+            Button { station.toggleRecord() } label: {
+                if let since = station.recordingSince {
+                    TimelineView(.periodic(from: since, by: 1)) { context in
+                        Label("Stop and save (\(max(0, 30 - Int(context.date.timeIntervalSince(since)))) s left)", systemImage: "stop.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    Label(station.hasRecording ? "Record a new sound" : "Record your own sound", systemImage: "record.circle")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.bordered)
+            .tint(station.recordingSince != nil ? .red : accent)
+            if station.recordingSince != nil {
+                Text("Shush, hum or sing. It plays over and over on the baby phone as \"My recording\".")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Picker("Turn off after", selection: $minutes) {
                 Text("15 min").tag(15)

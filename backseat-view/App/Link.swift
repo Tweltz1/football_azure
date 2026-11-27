@@ -12,6 +12,7 @@ enum Packet: UInt8 {
     case relay = 7    // baby phone -> parent phone at home: InternetRelay.Pass JSON (room + key)
     case talk = 8     // parent -> baby phone: the parent's voice, 16 kHz mono 16-bit PCM
     case control = 9  // parent -> baby phone: ControlMessage JSON (soothing sounds)
+    case clip = 10    // parent -> baby phone: the parent's own recorded sound, 16 kHz mono 16-bit PCM (up to 30 s)
 }
 
 struct StatusMessage: Codable {
@@ -23,6 +24,10 @@ struct StatusMessage: Codable {
     var music: String? = nil
     /// The baby phone is playing the parent's voice right now.
     var talking: Bool? = nil
+    /// Plugged in (charging or full).
+    var charging: Bool? = nil
+    /// iOS says the phone is getting hot.
+    var hot: Bool? = nil
 }
 
 enum BVLink {
@@ -129,6 +134,15 @@ enum Pairing {
         let id = randomHex(4)
         UserDefaults.standard.set(id, forKey: "pairingID")
         return id
+    }
+
+    /// The name this phone shows to the other phone (blank = "Baby Phone" / "Parent phone").
+    static var myName: String {
+        (UserDefaults.standard.string(forKey: "phoneName") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func name(or fallback: String) -> String {
+        myName.isEmpty ? fallback : String(myName.prefix(30))
     }
 
     static func randomHex(_ bytes: Int) -> String {

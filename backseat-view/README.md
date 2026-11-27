@@ -35,13 +35,14 @@ See and hear the back seat from the front seat, with a baby card on the CarPlay 
   `CameraStation(audioOnly: true)`) sends microphone sound only, advertises as "Baby Phone" on the same
   Bonjour service with its own 4-digit code, and keeps listening while locked (background audio mode).
 - The **listening phone** (`ListenScreen`, `DriverStation(home: true)`) plays the sound either
-  **All the time** or **Only when there's a noise** (default). `SoundGate` (`App/Listening.swift`) calls
+  **Baby only** (`BabyGate`: plays only once Apple's sound classifier hears crying, whimpering, babbling or laughing, keeping the last 2 s; cuts TV, talk, echo and the soothing sound), **Any noise** (default) or **All sounds**. `SoundGate` (`App/Listening.swift`) calls
   it a noise when loudness beats the sensitivity level and 3x the room's background hum, keeps the
   last 0.5 s so the start isn't cut off, and keeps the sound on for 8 s after the last noise.
 - Lock Screen card "Baby's room" says Quiet / Making sounds / Fussing / Crying. Phone notifications
   (`BabyNotifier`, max one per kind per minute) for crying (Apple sound classifier), fussing (sounds in
   4+ different seconds of the last 20), optionally any sound, and always when the baby phone disconnects.
-  Same Wi-Fi or AirDrop range needed.
+  Same Wi-Fi or AirDrop range needed. The card refreshes every 4-5 s even with no picture, sends one
+  update at a time (newest wins), and starts a new card if iOS ended it or it was swiped away.
 - **Wi-Fi drop backup.** Home Wi-Fi is used first. If the router drops, `viabilityUpdateHandler` notices
   in ~2 s and the parent phone reconnects; Bonjour also advertises over Apple peer-to-peer Wi-Fi (AWDL,
   what AirDrop uses), so it comes back phone to phone with no router. A pop-up (`RouteBanner`) says

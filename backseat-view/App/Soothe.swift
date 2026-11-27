@@ -2,9 +2,9 @@ import AVFoundation
 import Foundation
 
 /// Soft sounds the parent phone can start on the baby phone. Made on the phone (no audio files):
-/// a music-box "Twinkle Twinkle" (public domain), gentle ocean waves, and plain white noise.
+/// a music-box "Twinkle Twinkle" (public domain), gentle ocean waves, plain white noise and a crackling fire.
 enum Soothing: String, Codable, CaseIterable, Identifiable {
-    case lullaby, ocean, white
+    case lullaby, ocean, white, fire, mine
 
     var id: String { rawValue }
 
@@ -13,6 +13,8 @@ enum Soothing: String, Codable, CaseIterable, Identifiable {
         case .lullaby: return "Lullaby"
         case .ocean: return "Ocean"
         case .white: return "White noise"
+        case .fire: return "Fireplace"
+        case .mine: return "My recording"
         }
     }
 
@@ -21,14 +23,39 @@ enum Soothing: String, Codable, CaseIterable, Identifiable {
         case .lullaby: return "music.note"
         case .ocean: return "water.waves"
         case .white: return "wind"
+        case .fire: return "flame"
+        case .mine: return "person.wave.2.fill"
         }
     }
+
+    /// The parent's own recording (16 kHz mono 16-bit). The parent phone keeps the one it made, and
+    /// the baby phone keeps the copy it was sent, so it can play it any time.
+    static var mineURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("my-sound.pcm")
+    }
+
+    static var hasMine: Bool { FileManager.default.fileExists(atPath: mineURL.path) }
+
+    /// Longest recording: 30 s.
+    static let mineMaxBytes = 16_000 * 2 * 30
 
     /// One seamless loop at 16 kHz mono.
     func makeBuffer() -> AVAudioPCMBuffer? {
         let rate = 16_000.0
         var samples: [Float]
         switch self {
+        case .mine:
+            guard let data = try? Data(contentsOf: Self.mineURL), data.count >= 3_200 else { return nil }
+            let pcm = data.withUnsafeBytes { Array($0.bindMemory(to: Int16.self)) }
+            samples = pcm.map { Float($0) / 32_768 }
+            // Short fades so the loop doesn't click, then a little pause before it plays again.
+            let fade = min(320, samples.count / 4)
+            for i in 0..<fade {
+                let k = Float(i) / Float(fade)
+                samples[i] *= k
+                samples[samples.count - 1 - i] *= k
+            }
+            samples += [Float](repeating: 0, count: Int(rate * 0.6))
         case .white:
             samples = (0..<Int(rate * 4)).map { _ in Float.random(in: -1...1) * 0.18 }
             // Soften the top end a little (one-pole low-pass) so it's a hush, not a hiss.
@@ -48,6 +75,33 @@ enum Soothing: String, Codable, CaseIterable, Identifiable {
                 let t = Double(i) / rate
                 let swell = 0.25 + 0.75 * pow(0.5 - 0.5 * cos(2 * .pi * t / 6), 1.5)
                 samples[i] = pink * Float(swell)
+            }
+        case .fire:
+            // A soft low roar (brown noise) with random crackles and the odd louder pop. 20 s loop.
+            let count = Int(rate * 20)
+            samples = [Float](repeating: 0, count: count)
+            var brown: Float = 0
+            for i in 0..<count {
+                brown = (brown + 0.02 * Float.random(in: -1...1)) * 0.995
+                let t = Double(i) / rate
+                // The roar breathes a little, with whole cycles per loop so it joins up.
+                let breathe = 0.8 + 0.2 * sin(2 * .pi * t / 5) * sin(2 * .pi * t / 4)
+                samples[i] = brown * 1.4 * Float(breathe)
+            }
+            // Crackles: tiny bursts of bright noise that die away in a few milliseconds.
+            for _ in 0..<260 {
+                let at = Int.random(in: 0..<(count - 4_000))
+                let pop = Double.random(in: 0...1) < 0.08
+                let length = Int(rate * (pop ? 0.05 : Double.random(in: 0.004...0.015)))
+                let loud = pop ? Float.random(in: 0.35...0.5) : Float.random(in: 0.06...0.22)
+                var last: Float = 0
+                for n in 0..<length {
+                    let decay = Float(exp(-Double(n) / (Double(length) / 4)))
+                    let noise = Float.random(in: -1...1)
+                    // Pops are a bit duller (low-passed), crackles stay bright.
+                    last += (pop ? 0.4 : 0.9) * (noise - last)
+                    samples[at + n] += last * decay * loud
+                }
             }
         case .lullaby:
             // Twinkle Twinkle Little Star as a soft music box. 1 = quarter note (0.55 s).

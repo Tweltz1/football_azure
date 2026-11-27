@@ -16,6 +16,9 @@ final class CameraStation: ObservableObject {
     @Published private(set) var preview: UIImage?
     @Published private(set) var mood: BabyMood = .quiet
     @Published private(set) var viewers = 0
+    /// Names of the connected parent phones, for "Connected to Tyler's iPhone".
+    @Published private(set) var viewerNames: [String] = []
+    private var linkNames: [ObjectIdentifier: String] = [:]
     @Published private(set) var running = false
     @Published private(set) var problem: String?
     @Published private(set) var tooDark = false
@@ -204,7 +207,7 @@ final class CameraStation: ObservableObject {
             var txt = NWTXTRecord()
             txt["id"] = Pairing.myID()
             txt["kind"] = home ? "baby" : "car"
-            listener.service = NWListener.Service(name: home ? "Baby Phone" : "Back-seat camera", type: BVLink.service, txtRecord: txt)
+            listener.service = NWListener.Service(name: Pairing.name(or: home ? "Baby Phone" : "Back-seat camera"), type: BVLink.service, txtRecord: txt)
             listener.newConnectionHandler = { [weak self] connection in
                 MainActor.assumeIsolated { self?.accept(connection) }
             }
@@ -234,15 +237,19 @@ final class CameraStation: ObservableObject {
         link.onPacket = { [weak self, weak link] type, payload in
             MainActor.assumeIsolated {
                 guard let self, let link else { return }
-                if type == .talk || type == .control {
+                if type == .talk || type == .control || type == .clip {
                     guard self.paired.contains(id) else { return }
-                    if type == .talk { self.hearParent(payload) } else { self.apply(payload) }
+                    switch type {
+                    case .talk: self.hearParent(payload)
+                    case .clip: self.gotClip(payload)
+                    default: self.apply(payload)
+                    }
                     return
                 }
                 guard type == .hello else { return }
                 if let join = try? JSONDecoder().decode(JoinRequest.self, from: payload) {
                     if let token = join.token, Pairing.allowed[join.device] == token {
-                        self.welcome(link, answer: nil)
+                        self.welcome(link, answer: nil, name: join.name)
                     } else if self.request == nil {
                         // Ask on this phone, like AirDrop. No answer in a minute counts as no.
                         self.request = (name: join.name, device: join.device)
@@ -270,7 +277,9 @@ final class CameraStation: ObservableObject {
                     }
                     self?.links[id] = nil
                     self?.paired.remove(id)
+                    self?.linkNames[id] = nil
                     self?.viewers = self?.paired.count ?? 0
+                    if let self { self.viewerNames = self.paired.compactMap { self.linkNames[$0] } }
                 default: break
                 }
             }
@@ -286,9 +295,19 @@ final class CameraStation: ObservableObject {
         rig.playTalk(pcm)
     }
 
+    /// The parent's own recorded sound: keep it, and if it's playing, switch to the new one.
+    private func gotClip(_ payload: Data) {
+        guard payload.count >= 3_200, payload.count <= Soothing.mineMaxBytes + 4_096 else { return }
+        if let old = try? Data(contentsOf: Soothing.mineURL), old == payload { return }
+        try? payload.write(to: Soothing.mineURL, options: .atomic)
+        rig.reloadMine()
+    }
+
     private func apply(_ payload: Data) {
         guard let control = try? JSONDecoder().decode(ControlMessage.self, from: payload) else { return }
-        let sound = control.music.flatMap(Soothing.init(rawValue:))
+        var sound = control.music.flatMap(Soothing.init(rawValue:))
+        // Never shown as playing if this phone hasn't been sent the recording yet.
+        if sound == .mine && !Soothing.hasMine { sound = nil }
         let volume = control.volume ?? 0.5
         if sound != music {
             rig.setMusic(sound, volume: volume)
@@ -314,7 +333,14 @@ final class CameraStation: ObservableObject {
         if allow {
             let token = Pairing.randomHex(16)
             Pairing.allowed[request.device] = token
-            welcome(link, answer: JoinAnswer(id: Pairing.myID(), token: token))
+            if home {
+                // Remember the other phone both ways, so the two phones can swap jobs (this one
+                // as the parent phone tomorrow) without asking again.
+                var saved = Pairing.saved("baby")
+                saved[request.device] = token
+                Pairing.setSaved("baby", saved)
+            }
+            welcome(link, answer: JoinAnswer(id: Pairing.myID(), token: token), name: request.name)
         } else {
             deny(link)
         }
@@ -326,10 +352,12 @@ final class CameraStation: ObservableObject {
         links.values.forEach { $0.cancel() }
     }
 
-    private func welcome(_ link: FramedConnection, answer: JoinAnswer?) {
+    private func welcome(_ link: FramedConnection, answer: JoinAnswer?, name: String? = nil) {
         let id = ObjectIdentifier(link)
         paired.insert(id)
+        if let name { linkNames[id] = name }
         viewers = paired.count
+        viewerNames = paired.compactMap { linkNames[$0] }
         link.send(.welcome, answer.flatMap { try? JSONEncoder().encode($0) } ?? Data())
         // Hand the parent phone the internet backup's room + key (only ever over the local link).
         if home, InternetRelay.available, let pass = try? JSONEncoder().encode(InternetRelay.Pass.mine) {
@@ -404,7 +432,9 @@ final class CameraStation: ObservableObject {
         if let musicUntil, now > musicUntil { stopMusic() }
         if talking && now.timeIntervalSince(lastTalk) > 1.5 { talking = false }
         let status = StatusMessage(mood: mood, level: level, dark: tooDark, battery: UIDevice.current.batteryLevel,
-                                   music: music?.rawValue, talking: talking)
+                                   music: music?.rawValue, talking: talking,
+                                   charging: [.charging, .full].contains(UIDevice.current.batteryState),
+                                   hot: ProcessInfo.processInfo.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue)
         if let data = try? JSONEncoder().encode(status) {
             broadcast(.status, data)
             remoteViewer = relay != nil && now.timeIntervalSince(remoteListen) < 15
@@ -444,6 +474,14 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     private var nightMode = false
     private var lastTiny: [Double] = []
     private var interruptionObserver: NSObjectProtocol?
+    private var configObserver: NSObjectProtocol?
+    private var watchdog: Timer?
+    private var usingVoice = false
+    private var micRestarts = 0
+    private let tapLock = NSLock()
+    private var lastTap = 0.0
+    private var currentMusic: Soothing?
+    private var musicVolume: Float = 0.5
 
     func startVideo(front: Bool, night: Bool = false) throws {
         session.beginConfiguration()
@@ -590,21 +628,61 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         let audio = AVAudioSession.sharedInstance()
         try audio.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .defaultToSpeaker])
         try audio.setActive(true)
-        let input = engine.inputNode
-        if echoCancel {
-            try? input.setVoiceProcessingEnabled(true)
-            input.isVoiceProcessingAGCEnabled = false
+        do {
+            try startEngine(voice: echoCancel)
+        } catch where echoCancel {
+            // Echo cancelling wouldn't start on this phone: plain microphone instead.
+            try startEngine(voice: false)
         }
+        // A phone call or alarm stops the microphone; start it again when it's over.
+        if interruptionObserver == nil {
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+            ) { [weak self] note in
+                guard let self,
+                      let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+                try? AVAudioSession.sharedInstance().setActive(true)
+                self.restart()
+            }
+        }
+        // iOS stops the engine when the audio setup changes (speaker, headphones, echo cancelling
+        // settling in). Without this the microphone, talk-back and soothing sounds all go silent.
+        if configObserver == nil {
+            configObserver = NotificationCenter.default.addObserver(
+                forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+            ) { [weak self] _ in self?.restart() }
+        }
+        // Watchdog: if the microphone stops delivering sound, restart it, and if that doesn't
+        // help, drop echo cancelling (some phones go silent with it on).
+        watchdog?.invalidate()
+        watchdog = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.checkMic() }
+    }
+
+    /// Builds the microphone tap and starts the engine, with or without Apple's echo cancelling.
+    private func startEngine(voice: Bool) throws {
+        engine.stop()
+        let input = engine.inputNode
+        input.removeTap(onBus: 0)
+        if input.isVoiceProcessingEnabled != voice { try input.setVoiceProcessingEnabled(voice) }
+        if voice { input.isVoiceProcessingAGCEnabled = false }
+        usingVoice = voice
         if !engine.attachedNodes.contains(talkPlayer) {
             engine.attach(talkPlayer)
             engine.attach(musicPlayer)
-            engine.connect(talkPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
-            engine.connect(musicPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
         }
+        engine.disconnectNodeOutput(talkPlayer)
+        engine.disconnectNodeOutput(musicPlayer)
+        engine.connect(talkPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
+        engine.connect(musicPlayer, to: engine.mainMixerNode, format: BabySpeaker.format)
+        engine.mainMixerNode.outputVolume = 1
         let inFormat = input.outputFormat(forBus: 0)
-        guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else { return }
+        guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else {
+            throw NSError(domain: "BackseatView", code: 2, userInfo: [NSLocalizedDescriptionKey: "No microphone found"])
+        }
 
         // Apple's built-in sound classifier knows "baby_crying" and "crying_sobbing".
+        analyzer?.removeAllRequests()
         let analyzer = SNAudioStreamAnalyzer(format: inFormat)
         let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
         cryListener.onScore = { [weak self] score in self?.onCry?(score) }
@@ -614,9 +692,9 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         guard let outFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true),
               let converter = AVAudioConverter(from: inFormat, to: outFormat) else { return }
         let soundQueue = self.soundQueue
-        input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { [weak self] buffer, when in
             guard let self else { return }
+            self.tapLock.lock(); self.lastTap = CACurrentMediaTime(); self.tapLock.unlock()
             soundQueue.async { analyzer.analyze(buffer, atAudioFramePosition: when.sampleTime) }
 
             var rms: Float = 0
@@ -645,18 +723,43 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         }
         engine.prepare()
         try engine.start()
-        // A phone call or alarm stops the microphone; start it again when it's over.
-        if interruptionObserver == nil {
-            interruptionObserver = NotificationCenter.default.addObserver(
-                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
-            ) { [weak self] note in
-                guard let self,
-                      let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                      AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
-                try? AVAudioSession.sharedInstance().setActive(true)
-                if !self.engine.isRunning { self.engine.prepare(); try? self.engine.start() }
-            }
+        tapLock.lock(); lastTap = CACurrentMediaTime(); tapLock.unlock()
+        // Echo cancelling can steer sound to the quiet earpiece: use the loudspeaker.
+        if voice { try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker) }
+        resumeMusic()
+    }
+
+    /// Starts the engine again after iOS stopped it, and picks the soothing sound back up.
+    private func restart() {
+        guard watchdog != nil || interruptionObserver != nil else { return }
+        if usingVoice { try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker) }
+        guard !engine.isRunning else { return }
+        engine.prepare()
+        if (try? engine.start()) == nil {
+            try? startEngine(voice: usingVoice)
+            return
         }
+        resumeMusic()
+    }
+
+    private func checkMic() {
+        tapLock.lock(); let quiet = CACurrentMediaTime() - lastTap; tapLock.unlock()
+        guard quiet > 3 else { micRestarts = 0; return }
+        micRestarts += 1
+        if micRestarts >= 2 && usingVoice {
+            // Restarting didn't bring the microphone back: turn echo cancelling off.
+            try? startEngine(voice: false)
+        } else {
+            try? startEngine(voice: usingVoice)
+        }
+    }
+
+    private func resumeMusic() {
+        guard let currentMusic, let buffer = musicCache[currentMusic], engine.isRunning else { return }
+        musicPlayer.stop()
+        musicPlayer.volume = musicVolume
+        musicPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
+        musicPlayer.play()
     }
 
     func stop() {
@@ -664,6 +767,11 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
         videoQueue.async { if running.isRunning { running.stopRunning() } }
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
         interruptionObserver = nil
+        if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
+        configObserver = nil
+        watchdog?.invalidate()
+        watchdog = nil
+        currentMusic = nil
         engine.inputNode.removeTap(onBus: 0)
         talkPlayer.stop()
         musicPlayer.stop()
@@ -675,6 +783,7 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
 
     /// Plays the parent's voice (16 kHz mono 16-bit) through this phone's speaker.
     func playTalk(_ pcm: Data) {
+        if !engine.isRunning { restart() }
         guard engine.isRunning, let buffer = BabySpeaker.decode(pcm) else { return }
         talkPlayer.volume = 1
         talkPlayer.scheduleBuffer(buffer)
@@ -684,15 +793,24 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
     /// Starts (or with nil stops) a soothing sound, looping.
     func setMusic(_ sound: Soothing?, volume: Float) {
         musicPlayer.stop()
-        guard let sound, engine.isRunning else { return }
+        currentMusic = sound
+        musicVolume = volume
+        guard let sound else { return }
         if musicCache[sound] == nil { musicCache[sound] = sound.makeBuffer() }
-        guard let buffer = musicCache[sound] else { return }
+        if !engine.isRunning { restart() }
+        guard engine.isRunning, let buffer = musicCache[sound] else { return }
         musicPlayer.volume = volume
         musicPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
         musicPlayer.play()
     }
 
-    func setMusicVolume(_ volume: Float) { musicPlayer.volume = volume }
+    /// A new recording arrived: forget the old one and restart it if it's playing.
+    func reloadMine() {
+        musicCache[.mine] = nil
+        if currentMusic == .mine { setMusic(.mine, volume: musicVolume) }
+    }
+
+    func setMusicVolume(_ volume: Float) { musicVolume = volume; musicPlayer.volume = volume }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard !nightMode else { return }
@@ -758,11 +876,18 @@ final class CaptureRig: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, 
 /// Receives the sound classifier's results and reports the crying confidence (0...1).
 final class CryListener: NSObject, SNResultsObserving {
     var onScore: ((Double) -> Void)?
+    /// How sure the classifier is that this is the baby at all (crying, whimpering, laughing, babbling).
+    var onBaby: ((Double) -> Void)?
+    /// Baby sounds Apple's built-in classifier knows. Any it doesn't know just score 0.
+    static let babyLabels = ["baby_crying", "crying_sobbing", "baby_laughter", "whimpering", "babbling", "giggling", "screaming"]
 
     func request(_ request: SNRequest, didProduce result: SNResult) {
         guard let result = result as? SNClassificationResult else { return }
         let baby = result.classification(forIdentifier: "baby_crying")?.confidence ?? 0
         let sobbing = result.classification(forIdentifier: "crying_sobbing")?.confidence ?? 0
         onScore?(max(baby, sobbing))
+        if let onBaby {
+            onBaby(Self.babyLabels.map { result.classification(forIdentifier: $0)?.confidence ?? 0 }.max() ?? 0)
+        }
     }
 }
