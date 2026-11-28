@@ -49,6 +49,7 @@ private struct GuidePage: View {
                     ["Open Stork View and pick Baby phone. Allow the microphone (and the camera if you want the picture).",
                      "Place it 1 to 2 m (3 to 6 ft) from the crib, out of the baby's reach. Never put it in the crib or hang its cable near the crib.",
                      "Plug it in. With the camera on it uses more battery.",
+                     "Turn on Do Not Disturb on the baby phone (Control Center > Focus > Do Not Disturb), so calls, texts and alerts don't buzz or ring by the crib or pause the monitor.",
                      "For the picture, aim it at the whole crib from a little above, for example on a shelf or dresser.",
                      "Pair the parent phone once (see Parent phone). After that the phones find each other by themselves.",
                      "With the camera on, tap Dark screen instead of locking. Sound only? You can lock it."],
