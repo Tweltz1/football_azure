@@ -365,6 +365,7 @@ struct BabyPhoneScreen: View {
                                : !station.viewerNames.isEmpty ? "Connected to \(station.viewerNames.joined(separator: " and "))"
                                : station.viewers == 1 ? "Parent phone connected" : "\(station.viewers) parent phones connected",
                                good: station.viewers > 0)
+                    DoNotDisturbTip()
                     if let problem = station.problem { Text(problem).font(.footnote).foregroundStyle(.orange) }
                     if station.talking {
                         Label("The parent phone is talking", systemImage: "mic.fill")
@@ -638,6 +639,27 @@ struct NightTestSwitches: View {
                 Text("Back LiDAR night view needs an iPhone Pro (12 Pro or newer). This phone doesn't have the sensor.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+/// Baby phone reminder: Do Not Disturb keeps calls, texts and alerts from buzzing or ringing by the
+/// crib, and stops a phone call from taking over the microphone and pausing the monitor.
+struct DoNotDisturbTip: View {
+    @AppStorage("dndTipHidden") private var hidden = false
+
+    var body: some View {
+        if !hidden {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Label("Turn on Do Not Disturb", systemImage: "moon.fill").font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Button("Got it") { hidden = true }.font(.caption.weight(.semibold))
+                }
+                Text("On this phone, swipe down from the top-right corner, tap Focus, then Do Not Disturb. That stops calls, texts and alerts from buzzing or ringing by the crib, and stops a phone call from pausing the monitor. Stork View keeps listening.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .card()
         }
     }
 }
